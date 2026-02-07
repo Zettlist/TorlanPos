@@ -1,0 +1,382 @@
+import express from 'express';
+import db from '../database/db.js';
+import { authenticateToken, validateEmpresaActive, getEmpresaId } from '../middleware/auth.js';
+
+const router = express.Router();
+
+// All routes require authentication
+router.use(authenticateToken);
+router.use(validateEmpresaActive);
+
+/**
+ * GET /api/cash/current
+ * Get current open cash session for the user
+ */
+router.get('/current', (req, res) => {
+    try {
+        const empresaId = getEmpresaId(req);
+
+        const session = db.prepare(`
+            SELECT cs.*, u.username as opened_by_username
+            FROM cash_sessions cs
+            JOIN users u ON cs.user_id = u.id
+            WHERE cs.empresa_id = ? AND cs.user_id = ? AND cs.status = 'open'
+            ORDER BY cs.opened_at DESC
+            LIMIT 1
+        `).get(empresaId, req.user.id);
+
+        if (!session) {
+            return res.json({ session: null, message: 'No hay caja abierta' });
+        }
+
+        // Calculate current sales total for this session
+        const salesTotal = db.prepare(`
+            SELECT COALESCE(SUM(total), 0) as total
+            FROM sales
+            WHERE cash_session_id = ? AND payment_method = 'cash'
+        `).get(session.id);
+
+        res.json({
+            session: {
+                ...session,
+                current_sales_total: salesTotal?.total || 0,
+                current_expected: session.opening_amount + (salesTotal?.total || 0)
+            }
+        });
+    } catch (error) {
+        console.error('Get current session error:', error);
+        res.status(500).json({ error: 'Error al obtener sesión de caja' });
+    }
+});
+
+
+/**
+ * GET /api/cash/active-list
+ * Get ALL open sessions (Manager Dashboard)
+ */
+router.get('/active-list', (req, res) => {
+    try {
+        const empresaId = getEmpresaId(req);
+        // Check if admin (Gerente or Global)
+        const user = db.prepare('SELECT role FROM users WHERE id = ?').get(req.user.id);
+        if (user.role !== 'empresa_admin' && user.role !== 'global_admin') {
+            return res.status(403).json({ error: 'Acceso denegado' });
+        }
+
+        const sessions = db.prepare(`
+            SELECT cs.*, u.username as opened_by_username
+            FROM cash_sessions cs
+            JOIN users u ON cs.user_id = u.id
+            WHERE cs.empresa_id = ? AND cs.status = 'open'
+            ORDER BY cs.opened_at DESC
+        `).all(empresaId);
+
+        // Enhance with current sales
+        const enhancedSessions = sessions.map(session => {
+            const salesTotal = db.prepare(`
+                SELECT COALESCE(SUM(total), 0) as total
+                FROM sales
+                WHERE cash_session_id = ? AND payment_method = 'cash'
+            `).get(session.id);
+
+            return {
+                ...session,
+                current_sales_total: salesTotal?.total || 0,
+                current_expected: session.opening_amount + (salesTotal?.total || 0)
+            };
+        });
+
+        res.json(enhancedSessions);
+    } catch (error) {
+        console.error('Get active list error:', error);
+        res.status(500).json({ error: 'Error al obtener lista de cajas activas' });
+    }
+});
+
+/**
+ * POST /api/cash/open
+ * Open a new cash session
+ */
+router.post('/open', (req, res) => {
+    try {
+        const { opening_amount } = req.body;
+        const empresaId = getEmpresaId(req);
+        const userId = req.user.id;
+
+        if (opening_amount === undefined || opening_amount < 0) {
+            return res.status(400).json({ error: 'El monto inicial es requerido y debe ser >= 0' });
+        }
+
+        // Check if there's already an open session FOR THIS USER
+        const existingOpen = db.prepare(`
+            SELECT id FROM cash_sessions
+            WHERE empresa_id = ? AND user_id = ? AND status = 'open'
+        `).get(empresaId, userId);
+
+        if (existingOpen) {
+            return res.status(400).json({
+                error: 'Ya existe una caja abierta. Debe cerrarla antes de abrir una nueva.',
+                session_id: existingOpen.id
+            });
+        }
+
+        // Create new session
+        const result = db.prepare(`
+            INSERT INTO cash_sessions (empresa_id, user_id, opening_amount, status)
+            VALUES (?, ?, ?, 'open')
+        `).run(empresaId, userId, opening_amount);
+
+        res.json({
+            message: 'Caja abierta exitosamente',
+            session_id: result.lastInsertRowid,
+            opening_amount
+        });
+    } catch (error) {
+        console.error('Open cash session error:', error);
+        res.status(500).json({ error: 'Error al abrir caja' });
+    }
+});
+
+/**
+ * POST /api/cash/close
+ * Close cash session with BLIND CUT (employee only sees if there's discrepancy, not amount)
+ */
+router.post('/close', (req, res) => {
+    try {
+        const { declared_amount, notes } = req.body;
+        const empresaId = getEmpresaId(req);
+        const isAdmin = req.user.role === 'empresa_admin' || req.user.role === 'global_admin';
+
+        if (declared_amount === undefined || declared_amount < 0) {
+            return res.status(400).json({ error: 'El monto declarado es requerido y debe ser >= 0' });
+        }
+
+        // Get current open session FOR THIS USER
+        const session = db.prepare(`
+            SELECT * FROM cash_sessions
+            WHERE empresa_id = ? AND user_id = ? AND status = 'open'
+        `).get(empresaId, req.user.id);
+
+        if (!session) {
+            return res.status(400).json({ error: 'No hay caja abierta para cerrar' });
+        }
+
+        // Calculate expected amount (opening + cash sales)
+        const salesTotal = db.prepare(`
+            SELECT COALESCE(SUM(total), 0) as total
+            FROM sales
+            WHERE cash_session_id = ? AND payment_method = 'cash'
+        `).get(session.id);
+
+        const cashSalesTotal = salesTotal?.total || 0;
+        const expectedAmount = session.opening_amount + cashSalesTotal;
+        const difference = declared_amount - expectedAmount;
+
+        // Update session with close data
+        db.prepare(`
+            UPDATE cash_sessions
+            SET expected_amount = ?,
+                declared_amount = ?,
+                difference = ?,
+                status = 'closed',
+                closed_at = CURRENT_TIMESTAMP,
+                notes = ?
+            WHERE id = ?
+        `).run(expectedAmount, declared_amount, difference, notes || null, session.id);
+
+        // Build response based on role
+        if (difference === 0) {
+            return res.json({
+                message: 'Caja cerrada correctamente',
+                status: 'correcto',
+                session_id: session.id
+            });
+        } else {
+            // There's a discrepancy
+            if (isAdmin) {
+                // Admins can see the details
+                return res.json({
+                    message: difference > 0 ? 'Sobrante detectado' : 'Faltante detectado',
+                    status: 'discrepancia',
+                    session_id: session.id,
+                    expected_amount: expectedAmount,
+                    declared_amount: declared_amount,
+                    difference: difference
+                });
+            } else {
+                // Employees get generic message (BLIND CUT)
+                return res.json({
+                    message: 'Comunícate con tu gerente',
+                    status: 'revision_requerida',
+                    session_id: session.id
+                });
+            }
+        }
+    } catch (error) {
+        console.error('Close cash session error:', error);
+        res.status(500).json({ error: 'Error al cerrar caja' });
+    }
+});
+
+/**
+ * GET /api/cash/history
+ * Get cash session history (admin only sees full details)
+ */
+router.get('/history', (req, res) => {
+    try {
+        const empresaId = getEmpresaId(req);
+        const isAdmin = req.user.role === 'empresa_admin' || req.user.role === 'global_admin';
+        const { limit = 20, offset = 0 } = req.query;
+
+        const sessions = db.prepare(`
+            SELECT cs.*, u.username as opened_by_username
+            FROM cash_sessions cs
+            JOIN users u ON cs.user_id = u.id
+            WHERE cs.empresa_id = ? ${!isAdmin ? 'AND cs.user_id = ?' : ''}
+            ORDER BY cs.opened_at DESC
+            LIMIT ? OFFSET ?
+        `).all(...(isAdmin ? [empresaId, parseInt(limit), parseInt(offset)] : [empresaId, req.user.id, parseInt(limit), parseInt(offset)]));
+
+        // If not admin, hide sensitive info
+        const sanitizedSessions = sessions.map(s => {
+            if (!isAdmin && s.status === 'closed') {
+                return {
+                    id: s.id,
+                    user_id: s.user_id,
+                    opened_by_username: s.opened_by_username,
+                    opening_amount: s.opening_amount,
+                    status: s.status,
+                    opened_at: s.opened_at,
+                    closed_at: s.closed_at,
+                    has_discrepancy: s.difference !== 0
+                    // Hide: expected_amount, declared_amount, difference
+                };
+            }
+            return s;
+        });
+
+        res.json(sanitizedSessions);
+    } catch (error) {
+        console.error('Get history error:', error);
+        res.status(500).json({ error: 'Error al obtener historial' });
+    }
+});
+
+/**
+ * GET /api/cash/session/:id
+ * Get specific session details (admin only for closed sessions with discrepancy)
+ */
+router.get('/session/:id', (req, res) => {
+    try {
+        const { id } = req.params;
+        const empresaId = getEmpresaId(req);
+        const isAdmin = req.user.role === 'empresa_admin' || req.user.role === 'global_admin';
+
+        const session = db.prepare(`
+            SELECT cs.*, u.username as opened_by_username
+            FROM cash_sessions cs
+            JOIN users u ON cs.user_id = u.id
+            WHERE cs.id = ? AND cs.empresa_id = ?
+        `).get(id, empresaId);
+
+        if (!session) {
+            return res.status(404).json({ error: 'Sesión no encontrada' });
+        }
+
+        // Get sales for this session
+        const sales = db.prepare(`
+            SELECT id, total, payment_method, created_at
+            FROM sales
+            WHERE cash_session_id = ?
+            ORDER BY created_at ASC
+        `).all(session.id);
+
+        // If not admin and session is closed, hide sensitive data
+        if (!isAdmin && session.status === 'closed') {
+            return res.json({
+                session: {
+                    id: session.id,
+                    opening_amount: session.opening_amount,
+                    status: session.status,
+                    opened_at: session.opened_at,
+                    closed_at: session.closed_at,
+                    has_discrepancy: session.difference !== 0
+                },
+                sales
+            });
+        }
+
+        res.json({ session, sales });
+    } catch (error) {
+        console.error('Get session details error:', error);
+        res.status(500).json({ error: 'Error al obtener detalles de sesión' });
+    }
+});
+
+
+/**
+ * GET /api/cash/session/:id/details
+ * Detailed view for managers (Active or Closed)
+ */
+router.get('/session/:id/details', (req, res) => {
+    try {
+        const { id } = req.params;
+        const empresaId = getEmpresaId(req);
+
+        // Strict Role Check: Managers/Admins ONLY
+        const user = db.prepare('SELECT role FROM users WHERE id = ?').get(req.user.id);
+        if (user.role !== 'empresa_admin' && user.role !== 'global_admin') {
+            return res.status(403).json({ error: 'Acceso denegado. Solo gerentes pueden ver detalles.' });
+        }
+
+        const session = db.prepare(`
+            SELECT cs.*, u.username as opened_by_username
+            FROM cash_sessions cs
+            JOIN users u ON cs.user_id = u.id
+            WHERE cs.id = ? AND cs.empresa_id = ?
+        `).get(id, empresaId);
+
+        if (!session) {
+            return res.status(404).json({ error: 'Sesión no encontrada' });
+        }
+
+        // Sales Breakdown by Payment Method
+        const paymentSummary = db.prepare(`
+            SELECT payment_method, COALESCE(SUM(total), 0) as total, COUNT(*) as count
+            FROM sales
+            WHERE cash_session_id = ?
+            GROUP BY payment_method
+        `).all(session.id);
+
+        // Calculate expected cash in drawer (Opening + Cash Sales)
+        // Note: We don't have withdrawals yet, so it's simple
+        const cashSales = paymentSummary.find(p => p.payment_method === 'cash')?.total || 0;
+        const calculatedExpected = session.opening_amount + cashSales;
+
+        // Recent Transactions (limit 50)
+        const transactions = db.prepare(`
+            SELECT id, total, payment_method, created_at
+            FROM sales
+            WHERE cash_session_id = ?
+            ORDER BY created_at DESC
+            LIMIT 50
+        `).all(session.id);
+
+        res.json({
+            session: {
+                ...session,
+                calculated_expected_cash: calculatedExpected
+            },
+            summary: paymentSummary,
+            transactions,
+            withdrawals: [] // Placeholder until Feature is implemented
+        });
+
+    } catch (error) {
+        console.error('Get session full details error:', error);
+        res.status(500).json({ error: 'Error al obtener detalles completos' });
+    }
+});
+
+export default router;
+

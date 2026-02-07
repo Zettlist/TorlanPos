@@ -1,0 +1,59 @@
+# GCloud Ignore - Files to exclude from deployment
+# Similar to .gitignore but for gcloud deployments
+
+# Node modules (will be installed on cloud)
+node_modules/
+npm-debug.log
+
+# Development files
+*.log
+.env
+.env.*
+!.env.example
+
+# Test files
+test/
+tests/
+*.test.js
+*.spec.js
+test_*.js
+check_*.js
+inspect_*.js
+
+# Backup files
+*.backup
+*.backup2
+*.old
+*.bak
+
+# Development scripts
+seed_*.js
+reset_*.js
+fill_*.js
+add_*.js
+
+# Documentation
+README.md
+*.md
+!database/*.md
+
+# Windows/Mac files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Executables and misc
+*.exe
+*.pdf
+*.vbs
+docker-compose.yml
+
+# Database dumps
+*.sql
+!database/schema*.sql

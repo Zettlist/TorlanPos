@@ -1,0 +1,522 @@
+import express from 'express';
+import db from '../database/db.js';
+import { authenticateToken, validateEmpresaActive, getEmpresaId, requireEmpresaAdmin } from '../middleware/auth.js';
+
+const router = express.Router();
+
+// All routes require authentication and active empresa
+router.use(authenticateToken);
+router.use(validateEmpresaActive);
+
+// Get sales for current user (filtered by empresa_id)
+router.get('/', (req, res) => {
+    try {
+        const empresaId = getEmpresaId(req);
+
+        if (!empresaId) {
+            return res.status(403).json({ error: 'Acceso denegado. Usuario sin empresa asignada.' });
+        }
+
+        const sales = db.prepare(`
+            SELECT s.id, s.user_id, s.total, s.payment_method, s.created_at
+            FROM sales s
+            WHERE s.empresa_id = ? AND s.user_id = ?
+            ORDER BY s.created_at DESC
+            LIMIT 50
+        `).all(empresaId, req.user.id);
+
+        res.json(sales);
+    } catch (error) {
+        console.error('Get sales error:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+// Get single sale details
+// Get sales goals (MUST be before /:id to avoid conflict)
+router.get('/goals', (req, res) => {
+    try {
+        const empresaId = getEmpresaId(req);
+
+        if (!empresaId) {
+            return res.status(403).json({ error: 'Acceso denegado. Usuario sin empresa asignada.' });
+        }
+
+        // Helper to get current date in Mexico City
+        const getMexicoCityDateInfo = () => {
+            const now = new Date();
+            const formatter = new Intl.DateTimeFormat('es-MX', {
+                timeZone: 'America/Mexico_City',
+                year: 'numeric',
+                month: 'numeric',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: 'numeric',
+                second: 'numeric',
+                hour12: false
+            });
+
+            const parts = formatter.formatToParts(now);
+            const getPart = (type) => parts.find(p => p.type === type)?.value;
+
+            return {
+                year: parseInt(getPart('year')),
+                month: parseInt(getPart('month')) - 1, // 0-indexed
+                day: parseInt(getPart('day')),
+                hour: parseInt(getPart('hour'))
+            };
+        };
+
+        const mxDate = getMexicoCityDateInfo();
+        const now = new Date(mxDate.year, mxDate.month, mxDate.day, mxDate.hour);
+
+        // Calculate Week Start (Last Monday)
+        const weekStart = new Date(mxDate.year, mxDate.month, mxDate.day);
+        const day = weekStart.getDay(); // 0 (Sun) to 6 (Sat)
+        const diff = weekStart.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+        weekStart.setDate(diff);
+        weekStart.setHours(0, 0, 0, 0);
+
+        // Calculate Month Start (1st of current month)
+        const monthStart = new Date(mxDate.year, mxDate.month, 1);
+        monthStart.setHours(0, 0, 0, 0);
+
+        const weekStartStr = weekStart.getFullYear() + '-' + String(weekStart.getMonth() + 1).padStart(2, '0') + '-' + String(weekStart.getDate()).padStart(2, '0');
+        const monthStartStr = monthStart.getFullYear() + '-' + String(monthStart.getMonth() + 1).padStart(2, '0') + '-' + String(monthStart.getDate()).padStart(2, '0');
+
+        // 1. Get targets from Business Settings (Global for empresa)
+        const weeklySetting = db.prepare("SELECT setting_value FROM business_settings WHERE empresa_id = ? AND setting_key = 'weekly_sales_goal'").get(empresaId);
+        const monthlySetting = db.prepare("SELECT setting_value FROM business_settings WHERE empresa_id = ? AND setting_key = 'monthly_sales_goal'").get(empresaId);
+
+        const weeklyTarget = weeklySetting?.setting_value ? parseFloat(weeklySetting.setting_value) : 0;
+        const monthlyTarget = monthlySetting?.setting_value ? parseFloat(monthlySetting.setting_value) : 0;
+
+        // 2. Calculate actual sales for the Company (COLLECTIVE GOAL)
+        // We use DATE(created_at, '-6 hours') to approximate Mexico City Time from UTC
+
+        const weeklySales = db.prepare(`
+            SELECT COALESCE(SUM(total), 0) as total FROM sales 
+            WHERE empresa_id = ? AND DATE(created_at, '-6 hours') >= ?
+        `).get(empresaId, weekStartStr);
+
+        const monthlySales = db.prepare(`
+            SELECT COALESCE(SUM(total), 0) as total FROM sales 
+            WHERE empresa_id = ? AND DATE(created_at, '-6 hours') >= ?
+        `).get(empresaId, monthStartStr);
+
+        // 3. Return combined data
+        res.json({
+            weekly: {
+                type: 'weekly',
+                target: weeklyTarget,
+                current: weeklySales?.total || 0,
+                period_start: weekStartStr
+            },
+            monthly: {
+                type: 'monthly',
+                target: monthlyTarget,
+                current: monthlySales?.total || 0,
+                period_start: monthStartStr
+            }
+        });
+    } catch (error) {
+        console.error('Get goals error:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+// Get sales statistics (COLLECTIVE for empresa_id) - MUST be before /:id
+router.get('/statistics', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    try {
+        const empresaId = getEmpresaId(req);
+
+        if (!empresaId) {
+            return res.status(403).json({ error: 'Acceso denegado. Usuario sin empresa asignada.' });
+        }
+
+        // Use the same timezone helper as /goals for consistency
+        const getMexicoCityDateInfo = () => {
+            const now = new Date();
+            const formatter = new Intl.DateTimeFormat('es-MX', {
+                timeZone: 'America/Mexico_City',
+                year: 'numeric',
+                month: 'numeric',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: 'numeric',
+                second: 'numeric',
+                hour12: false
+            });
+
+            const parts = formatter.formatToParts(now);
+            const getPart = (type) => parts.find(p => p.type === type)?.value;
+
+            return {
+                year: parseInt(getPart('year')),
+                month: parseInt(getPart('month')) - 1, // 0-indexed
+                day: parseInt(getPart('day')),
+                hour: parseInt(getPart('hour'))
+            };
+        };
+
+        const mxDate = getMexicoCityDateInfo();
+
+        // Today's date string
+        const todayStr = `${mxDate.year}-${String(mxDate.month + 1).padStart(2, '0')}-${String(mxDate.day).padStart(2, '0')}`;
+
+        // Calculate Week Start (MONDAY - same logic as /goals)
+        const weekStart = new Date(mxDate.year, mxDate.month, mxDate.day);
+        const dayOfWeek = weekStart.getDay(); // 0 (Sun) to 6 (Sat)
+        const daysFromMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // If Sunday, go back 6 days; else go to Monday
+        weekStart.setDate(weekStart.getDate() + daysFromMonday);
+        weekStart.setHours(0, 0, 0, 0);
+        const weekStartStr = `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, '0')}-${String(weekStart.getDate()).padStart(2, '0')}`;
+
+        // Calculate Previous Week Start (for UX indicator)
+        const prevWeekStart = new Date(weekStart);
+        prevWeekStart.setDate(prevWeekStart.getDate() - 7);
+        const prevWeekStartStr = `${prevWeekStart.getFullYear()}-${String(prevWeekStart.getMonth() + 1).padStart(2, '0')}-${String(prevWeekStart.getDate()).padStart(2, '0')}`;
+
+        // Calculate Month Start (1st of current month)
+        const monthStart = new Date(mxDate.year, mxDate.month, 1);
+        monthStart.setHours(0, 0, 0, 0);
+        const monthStartStr = `${monthStart.getFullYear()}-${String(monthStart.getMonth() + 1).padStart(2, '0')}-${String(monthStart.getDate()).padStart(2, '0')}`;
+
+        // UNIFIED LOGIC: Use -6 hours offset (same as /goals) for all queries
+        // This ensures statistics.month.total === goals.monthly.current
+
+        // Today's sales (Company Wide)
+        const todaySales = db.prepare(`
+            SELECT COALESCE(SUM(total), 0) as total, COUNT(*) as count
+            FROM sales 
+            WHERE empresa_id = ? AND DATE(created_at, '-6 hours') = ?
+        `).get(empresaId, todayStr);
+
+        // This week (MONDAY START)
+        const weekSales = db.prepare(`
+            SELECT COALESCE(SUM(total), 0) as total, COUNT(*) as count
+            FROM sales 
+            WHERE empresa_id = ? AND DATE(created_at, '-6 hours') >= ?
+        `).get(empresaId, weekStartStr);
+
+        // Previous week (for UX indicator when current week is $0)
+        const prevWeekSales = db.prepare(`
+            SELECT COALESCE(SUM(total), 0) as total, COUNT(*) as count
+            FROM sales 
+            WHERE empresa_id = ? 
+              AND DATE(created_at, '-6 hours') >= ?
+              AND DATE(created_at, '-6 hours') < ?
+        `).get(empresaId, prevWeekStartStr, weekStartStr);
+
+        // This month
+        const monthSales = db.prepare(`
+            SELECT COALESCE(SUM(total), 0) as total, COUNT(*) as count
+            FROM sales 
+            WHERE empresa_id = ? AND DATE(created_at, '-6 hours') >= ?
+        `).get(empresaId, monthStartStr);
+
+        // Payment method breakdown
+        const paymentBreakdown = db.prepare(`
+            SELECT payment_method, COALESCE(SUM(total), 0) as total, COUNT(*) as count
+            FROM sales 
+            WHERE empresa_id = ? AND DATE(created_at, '-6 hours') >= ?
+            GROUP BY payment_method
+        `).all(empresaId, monthStartStr);
+
+        res.json({
+            today: todaySales || { total: 0, count: 0 },
+            week: weekSales || { total: 0, count: 0 },
+            previousWeek: prevWeekSales || { total: 0, count: 0 },
+            month: monthSales || { total: 0, count: 0 },
+            paymentBreakdown: paymentBreakdown || []
+        });
+    } catch (error) {
+        console.error('Get statistics error:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+router.get('/:id', (req, res) => {
+    try {
+        const empresaId = getEmpresaId(req);
+        const { id } = req.params;
+
+        if (!empresaId) {
+            return res.status(403).json({ error: 'Acceso denegado. Usuario sin empresa asignada.' });
+        }
+
+        const sale = db.prepare(`
+            SELECT s.*, u.username as cashier
+            FROM sales s
+            JOIN users u ON s.user_id = u.id
+            WHERE s.id = ? AND s.empresa_id = ?
+        `).get(id, empresaId);
+
+        if (!sale) {
+            return res.status(404).json({ error: 'Venta no encontrada' });
+        }
+
+        const items = db.prepare(`
+            SELECT si.quantity, si.price, p.name, p.sbin_code
+            FROM sale_items si
+            JOIN products p ON si.product_id = p.id
+            WHERE si.sale_id = ?
+        `).all(id);
+
+        res.json({
+            ...sale,
+            items
+        });
+    } catch (error) {
+        console.error('Get sale details error:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+// Create sale
+router.post('/', (req, res) => {
+    try {
+        const { items, payment_method } = req.body;
+        const userId = req.user.id;
+        const empresaId = getEmpresaId(req);
+
+        if (!empresaId) {
+            return res.status(403).json({ error: 'Acceso denegado. Usuario sin empresa asignada.' });
+        }
+
+        // ===========================
+        // STRICT CASH SESSION CHECK
+        // ===========================
+        // Verify user has an OPEN cash session before allowing sale
+        const openSession = db.prepare(`
+            SELECT id FROM cash_sessions
+            WHERE empresa_id = ? AND user_id = ? AND status = 'open'
+            LIMIT 1
+        `).get(empresaId, userId);
+
+        if (!openSession) {
+            return res.status(403).json({
+                error: 'No tienes una caja abierta. Debes abrir caja antes de realizar ventas.',
+                code: 'NO_CASH_SESSION',
+                requiresCashSession: true
+            });
+        }
+        // ===========================
+
+        if (!items || !Array.isArray(items) || items.length === 0) {
+            return res.status(400).json({ error: 'Se requieren items para la venta' });
+        }
+
+        if (!['cash', 'card'].includes(payment_method)) {
+            return res.status(400).json({ error: 'Método de pago inválido' });
+        }
+
+        // Verify all products belong to user's empresa
+        for (const item of items) {
+            const product = db.prepare(
+                'SELECT id FROM products WHERE id = ? AND empresa_id = ?'
+            ).get(item.product_id, empresaId);
+
+            if (!product) {
+                return res.status(400).json({ error: `Producto ${item.product_id} no encontrado` });
+            }
+        }
+
+        // Calculate total from items
+        const calculatedTotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+        // Link sale to the open cash session (verified above)
+        const cashSessionId = openSession.id;
+
+        // Create sale with empresa_id and cash_session_id
+        const saleResult = db.prepare(
+            'INSERT INTO sales (empresa_id, user_id, total, payment_method, cash_session_id) VALUES (?, ?, ?, ?, ?)'
+        ).run(empresaId, req.user.id, calculatedTotal, payment_method, cashSessionId);
+
+        // Create sale items
+        for (const item of items) {
+            db.prepare(
+                'INSERT INTO sale_items (sale_id, product_id, quantity, price) VALUES (?, ?, ?, ?)'
+            ).run(saleResult.lastInsertRowid, item.product_id, item.quantity, item.price);
+
+            // Update stock (with empresa_id check for safety)
+            db.prepare('UPDATE products SET stock = stock - ? WHERE id = ? AND empresa_id = ?')
+                .run(item.quantity, item.product_id, empresaId);
+        }
+
+        // Legacy sales_goals update removed. Goals are now calculated dynamically from business_settings.
+
+        res.json({
+            message: 'Venta registrada correctamente',
+            id: saleResult.lastInsertRowid,
+            total: calculatedTotal
+        });
+    } catch (error) {
+        console.error('Create sale error:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+
+
+// Set/update sales goals (Updates Global Business Settings)
+router.put('/goals', (req, res) => {
+    try {
+        const empresaId = getEmpresaId(req);
+        const { weekly_target, monthly_target } = req.body;
+
+        if (!empresaId) {
+            return res.status(403).json({ error: 'Acceso denegado. Usuario sin empresa asignada.' });
+        }
+
+        // Helper to upsert setting
+        const upsertSetting = (key, value) => {
+            const existing = db.prepare("SELECT id FROM business_settings WHERE empresa_id = ? AND setting_key = ?").get(empresaId, key);
+            if (existing) {
+                db.prepare("UPDATE business_settings SET setting_value = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(String(value), existing.id);
+            } else {
+                db.prepare("INSERT INTO business_settings (empresa_id, setting_key, setting_value) VALUES (?, ?, ?)").run(empresaId, key, String(value));
+            }
+        };
+
+        if (weekly_target !== undefined) upsertSetting('weekly_sales_goal', weekly_target);
+        if (monthly_target !== undefined) upsertSetting('monthly_sales_goal', monthly_target);
+
+        res.json({ message: 'Metas actualizadas correctamente (Configuración Global)' });
+    } catch (error) {
+        console.error('Update goals error:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+
+
+
+// Get user stats for empresa admin (individual user dashboard)
+router.get('/user-stats/:userId', requireEmpresaAdmin, (req, res) => {
+    try {
+        const empresaId = getEmpresaId(req);
+        const { userId } = req.params;
+
+        if (!empresaId) {
+            return res.status(403).json({ error: 'Acceso denegado. Usuario sin empresa asignada.' });
+        }
+
+        // Verify user belongs to same empresa
+        const user = db.prepare('SELECT id FROM users WHERE id = ? AND empresa_id = ?').get(userId, empresaId);
+        if (!user) {
+            return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+
+        const today = new Date();
+        const todayStart = today.toISOString().split('T')[0];
+
+        // Total sales
+        const totalStats = db.prepare(`
+            SELECT COALESCE(SUM(total), 0) as totalSales, COUNT(*) as totalTransactions
+            FROM sales WHERE empresa_id = ? AND user_id = ?
+        `).get(empresaId, userId);
+
+        // Today's sales
+        const todayStats = db.prepare(`
+            SELECT COALESCE(SUM(total), 0) as todaySales
+            FROM sales WHERE empresa_id = ? AND user_id = ? AND DATE(created_at) = DATE(?)
+        `).get(empresaId, userId, todayStart);
+
+        // Average ticket
+        const avgTicket = totalStats.totalTransactions > 0
+            ? totalStats.totalSales / totalStats.totalTransactions
+            : 0;
+
+        res.json({
+            totalSales: totalStats?.totalSales || 0,
+            totalTransactions: totalStats?.totalTransactions || 0,
+            todaySales: todayStats?.todaySales || 0,
+            averageTicket: avgTicket
+        });
+    } catch (error) {
+        console.error('Get user stats error:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+// Get all empresa sales (for empresa_admin only)
+router.get('/empresa', requireEmpresaAdmin, (req, res) => {
+    try {
+        const empresaId = getEmpresaId(req);
+
+        if (!empresaId) {
+            return res.status(403).json({ error: 'Acceso denegado. Usuario sin empresa asignada.' });
+        }
+
+        const sales = db.prepare(`
+            SELECT s.id, s.user_id, u.username, s.total, s.payment_method, s.created_at
+            FROM sales s
+            JOIN users u ON s.user_id = u.id
+            WHERE s.empresa_id = ?
+            ORDER BY s.created_at DESC
+            LIMIT 100
+        `).all(empresaId);
+
+        res.json(sales);
+    } catch (error) {
+        console.error('Get empresa sales error:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+// Get empresa statistics (for empresa_admin only)
+router.get('/empresa/statistics', requireEmpresaAdmin, (req, res) => {
+    try {
+        const empresaId = getEmpresaId(req);
+
+        if (!empresaId) {
+            return res.status(403).json({ error: 'Acceso denegado. Usuario sin empresa asignada.' });
+        }
+
+        const today = new Date();
+        const todayStart = today.toISOString().split('T')[0];
+
+        // Today's sales
+        const todaySales = db.prepare(`
+            SELECT COALESCE(SUM(total), 0) as total, COUNT(*) as count
+            FROM sales WHERE empresa_id = ? AND DATE(created_at) = DATE(?)
+        `).get(empresaId, todayStart);
+
+        // This week's sales
+        const weekStart = new Date(today);
+        weekStart.setDate(today.getDate() - today.getDay());
+        const weekSales = db.prepare(`
+            SELECT COALESCE(SUM(total), 0) as total, COUNT(*) as count
+            FROM sales WHERE empresa_id = ? AND created_at >= ?
+        `).get(empresaId, weekStart.toISOString());
+
+        // This month's sales
+        const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+        const monthSales = db.prepare(`
+            SELECT COALESCE(SUM(total), 0) as total, COUNT(*) as count
+            FROM sales WHERE empresa_id = ? AND created_at >= ?
+        `).get(empresaId, monthStart.toISOString());
+
+        // Sales by user
+        const salesByUser = db.prepare(`
+            SELECT u.username, COALESCE(SUM(s.total), 0) as total, COUNT(*) as count
+            FROM sales s
+            JOIN users u ON s.user_id = u.id
+            WHERE s.empresa_id = ? AND s.created_at >= ?
+            GROUP BY s.user_id
+        `).all(empresaId, monthStart.toISOString());
+
+        res.json({
+            today: todaySales || { total: 0, count: 0 },
+            week: weekSales || { total: 0, count: 0 },
+            month: monthSales || { total: 0, count: 0 },
+            byUser: salesByUser || []
+        });
+    } catch (error) {
+        console.error('Get empresa statistics error:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+export default router;

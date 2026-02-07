@@ -1,0 +1,393 @@
+import express from 'express';
+import bcrypt from 'bcryptjs';
+import db from '../database/db.js';
+import {
+    authenticateToken,
+    requireAdmin,
+    requireEmpresaAdmin,
+    requireGlobalAdmin,
+    getEmpresaId,
+    validateEmpresaActive
+} from '../middleware/auth.js';
+
+const router = express.Router();
+
+// All routes require authentication
+router.use(authenticateToken);
+
+// Get features for current user
+router.get('/', (req, res) => {
+    try {
+        const features = db.prepare(`
+            SELECT f.id, f.name, f.display_name, f.description, f.icon, 
+                   COALESCE(uf.is_enabled, 0) as is_enabled
+            FROM features f
+            LEFT JOIN user_features uf ON f.id = uf.feature_id AND uf.user_id = ?
+        `).all(req.user.id);
+
+        res.json(features);
+    } catch (error) {
+        console.error('Get features error:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+// Get all users with their features (empresa_admin or global_admin)
+router.get('/users', requireAdmin, (req, res) => {
+    try {
+        const empresaId = getEmpresaId(req);
+
+        let users;
+
+        // Global admin sees all non-global users
+        if (req.user.role === 'global_admin') {
+            users = db.prepare(`
+                SELECT u.id, u.username, u.is_admin, u.first_login, u.has_setup_complete, 
+                       u.created_at, u.empresa_id, u.role, e.nombre_empresa
+                FROM users u
+                LEFT JOIN empresas e ON u.empresa_id = e.id
+                WHERE u.role != 'global_admin'
+                ORDER BY e.nombre_empresa, u.id ASC
+            `).all();
+        } else {
+            // Empresa admin sees only users from their empresa
+            users = db.prepare(`
+                SELECT u.id, u.username, u.is_admin, u.first_login, u.has_setup_complete, 
+                       u.created_at, u.empresa_id, u.role
+                FROM users u
+                WHERE u.empresa_id = ?
+                ORDER BY u.id ASC
+            `).all(empresaId);
+        }
+
+        console.log('Users found:', users.length, users.map(u => u.username));
+
+        const features = db.prepare('SELECT id, name, display_name, description, icon FROM features').all();
+
+        // Get features for each user
+        const usersWithFeatures = users.map(user => {
+            const userFeatures = db.prepare(`
+                SELECT f.id, f.name, COALESCE(uf.is_enabled, 0) as is_enabled
+                FROM features f
+                LEFT JOIN user_features uf ON f.id = uf.feature_id AND uf.user_id = ?
+            `).all(user.id);
+
+            return {
+                ...user,
+                is_admin: Boolean(user.is_admin),
+                first_login: Boolean(user.first_login),
+                has_setup_complete: Boolean(user.has_setup_complete),
+                features: userFeatures.reduce((acc, f) => {
+                    acc[f.name] = Boolean(f.is_enabled);
+                    return acc;
+                }, {})
+            };
+        });
+
+        res.json({ users: usersWithFeatures, availableFeatures: features });
+    } catch (error) {
+        console.error('Get users features error:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+// Toggle feature for a user (admin only)
+router.put('/toggle/:userId/:featureId', requireAdmin, (req, res) => {
+    try {
+        const empresaId = getEmpresaId(req);
+        const { userId, featureId } = req.params;
+        const { enabled } = req.body;
+
+        // Empresa admin can only manage users from their empresa
+        if (req.user.role !== 'global_admin') {
+            const user = db.prepare('SELECT empresa_id FROM users WHERE id = ?').get(userId);
+            if (!user || user.empresa_id !== empresaId) {
+                return res.status(403).json({ error: 'No tiene permisos para modificar este usuario' });
+            }
+        }
+
+        // Check if user_feature exists
+        const existing = db.prepare(
+            'SELECT id, is_enabled FROM user_features WHERE user_id = ? AND feature_id = ?'
+        ).get(userId, featureId);
+
+        if (existing) {
+            db.prepare('UPDATE user_features SET is_enabled = ? WHERE id = ?')
+                .run(enabled ? 1 : 0, existing.id);
+        } else {
+            db.prepare('INSERT INTO user_features (user_id, feature_id, is_enabled) VALUES (?, ?, ?)')
+                .run(userId, featureId, enabled ? 1 : 0);
+        }
+
+        res.json({ message: 'Feature actualizada correctamente' });
+    } catch (error) {
+        console.error('Toggle feature error:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+// Create new user (empresa_admin for their empresa, global_admin for any)
+router.post('/users', requireAdmin, (req, res) => {
+    try {
+        const empresaId = getEmpresaId(req);
+        const { username, password, role, target_empresa_id } = req.body;
+
+        if (!username || !password) {
+            return res.status(400).json({ error: 'Usuario y contraseña son requeridos' });
+        }
+
+        // Determine which empresa_id to use
+        let userEmpresaId = empresaId;
+
+        // Global admin can specify target empresa
+        if (req.user.role === 'global_admin' && target_empresa_id) {
+            const targetEmpresa = db.prepare('SELECT id FROM empresas WHERE id = ?').get(target_empresa_id);
+            if (!targetEmpresa) {
+                return res.status(400).json({ error: 'Empresa destino no encontrada' });
+            }
+            userEmpresaId = target_empresa_id;
+        } else if (req.user.role !== 'global_admin' && !empresaId) {
+            return res.status(403).json({ error: 'Usuario sin empresa asignada' });
+        }
+
+        // Check user limit for empresa
+        if (userEmpresaId) {
+            const empresa = db.prepare('SELECT max_usuarios FROM empresas WHERE id = ?').get(userEmpresaId);
+            const userCount = db.prepare('SELECT COUNT(*) as count FROM users WHERE empresa_id = ?').get(userEmpresaId);
+
+            if (userCount.count >= empresa.max_usuarios) {
+                return res.status(400).json({
+                    error: `Límite de usuarios alcanzado (${empresa.max_usuarios}). Actualice el plan para más usuarios.`
+                });
+            }
+        }
+
+        // Check if username already exists
+        const existingUser = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
+        if (existingUser) {
+            return res.status(400).json({ error: 'El nombre de usuario ya existe' });
+        }
+
+        // Validate role
+        const userRole = role || 'employee';
+        if (!['empresa_admin', 'employee'].includes(userRole)) {
+            return res.status(400).json({ error: 'Rol inválido' });
+        }
+
+        const hashedPassword = bcrypt.hashSync(password, 10);
+
+        const result = db.prepare(
+            'INSERT INTO users (username, password_hash, empresa_id, role, is_admin, first_login) VALUES (?, ?, ?, ?, ?, 1)'
+        ).run(username, hashedPassword, userEmpresaId, userRole, userRole === 'empresa_admin' ? 1 : 0);
+
+        const newUserId = result.lastInsertRowid;
+        console.log('Created user with ID:', newUserId);
+
+        // Assign features (enabled for admins, disabled for employees)
+        try {
+            const features = db.prepare('SELECT id FROM features').all();
+            for (const feature of features) {
+                db.prepare('INSERT OR IGNORE INTO user_features (user_id, feature_id, is_enabled) VALUES (?, ?, ?)')
+                    .run(newUserId, feature.id, userRole === 'empresa_admin' ? 1 : 0);
+            }
+        } catch (featureError) {
+            console.error('Error assigning features (non-critical):', featureError);
+        }
+
+        res.json({
+            message: 'Usuario creado correctamente',
+            userId: newUserId
+        });
+    } catch (error) {
+        console.error('Create user error:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+// Delete user - Hierarchical deletion rules:
+// - global_admin (TorlanAdmin) can delete any user except other global_admins
+// - empresa_admin (Gerente de Empresa) can only delete 'employee' role users from their own empresa
+router.delete('/users/:id', requireAdmin, (req, res) => {
+    try {
+        const empresaId = getEmpresaId(req);
+        const { id } = req.params;
+
+        // Prevent deleting yourself
+        if (parseInt(id) === req.user.id) {
+            return res.status(400).json({ error: 'No puedes eliminarte a ti mismo' });
+        }
+
+        // Check if user exists
+        const targetUser = db.prepare('SELECT id, username, empresa_id, role FROM users WHERE id = ?').get(id);
+        if (!targetUser) {
+            return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+
+        // HIERARCHY ENFORCEMENT
+        // Rule 1: Nobody can delete global_admin
+        if (targetUser.role === 'global_admin') {
+            return res.status(403).json({
+                error: 'Acceso denegado. No se puede eliminar al Administrador Global.'
+            });
+        }
+
+        // Rule 2: Global admin can delete anyone (except global_admin - checked above)
+        if (req.user.role === 'global_admin') {
+            // Allowed - proceed to deletion
+        }
+        // Rule 3: Gerente de Empresa can only delete employees from their own empresa
+        else if (req.user.role === 'empresa_admin') {
+            // Must be same empresa
+            if (targetUser.empresa_id !== empresaId) {
+                return res.status(403).json({
+                    error: 'No tiene permisos para eliminar usuarios de otra empresa'
+                });
+            }
+            // Cannot delete other empresa_admins (gerentes)
+            if (targetUser.role === 'empresa_admin') {
+                return res.status(403).json({
+                    error: 'Solo el Administrador Global puede eliminar a un Gerente de Empresa'
+                });
+            }
+            // Can only delete employees
+            if (targetUser.role !== 'employee') {
+                return res.status(403).json({
+                    error: 'Solo puede eliminar usuarios con rol de Empleado'
+                });
+            }
+        } else {
+            // Any other role cannot delete users
+            return res.status(403).json({
+                error: 'No tiene permisos para eliminar usuarios'
+            });
+        }
+
+        // Delete user features first
+        db.prepare('DELETE FROM user_features WHERE user_id = ?').run(id);
+
+        // Delete user
+        db.prepare('DELETE FROM users WHERE id = ?').run(id);
+
+        res.json({ message: `Usuario "${targetUser.username}" eliminado correctamente` });
+    } catch (error) {
+        console.error('Delete user error:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+// Toggle user setup status (admin only)
+router.put('/users/:id/status', requireAdmin, (req, res) => {
+    try {
+        const empresaId = getEmpresaId(req);
+        const { id } = req.params;
+        const { has_setup_complete } = req.body;
+
+        const user = db.prepare('SELECT id, username, has_setup_complete, empresa_id FROM users WHERE id = ?').get(id);
+        if (!user) {
+            return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+
+        // Empresa admin can only modify users from their empresa
+        if (req.user.role !== 'global_admin' && user.empresa_id !== empresaId) {
+            return res.status(403).json({ error: 'No tiene permisos para modificar este usuario' });
+        }
+
+        const newStatus = has_setup_complete !== undefined ? (has_setup_complete ? 1 : 0) : (user.has_setup_complete ? 0 : 1);
+
+        db.prepare('UPDATE users SET has_setup_complete = ? WHERE id = ?').run(newStatus, id);
+
+        res.json({
+            message: `Estado de "${user.username}" actualizado`,
+            has_setup_complete: newStatus === 1
+        });
+    } catch (error) {
+        console.error('Toggle user status error:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+// Update user role (empresa_admin only)
+router.put('/users/:id/role', requireEmpresaAdmin, (req, res) => {
+    try {
+        const empresaId = getEmpresaId(req);
+        const { id } = req.params;
+        const { role } = req.body;
+
+        if (!['empresa_admin', 'employee'].includes(role)) {
+            return res.status(400).json({ error: 'Rol inválido' });
+        }
+
+        const user = db.prepare('SELECT id, username, empresa_id, role FROM users WHERE id = ?').get(id);
+        if (!user) {
+            return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+
+        // Can only modify users from same empresa
+        if (req.user.role !== 'global_admin' && user.empresa_id !== empresaId) {
+            return res.status(403).json({ error: 'No tiene permisos para modificar este usuario' });
+        }
+
+        // Can't change global_admin role
+        if (user.role === 'global_admin') {
+            return res.status(400).json({ error: 'No se puede cambiar el rol de un administrador global' });
+        }
+
+        db.prepare('UPDATE users SET role = ?, is_admin = ? WHERE id = ?')
+            .run(role, role === 'empresa_admin' ? 1 : 0, id);
+
+        res.json({
+            message: `Rol de "${user.username}" actualizado a ${role}`
+        });
+    } catch (error) {
+        console.error('Update user role error:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+// Manage feature availability (global_admin only)
+router.post('/', requireGlobalAdmin, (req, res) => {
+    try {
+        const { name, display_name, description, icon } = req.body;
+
+        if (!name || !display_name) {
+            return res.status(400).json({ error: 'Nombre y nombre de display son requeridos' });
+        }
+
+        const result = db.prepare(
+            'INSERT INTO features (name, display_name, description, icon) VALUES (?, ?, ?, ?)'
+        ).run(name, display_name, description || null, icon || 'cube');
+
+        res.json({
+            message: 'Feature creada correctamente',
+            id: result.lastInsertRowid
+        });
+    } catch (error) {
+        console.error('Create feature error:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+// Delete feature (global_admin only)
+router.delete('/:id', requireGlobalAdmin, (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const feature = db.prepare('SELECT id, name FROM features WHERE id = ?').get(id);
+        if (!feature) {
+            return res.status(404).json({ error: 'Feature no encontrada' });
+        }
+
+        // Delete user_features first
+        db.prepare('DELETE FROM user_features WHERE feature_id = ?').run(id);
+
+        // Delete feature
+        db.prepare('DELETE FROM features WHERE id = ?').run(id);
+
+        res.json({ message: `Feature "${feature.name}" eliminada correctamente` });
+    } catch (error) {
+        console.error('Delete feature error:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+export default router;

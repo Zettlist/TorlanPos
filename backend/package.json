@@ -1,0 +1,26 @@
+{
+  "name": "torlan-pos-backend",
+  "version": "1.0.0",
+  "description": "Torlan POS Backend API",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch server.js",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@google-cloud/storage": "^7.18.0",
+    "bcrypt": "^6.0.0",
+    "bcryptjs": "^2.4.3",
+    "bwip-js": "^4.8.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.2",
+    "mysql2": "^3.6.5",
+    "node-cron": "^4.2.1",
+    "pdf-to-printer": "^5.6.1",
+    "pdfkit": "^0.17.2"
+  }
+}

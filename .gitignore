@@ -1,0 +1,55 @@
+# Node modules
+node_modules/
+package-lock.json
+npm-debug.log
+yarn.lock
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Credentials and secrets
+.credentials.txt
+*.pem
+*.key
+.db-*.txt
+.jwt-*.txt
+
+# Backend app.yaml (contains secrets)
+backend/app.yaml
+
+# Database
+*.sqlite
+*.db
+
+# Logs
+logs/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build outputs
+dist/
+build/
+.cache/
+
+# Testing
+coverage/
+.nyc_output/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old

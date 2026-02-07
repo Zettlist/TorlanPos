@@ -1,0 +1,266 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --gradient-primary: linear-gradient(135deg, #0ea5e9 0%, #8b5cf6 50%, #d946ef 100%);
+  --gradient-card: linear-gradient(145deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+  min-height: 100vh;
+  color: #f8fafc;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl shadow-xl;
+  }
+
+  .glass-card-dark {
+    @apply bg-slate-900/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-xl;
+  }
+
+  .btn-primary {
+    @apply px-6 py-3 bg-gradient-to-r from-primary-500 to-accent-500 text-white font-semibold rounded-xl shadow-lg shadow-primary-500/25 hover:shadow-xl hover:shadow-primary-500/40 transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply px-6 py-3 bg-white/10 text-white font-semibold rounded-xl border border-white/20 hover:bg-white/20 transition-all duration-200;
+  }
+
+  .btn-danger {
+    @apply px-6 py-3 bg-gradient-to-r from-red-500 to-rose-500 text-white font-semibold rounded-xl shadow-lg shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/40 transform hover:-translate-y-0.5 transition-all duration-200;
+  }
+
+  .input-glass {
+    @apply w-full px-4 py-3 bg-black/30 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200;
+  }
+
+  .input-dark {
+    @apply w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all duration-200;
+  }
+
+  .sidebar-link {
+    @apply flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition-all duration-200;
+  }
+
+  .sidebar-link.active {
+    @apply bg-gradient-to-r from-primary-500/20 to-accent-500/20 text-white border border-primary-500/30;
+  }
+
+  .stat-card {
+    @apply glass-card p-6 hover:scale-[1.02] transition-transform duration-300;
+  }
+
+  .progress-bar {
+    @apply h-3 bg-slate-700/50 rounded-full overflow-hidden;
+  }
+
+  .progress-fill {
+    @apply h-full bg-gradient-to-r from-primary-500 to-accent-500 rounded-full transition-all duration-500;
+  }
+
+  .table-header {
+    @apply px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider;
+  }
+
+  .table-cell {
+    @apply px-4 py-4 text-sm text-slate-300;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 14px;
+  /* Wider for easier clicking */
+  height: 14px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0f172a;
+  /* Slate-900 matches background */
+  border-left: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #475569;
+  /* Slate-600 visible but not distracting */
+  border: 4px solid #0f172a;
+  /* Creates padding effect */
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+  /* Slate-500 on hover */
+}
+
+/* Animations */
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient 8s ease infinite;
+}
+
+@keyframes gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Date input dark theme fix */
+input[type="date"] {
+  color-scheme: dark;
+  background-color: #2d3359 !important;
+  color: #ffffff !important;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+}
+
+/* Month input dark theme fix */
+input[type="month"] {
+  color-scheme: dark;
+  background-color: #2d3359 !important;
+  color: #ffffff !important;
+}
+
+input[type="month"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+}
+
+/* Select and option dark theme fix */
+select,
+option {
+  background-color: #2d3359 !important;
+  color: #ffffff !important;
+  border: 1px solid #4a5568 !important;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  appearance: none;
+  color-scheme: dark;
+}
+
+select:focus {
+  outline: none;
+  border-color: #0ea5e9 !important;
+  box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.2);
+}
+
+/* Print styles */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  /* Hide navigation, buttons, and UI elements */
+  nav,
+  .sidebar,
+  button,
+  .no-print,
+  .btn-primary,
+  .btn-secondary,
+  .btn-danger,
+  header,
+  footer,
+  .tabs,
+  .filters {
+    display: none !important;
+  }
+
+  /* Printable report zone */
+  .printable-report {
+    display: block !important;
+    visibility: visible !important;
+    position: relative !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 20px !important;
+    background: white !important;
+    color: #000000 !important;
+  }
+
+  /* Show report content */
+  .report-container,
+  .glass-card,
+  .glass-card-dark {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 0 15px 0 !important;
+    padding: 15px !important;
+    background: white !important;
+    border: 1px solid #ddd !important;
+    box-shadow: none !important;
+  }
+
+  /* Table formatting for print */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    color: black !important;
+    page-break-inside: avoid;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tr {
+    page-break-inside: avoid;
+  }
+
+  th,
+  td {
+    border: 1px solid #000 !important;
+    padding: 8px !important;
+    color: #000000 !important;
+    background: white !important;
+  }
+
+  th {
+    background-color: #f0f0f0 !important;
+    font-weight: bold !important;
+  }
+
+  /* Ensure all text is black */
+  * {
+    color: #000000 !important;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    color: #000000 !important;
+    page-break-after: avoid;
+  }
+
+  /* Hide print button itself */
+  .print\:hidden {
+    display: none !important;
+  }
+}

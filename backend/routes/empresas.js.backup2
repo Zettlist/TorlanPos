@@ -1,0 +1,511 @@
+import express from 'express';
+import bcrypt from 'bcryptjs';
+import db from '../database/db.js';
+import { authenticateToken, requireGlobalAdmin, validateEmpresaActive } from '../middleware/auth.js';
+import { logEmpresaCreated, logEmpresaSuspended, logEmpresaDeleted, logUserCreated } from '../services/auditLogger.js';
+
+const router = express.Router();
+
+// All routes require global_admin role
+router.use(authenticateToken);
+router.use(requireGlobalAdmin);
+
+// Get all empresas
+router.get('/', (req, res) => {
+    try {
+        const { estado, plan } = req.query;
+
+        let query = `
+            SELECT e.*, 
+                   (SELECT COUNT(*) FROM users WHERE empresa_id = e.id) as total_usuarios,
+                   (SELECT COUNT(*) FROM products WHERE empresa_id = e.id) as total_productos
+            FROM empresas e
+            WHERE 1=1
+        `;
+        const params = [];
+
+        if (estado) {
+            query += ' AND e.estado = ?';
+            params.push(estado);
+        }
+
+        if (plan) {
+            query += ' AND e.plan_contratado = ?';
+            params.push(plan);
+        }
+
+        query += ' ORDER BY e.fecha_registro DESC';
+
+        const empresas = db.prepare(query).all(...params);
+        res.json(empresas);
+    } catch (error) {
+        console.error('Get empresas error:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+// Get single empresa
+router.get('/:id', (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const empresa = db.prepare(`
+            SELECT e.*, 
+                   (SELECT COUNT(*) FROM users WHERE empresa_id = e.id) as total_usuarios,
+                   (SELECT COUNT(*) FROM products WHERE empresa_id = e.id) as total_productos,
+                   (SELECT COUNT(*) FROM sales WHERE empresa_id = e.id) as total_ventas
+            FROM empresas e
+            WHERE e.id = ?
+        `).get(id);
+
+        if (!empresa) {
+            return res.status(404).json({ error: 'Empresa no encontrada' });
+        }
+
+        // Get empresa admins (no operational data, just management info)
+        const admins = db.prepare(`
+            SELECT id, username, role, created_at 
+            FROM users 
+            WHERE empresa_id = ? AND role = 'empresa_admin'
+        `).all(id);
+
+        res.json({ ...empresa, admins });
+    } catch (error) {
+        console.error('Get empresa error:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+// Create new empresa
+router.post('/', (req, res) => {
+    try {
+        const { nombre_empresa, plan_contratado, max_usuarios, max_productos, notas, billing_cycle_date } = req.body;
+
+        if (!nombre_empresa) {
+            return res.status(400).json({ error: 'Nombre de empresa es requerido' });
+        }
+
+        const plan = plan_contratado || 'Basico';
+
+        // Validate plan
+        if (!['Prueba', 'Basico', 'Premium', 'Empresarial'].includes(plan)) {
+            return res.status(400).json({ error: 'Plan inválido' });
+        }
+
+        const result = db.prepare(`
+            INSERT INTO empresas (nombre_empresa, plan_contratado, estado, max_usuarios, max_productos, notas, billing_cycle_date)
+            VALUES (?, ?, 'Activo', ?, ?, ?, ?)
+        `).run(
+            nombre_empresa,
+            plan,
+            max_usuarios || 5,
+            max_productos || 100,
+            notas || null,
+            billing_cycle_date || null
+        );
+
+        // Audit log
+        logEmpresaCreated(result.lastInsertRowid, nombre_empresa, plan, req.user.id);
+
+        res.status(201).json({
+            message: 'Empresa creada correctamente',
+            id: result.lastInsertRowid
+        });
+    } catch (error) {
+        console.error('Create empresa error:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+// Update empresa
+router.put('/:id', (req, res) => {
+    try {
+        const { id } = req.params;
+        const { nombre_empresa, plan_contratado, max_usuarios, max_productos, notas, billing_cycle_date } = req.body;
+
+        const empresa = db.prepare('SELECT id FROM empresas WHERE id = ?').get(id);
+        if (!empresa) {
+            return res.status(404).json({ error: 'Empresa no encontrada' });
+        }
+
+        if (plan_contratado && !['Basico', 'Premium', 'Empresarial'].includes(plan_contratado)) {
+            return res.status(400).json({ error: 'Plan inválido' });
+        }
+
+        db.prepare(`
+            UPDATE empresas 
+            SET nombre_empresa = COALESCE(?, nombre_empresa),
+                plan_contratado = COALESCE(?, plan_contratado),
+                max_usuarios = COALESCE(?, max_usuarios),
+                max_productos = COALESCE(?, max_productos),
+                notas = COALESCE(?, notas),
+                billing_cycle_date = COALESCE(?, billing_cycle_date)
+            WHERE id = ?
+        `).run(nombre_empresa, plan_contratado, max_usuarios, max_productos, notas, billing_cycle_date, id);
+
+        res.json({ message: 'Empresa actualizada correctamente' });
+    } catch (error) {
+        console.error('Update empresa error:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+// Suspend empresa (for non-payment)
+router.post('/:id/suspend', (req, res) => {
+    try {
+        const { id } = req.params;
+        const { motivo } = req.body;
+
+        const empresa = db.prepare('SELECT id, estado FROM empresas WHERE id = ?').get(id);
+        if (!empresa) {
+            return res.status(404).json({ error: 'Empresa no encontrada' });
+        }
+
+        if (empresa.estado === 'Suspendido') {
+            return res.status(400).json({ error: 'La empresa ya está suspendida' });
+        }
+
+        db.prepare(`
+            UPDATE empresas 
+            SET estado = 'Suspendido', 
+                fecha_suspension = CURRENT_TIMESTAMP,
+                notas = CASE 
+                    WHEN notas IS NULL THEN ? 
+                    ELSE notas || ' | ' || ?
+                END
+            WHERE id = ?
+        `).run(
+            `Suspendido: ${motivo || 'Falta de pago'}`,
+            `Suspendido: ${motivo || 'Falta de pago'}`,
+            id
+        );
+
+        // Audit log
+        const empresaData = db.prepare('SELECT nombre_empresa FROM empresas WHERE id = ?').get(id);
+        logEmpresaSuspended(id, empresaData?.nombre_empresa || `ID:${id}`, motivo, req.user.id);
+
+        res.json({ message: 'Empresa suspendida correctamente' });
+    } catch (error) {
+        console.error('Suspend empresa error:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+// Reactivate empresa
+router.post('/:id/activate', (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const empresa = db.prepare('SELECT id, estado FROM empresas WHERE id = ?').get(id);
+        if (!empresa) {
+            return res.status(404).json({ error: 'Empresa no encontrada' });
+        }
+
+        if (empresa.estado === 'Activo') {
+            return res.status(400).json({ error: 'La empresa ya está activa' });
+        }
+
+        if (empresa.estado === 'Baja') {
+            return res.status(400).json({ error: 'No se puede reactivar una empresa dada de baja' });
+        }
+
+        db.prepare(`
+            UPDATE empresas 
+            SET estado = 'Activo', 
+                fecha_suspension = NULL,
+                notas = CASE 
+                    WHEN notas IS NULL THEN 'Reactivada'
+                    ELSE notas || ' | Reactivada'
+                END
+            WHERE id = ?
+        `).run(id);
+
+        res.json({ message: 'Empresa reactivada correctamente' });
+    } catch (error) {
+        console.error('Activate empresa error:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+// Delete empresa (mark as Baja - soft delete)
+router.delete('/:id', (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const empresa = db.prepare('SELECT id, nombre_empresa FROM empresas WHERE id = ?').get(id);
+        if (!empresa) {
+            return res.status(404).json({ error: 'Empresa no encontrada' });
+        }
+
+        // We don't actually delete - just mark as Baja
+        db.prepare(`
+            UPDATE empresas 
+            SET estado = 'Baja',
+                notas = CASE 
+                    WHEN notas IS NULL THEN 'Dada de baja'
+                    ELSE notas || ' | Dada de baja'
+                END
+            WHERE id = ?
+        `).run(id);
+
+        // Audit log
+        logEmpresaDeleted(id, empresa.nombre_empresa, req.user.id);
+
+        res.json({ message: 'Empresa dada de baja correctamente' });
+    } catch (error) {
+        console.error('Delete empresa error:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+// PHYSICAL CASCADE DELETE - Permanently removes empresa and all related data
+// USE WITH CAUTION - This is irreversible!
+router.delete('/:id/purge', (req, res) => {
+    try {
+        const { id } = req.params;
+        const { confirmName } = req.body;
+
+        const empresa = db.prepare('SELECT id, nombre_empresa FROM empresas WHERE id = ?').get(id);
+        if (!empresa) {
+            return res.status(404).json({ error: 'Empresa no encontrada' });
+        }
+
+        // Require name confirmation for safety
+        if (!confirmName || confirmName !== empresa.nombre_empresa) {
+            return res.status(400).json({
+                error: 'Debe confirmar el nombre de la empresa para eliminar permanentemente',
+                required: empresa.nombre_empresa
+            });
+        }
+
+        // --- HISTORY SNAPSHOT BEFORE DELETION ---
+        const historySnapshot = {
+            empresa: empresa,
+            deleted_at: new Date().toISOString(),
+            data_snapshot: {
+                users: db.prepare('SELECT id, username, role, is_admin FROM users WHERE empresa_id = ?').all(id),
+                products_summary: {
+                    count: db.prepare('SELECT COUNT(*) as count FROM products WHERE empresa_id = ?').get(id).count,
+                    sample: db.prepare('SELECT name, price FROM products WHERE empresa_id = ? LIMIT 5').all(id)
+                },
+                sales_summary: {
+                    count: db.prepare('SELECT COUNT(*) as count FROM sales WHERE empresa_id = ?').get(id).count,
+                    total_revenue: db.prepare('SELECT COALESCE(SUM(total), 0) as total FROM sales WHERE empresa_id = ?').get(id).total
+                }
+            }
+        };
+
+        // Log history report
+        // We use a direct call to logGlobalChange locally defined or imported if needed, 
+        // ensuring the audit log persists even though the empresa record is deleted.
+        // Note: logGlobalChange uses ON DELETE SET NULL for empresa_id, so it survives deletion.
+
+        // Import needed for custom type if not exposed, but we can reuse logEmpresaDeleted logic or similar
+        // Better: Use a dedicated log type
+        db.prepare(`
+            INSERT INTO global_changes_log (empresa_id, event_type, description, metadata, user_id)
+            VALUES (?, ?, ?, ?, ?)
+        `).run(
+            id,
+            'EMPRESA_PURGED_HISTORY',
+            `Reporte histórico pre-eliminación de "${empresa.nombre_empresa}"`,
+            JSON.stringify(historySnapshot),
+            req.user.id
+        );
+
+        // --- END SNAPSHOT ---
+
+        // --- MANUAL CASCADE DELETION START ---
+        // We perform manual deletion to ensure all related records are removed, 
+        // effectively bypassing potential missing ON DELETE CASCADE triggers in SQLite/sql.js
+
+        // 1. Remove Sales Data
+        // Delete sale items first (child of sales)
+        db.prepare('DELETE FROM sale_items WHERE sale_id IN (SELECT id FROM sales WHERE empresa_id = ?)').run(id);
+        // Delete sales goals
+        db.prepare('DELETE FROM sales_goals WHERE empresa_id = ?').run(id);
+        // Delete sales
+        db.prepare('DELETE FROM sales WHERE empresa_id = ?').run(id);
+
+        // 2. Remove User Data
+        // Delete user features first (child of users)
+        db.prepare('DELETE FROM user_features WHERE user_id IN (SELECT id FROM users WHERE empresa_id = ?)').run(id);
+        // Delete users
+        db.prepare('DELETE FROM users WHERE empresa_id = ?').run(id);
+
+        // 3. Remove Product Data
+        db.prepare('DELETE FROM products WHERE empresa_id = ?').run(id);
+
+        // 4. Remove Settings
+        db.prepare('DELETE FROM business_settings WHERE empresa_id = ?').run(id);
+
+        // 5. Finally, remove the Empresa
+        db.prepare('DELETE FROM empresas WHERE id = ?').run(id);
+        // --- MANUAL CASCADE DELETION END ---
+
+        res.json({
+            message: `Empresa "${empresa.nombre_empresa}" y todos sus datos eliminados permanentemente`,
+            deleted: {
+                empresa: empresa.nombre_empresa,
+                history_saved: true
+            }
+        });
+    } catch (error) {
+        console.error('Purge empresa error:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+// Create admin user for empresa
+router.post('/:id/admin', (req, res) => {
+    try {
+        const { id } = req.params;
+        const { username, password } = req.body;
+
+        if (!username || !password) {
+            return res.status(400).json({ error: 'Usuario y contraseña son requeridos' });
+        }
+
+        const empresa = db.prepare('SELECT id, max_usuarios FROM empresas WHERE id = ?').get(id);
+        if (!empresa) {
+            return res.status(404).json({ error: 'Empresa no encontrada' });
+        }
+
+        // Check username uniqueness
+        const existingUser = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
+        if (existingUser) {
+            return res.status(400).json({ error: 'El nombre de usuario ya existe' });
+        }
+
+        // Check user limit
+        const userCount = db.prepare('SELECT COUNT(*) as count FROM users WHERE empresa_id = ?').get(id);
+        if (userCount.count >= empresa.max_usuarios) {
+            return res.status(400).json({
+                error: `Límite de usuarios alcanzado (${empresa.max_usuarios}). Actualice el plan para más usuarios.`
+            });
+        }
+
+        const hashedPassword = bcrypt.hashSync(password, 10);
+        const result = db.prepare(`
+            INSERT INTO users (username, password_hash, empresa_id, role, is_admin, first_login, has_setup_complete)
+            VALUES (?, ?, ?, 'empresa_admin', 1, 1, 0)
+        `).run(username, hashedPassword, id);
+
+        // Assign all features to the new admin
+        const features = db.prepare('SELECT id FROM features').all();
+        for (const feature of features) {
+            db.prepare(
+                'INSERT OR IGNORE INTO user_features (user_id, feature_id, is_enabled) VALUES (?, ?, 1)'
+            ).run(result.lastInsertRowid, feature.id);
+        }
+
+        // AUDIT LOG - Includes credentials for test phase
+        // WARNING: This stores passwords in plaintext for testing purposes
+        // Remove this in production!
+        logUserCreated(parseInt(id), username, password, req.user.id);
+
+        res.status(201).json({
+            message: 'Administrador de empresa creado correctamente',
+            userId: result.lastInsertRowid
+        });
+    } catch (error) {
+        console.error('Create empresa admin error:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+// Get empresa statistics (aggregated, no operational details)
+router.get('/:id/stats', (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const empresa = db.prepare('SELECT id FROM empresas WHERE id = ?').get(id);
+        if (!empresa) {
+            return res.status(404).json({ error: 'Empresa no encontrada' });
+        }
+
+        const stats = {
+            usuarios: db.prepare('SELECT COUNT(*) as count FROM users WHERE empresa_id = ?').get(id).count,
+            productos: db.prepare('SELECT COUNT(*) as count FROM products WHERE empresa_id = ?').get(id).count,
+            ventas_totales: db.prepare('SELECT COUNT(*) as count FROM sales WHERE empresa_id = ?').get(id).count,
+            ingresos_totales: db.prepare('SELECT COALESCE(SUM(total), 0) as total FROM sales WHERE empresa_id = ?').get(id).total
+        };
+
+        res.json(stats);
+    } catch (error) {
+        console.error('Get empresa stats error:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+// Get global audit logs (all empresas)
+router.get('/logs/global', (req, res) => {
+    try {
+        const { limit = 50, offset = 0, event_type, empresa_id } = req.query;
+
+        let query = `
+            SELECT l.*, e.nombre_empresa, u.username as triggered_by_username
+            FROM global_changes_log l
+            LEFT JOIN empresas e ON l.empresa_id = e.id
+            LEFT JOIN users u ON l.user_id = u.id
+            WHERE 1=1
+        `;
+        const params = [];
+
+        if (event_type) {
+            query += ' AND l.event_type = ?';
+            params.push(event_type);
+        }
+
+        if (empresa_id) {
+            query += ' AND l.empresa_id = ?';
+            params.push(empresa_id);
+        }
+
+        query += ' ORDER BY l.created_at DESC LIMIT ? OFFSET ?';
+        params.push(parseInt(limit), parseInt(offset));
+
+        const logs = db.prepare(query).all(...params);
+
+        // Parse metadata JSON for each log
+        const parsedLogs = logs.map(log => ({
+            ...log,
+            metadata: log.metadata ? JSON.parse(log.metadata) : null
+        }));
+
+        res.json(parsedLogs);
+    } catch (error) {
+        console.error('Get global logs error:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+// Get logs for specific empresa
+router.get('/:id/logs', (req, res) => {
+    try {
+        const { id } = req.params;
+        const { limit = 50 } = req.query;
+
+        const logs = db.prepare(`
+            SELECT l.*, u.username as triggered_by_username
+            FROM global_changes_log l
+            LEFT JOIN users u ON l.user_id = u.id
+            WHERE l.empresa_id = ?
+            ORDER BY l.created_at DESC
+            LIMIT ?
+        `).all(id, parseInt(limit));
+
+        // Parse metadata JSON for each log
+        const parsedLogs = logs.map(log => ({
+            ...log,
+            metadata: log.metadata ? JSON.parse(log.metadata) : null
+        }));
+
+        res.json(parsedLogs);
+    } catch (error) {
+        console.error('Get empresa logs error:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+export default router;

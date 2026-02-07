@@ -1,0 +1,5 @@
+cron:
+- description: "Auto Close Cash Sessions"
+  url: /api/cron/auto-close
+  schedule: "every day 00:00"
+  timezone: America/Mexico_City
