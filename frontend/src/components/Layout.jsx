@@ -127,7 +127,8 @@ export default function Layout({ children }) {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
             ),
-            label: 'Anticipos'
+            label: 'Anticipos',
+            to: '/anticipos'
         },
         {
             feature: 'preventas',
@@ -211,12 +212,12 @@ export default function Layout({ children }) {
                         ))}
 
                         {/* Feature-based navigation (only for empresa users) */}
-                        {!isGlobalAdmin() && featureItems.some(item => hasFeature(item.feature) || item.feature === 'preventas') && (
+                        {!isGlobalAdmin() && featureItems.some(item => hasFeature(item.feature) || item.feature === 'preventas' || item.feature === 'advances') && (
                             <>
                                 <div className="h-px bg-white/10 my-4"></div>
                                 <p className="px-3 text-xs text-slate-500 uppercase tracking-wider mb-2">Módulos</p>
                                 {featureItems.map(item =>
-                                    (hasFeature(item.feature) || item.feature === 'preventas') && (
+                                    (hasFeature(item.feature) || item.feature === 'preventas' || item.feature === 'advances') && (
                                         item.to ? (
                                             <NavLink
                                                 key={item.feature}

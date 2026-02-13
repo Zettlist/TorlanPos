@@ -1013,14 +1013,17 @@ export default function Products() {
                                         </div>
                                         <div>
                                             <label className="block text-sm text-slate-400 mb-1">Idioma</label>
-                                            <input
-                                                type="text"
+                                            <select
                                                 value={formData.language}
                                                 onChange={(e) => setFormData({ ...formData, language: e.target.value })}
                                                 className="input-glass"
-                                                placeholder="Español, Inglés..."
                                                 required
-                                            />
+                                            >
+                                                <option value="">Seleccionar idioma...</option>
+                                                <option value="Español">Español</option>
+                                                <option value="Inglés">Inglés</option>
+                                                <option value="Japonés">Japonés</option>
+                                            </select>
                                         </div>
                                     </div>
 

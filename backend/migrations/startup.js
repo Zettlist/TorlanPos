@@ -4,6 +4,8 @@ import { migrateEmployeeNumber } from './migrate_employee_number.js';
 import { backfillEmployeeNumbers } from './backfill_employee_numbers.js';
 import { migrateGlobalUniqueEmployee } from './migrate_global_unique_employee.js';
 import { migrateProductImage } from './migrate_product_image.js';
+import { migrate_anticipos } from './migrate_anticipos.js';
+import { migrateProductSuppliers } from './migrate_product_suppliers.js';
 
 export async function runSchemaMigrations() {
     console.log('🔄 Checking database schema migrations...');
@@ -21,6 +23,12 @@ export async function runSchemaMigrations() {
 
         // 4. Add Product Image Column
         await migrateProductImage(connection);
+
+        // 5. Anticipos Module Tables
+        await migrate_anticipos();
+
+        // 6. Product Suppliers Columns
+        await migrateProductSuppliers(connection);
 
         // 5. Check if we need to migrate users table (UNIQUE constraint)
         // We check if the 'unique_username_empresa' index exists. If not, we run the migration.

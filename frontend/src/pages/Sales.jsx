@@ -41,6 +41,8 @@ export default function Sales() {
     const [success, setSuccess] = useState(null);
     const [scannerFeedback, setScannerFeedback] = useState(null);
     const [stockAlert, setStockAlert] = useState(null);
+    const [showAutocomplete, setShowAutocomplete] = useState(false);
+    const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
 
     // Payment confirmation state
     const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -57,6 +59,7 @@ export default function Sales() {
     const [pendingPaymentMethod, setPendingPaymentMethod] = useState(null);
 
     const searchInputRef = useRef(null);
+    const autocompleteRef = useRef(null);
 
     useEffect(() => {
         fetchProducts();
@@ -67,10 +70,28 @@ export default function Sales() {
 
     useEffect(() => {
         const debounceTimer = setTimeout(() => {
-            searchProducts(search);
+            if (search.trim().length > 0) {
+                searchProducts(search);
+            } else {
+                // Si no hay búsqueda, mostrar todos los productos
+                fetchProducts();
+            }
+            setShowAutocomplete(search.length > 0);
+            setSelectedSuggestionIndex(-1);
         }, 150);
         return () => clearTimeout(debounceTimer);
     }, [search]);
+
+    // Close autocomplete when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (autocompleteRef.current && !autocompleteRef.current.contains(e.target)) {
+                setShowAutocomplete(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     const fetchProducts = async () => {
         try {
@@ -88,12 +109,19 @@ export default function Sales() {
     };
 
     const searchProducts = async (query) => {
+        if (!query || query.trim().length === 0) {
+            fetchProducts();
+            return;
+        }
+
         try {
             const response = await fetch(`${API_URL}/products/search?q=${encodeURIComponent(query)}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (response.ok) {
-                setProducts(await response.json());
+                const results = await response.json();
+                setProducts(results);
+                console.log('🔍 Búsqueda en Cobrar:', query, '- Resultados:', results.length);
             }
         } catch (error) {
             console.error('Error searching products:', error);
@@ -101,9 +129,48 @@ export default function Sales() {
     };
 
     const handleSearchKeyDown = async (e) => {
+        const autocompleteProducts = products.slice(0, 5);
+
+        // Arrow key navigation
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            setSelectedSuggestionIndex(prev =>
+                prev < autocompleteProducts.length - 1 ? prev + 1 : prev
+            );
+            return;
+        }
+
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            setSelectedSuggestionIndex(prev => prev > 0 ? prev - 1 : -1);
+            return;
+        }
+
+        if (e.key === 'Escape') {
+            setShowAutocomplete(false);
+            setSelectedSuggestionIndex(-1);
+            return;
+        }
+
         if (e.key === 'Enter') {
             e.preventDefault();
             if (!search.trim()) return;
+
+            // If a suggestion is selected, add it directly
+            if (selectedSuggestionIndex >= 0 && autocompleteProducts[selectedSuggestionIndex]) {
+                const selectedProduct = autocompleteProducts[selectedSuggestionIndex];
+                if (selectedProduct.stock <= 0) {
+                    showStockAlert(selectedProduct.name);
+                } else {
+                    addToCart(selectedProduct);
+                    showScannerFeedback('success', `✓ ${selectedProduct.name} agregado`);
+                }
+                setSearch('');
+                setShowAutocomplete(false);
+                setSelectedSuggestionIndex(-1);
+                searchInputRef.current?.focus();
+                return;
+            }
 
             try {
                 const response = await fetch(`${API_URL}/products/search?q=${encodeURIComponent(search.trim())}&exact=true`, {
@@ -129,8 +196,23 @@ export default function Sales() {
             }
 
             setSearch('');
+            setShowAutocomplete(false);
+            setSelectedSuggestionIndex(-1);
             searchInputRef.current?.focus();
         }
+    };
+
+    const handleSuggestionClick = (product) => {
+        if (product.stock <= 0) {
+            showStockAlert(product.name);
+        } else {
+            addToCart(product);
+            showScannerFeedback('success', `✓ ${product.name} agregado`);
+        }
+        setSearch('');
+        setShowAutocomplete(false);
+        setSelectedSuggestionIndex(-1);
+        searchInputRef.current?.focus();
     };
 
     const showStockAlert = (productName) => {
@@ -703,7 +785,7 @@ export default function Sales() {
                 )}
 
                 <div className="mb-4">
-                    <div className="relative">
+                    <div className="relative" ref={autocompleteRef}>
                         <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
                         </svg>
@@ -713,7 +795,7 @@ export default function Sales() {
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             onKeyDown={handleSearchKeyDown}
-                            placeholder="Escanea el código del producto"
+                            placeholder="Escanea o busca productos..."
                             className="input-glass pl-14 pr-4 py-4 text-lg w-full"
                             autoFocus
                         />
@@ -721,6 +803,7 @@ export default function Sales() {
                             <button
                                 onClick={() => {
                                     setSearch('');
+                                    setShowAutocomplete(false);
                                     searchInputRef.current?.focus();
                                 }}
                                 className="absolute right-4 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-white"
@@ -730,9 +813,57 @@ export default function Sales() {
                                 </svg>
                             </button>
                         )}
+
+                        {/* Autocomplete Dropdown */}
+                        {showAutocomplete && products.length > 0 && (
+                            <div className="absolute top-full left-0 right-0 mt-2 bg-slate-900/98 backdrop-blur-xl border-2 border-primary-500/30 rounded-lg overflow-hidden z-50 shadow-2xl max-h-80 overflow-y-auto">
+                                {products.slice(0, 5).map((product, index) => (
+                                    <button
+                                        key={product.id}
+                                        onClick={() => handleSuggestionClick(product)}
+                                        disabled={product.stock <= 0}
+                                        className={`w-full p-3 flex items-center gap-3 transition-colors text-left ${index === selectedSuggestionIndex
+                                            ? 'bg-primary-500/30 border-l-2 border-primary-400'
+                                            : 'hover:bg-white/5'
+                                            } ${product.stock <= 0 ? 'opacity-50 cursor-not-allowed' : ''} ${index !== products.slice(0, 5).length - 1 ? 'border-b border-white/5' : ''
+                                            }`}
+                                    >
+                                        {product.image_url ? (
+                                            <img
+                                                src={product.image_url}
+                                                alt={product.name}
+                                                className="w-12 h-12 object-cover rounded"
+                                            />
+                                        ) : (
+                                            <div className="w-12 h-12 bg-black/20 rounded flex items-center justify-center">
+                                                <svg className="w-6 h-6 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                </svg>
+                                            </div>
+                                        )}
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-medium truncate">{product.name}</p>
+                                            {product.sbin_code && (
+                                                <p className="text-xs text-slate-400 font-mono">{product.sbin_code}</p>
+                                            )}
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="font-bold text-primary-400">
+                                                ${Number(product.sale_price || product.price).toFixed(2)}
+                                            </p>
+                                            {product.stock <= 0 ? (
+                                                <p className="text-xs text-red-400">Sin stock</p>
+                                            ) : product.stock <= 5 ? (
+                                                <p className="text-xs text-amber-400">Stock: {product.stock}</p>
+                                            ) : null}
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </div>
                     <p className="text-xs text-slate-500 mt-1 ml-1">
-                        Presiona <kbd className="px-1.5 py-0.5 bg-slate-700 rounded text-slate-300">Enter</kbd> para agregar automáticamente
+                        Presiona <kbd className="px-1.5 py-0.5 bg-slate-700 rounded text-slate-300">Enter</kbd> para agregar • Usa <kbd className="px-1.5 py-0.5 bg-slate-700 rounded text-slate-300">↑↓</kbd> para navegar
                     </p>
                 </div>
 

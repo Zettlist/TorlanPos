@@ -18,6 +18,7 @@ import reportsRoutes from './routes/reports.js';
 import suppliersRoutes from './routes/suppliers.js';
 import cronRoutes from './routes/cronRoutes.js';
 import preventasRoutes from './routes/preventas.js';
+import anticiposRoutes from './routes/anticipos.js';
 
 import { runSchemaMigrations } from './migrations/startup.js';
 
@@ -118,6 +119,7 @@ app.use('/api/reports', reportsRoutes);
 app.use('/api/suppliers', suppliersRoutes);
 app.use('/api/cron', cronRoutes);
 app.use('/api/preventas', preventasRoutes);
+app.use('/api/anticipos', anticiposRoutes);
 console.log('✅ Routes loaded successfully');
 
 // =============================================================================

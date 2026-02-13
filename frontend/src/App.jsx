@@ -15,6 +15,7 @@ import SalesReports from './pages/Reports/SalesReports';
 import Suppliers from './pages/Suppliers';
 
 import Preventas from './pages/Preventas';
+import Anticipos from './pages/Anticipos';
 import ComprobantePublico from './pages/ComprobantePublico';
 import Layout from './components/Layout';
 
@@ -102,6 +103,7 @@ function EmpresaRoutes() {
                 } />
 
                 <Route path="/preventas" element={<Preventas />} />
+                <Route path="/anticipos" element={<Anticipos />} />
 
 
                 <Route path="/admin/users" element={<UserManager />} />

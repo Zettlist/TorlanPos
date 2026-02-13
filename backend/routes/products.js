@@ -159,8 +159,8 @@ router.get('/search', async (req, res) => {
         // Exact match mode for barcode scanner (Enter key pressed)
         if (exact === 'true') {
             const [productRows] = await pool.query(
-                'SELECT * FROM products WHERE empresa_id = ? AND (sbin_code = ? OR barcode = ? OR isbn = ?) LIMIT 1',
-                [empresaId, q, q, q]
+                'SELECT * FROM products WHERE empresa_id = ? AND (name = ? OR sbin_code = ? OR barcode = ? OR isbn = ?) LIMIT 1',
+                [empresaId, q, q, q, q]
             );
 
             if (productRows.length > 0) {
@@ -182,7 +182,7 @@ router.get('/search', async (req, res) => {
                 END,
                 name
             LIMIT 50
-        `, [empresaId, searchTerm, searchTerm, searchTerm, q, q, `${q}%`]);
+        `, [empresaId, searchTerm, searchTerm, searchTerm, searchTerm, q, q, `${q}%`]);
 
         res.json(products);
     } catch (error) {
