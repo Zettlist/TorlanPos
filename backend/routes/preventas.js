@@ -10,7 +10,6 @@ const bucket = storage.bucket(BUCKET_NAME);
 
 // Initialize Tables (Run once - Public with secret)
 router.get('/init-tables-public-setup-secure', async (req, res) => {
-    // Basic secret check
     if (req.query.secret !== 'secure-setup-123') {
         return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -30,10 +29,8 @@ router.get('/init-tables-public-setup-secure', async (req, res) => {
                 artist VARCHAR(255) NULL,
                 group_name VARCHAR(255) NULL,
                 language VARCHAR(50) NULL,
-                category VARCHAR(100) NULL,
-                pages VARCHAR(50) NULL,
-                isbn VARCHAR(50) NULL,
-                photo_url TEXT NULL,
+                category TEXT NULL,
+                photo_url LONGTEXT NULL,
                 total_price DECIMAL(10,2) NOT NULL DEFAULT 0,
                 deposit DECIMAL(10,2) NOT NULL DEFAULT 0,
                 total_paid DECIMAL(10,2) NOT NULL DEFAULT 0,
@@ -41,10 +38,14 @@ router.get('/init-tables-public-setup-secure', async (req, res) => {
                 status ENUM('pending', 'paid', 'cancelled', 'delivered') DEFAULT 'pending',
                 is_paid_in_full TINYINT(1) DEFAULT 0,
                 last_payment_date DATE NULL,
+                batch_id INT NULL,
+                international_order TINYINT(1) DEFAULT 0,
+                international_country VARCHAR(50) NULL,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 FOREIGN KEY (empresa_id) REFERENCES empresas(id) ON DELETE CASCADE,
                 INDEX idx_empresa (empresa_id),
+                INDEX idx_batch (batch_id),
                 UNIQUE KEY unique_order_empresa (empresa_id, order_number)
             );
         `;
@@ -62,8 +63,59 @@ router.get('/init-tables-public-setup-secure', async (req, res) => {
             );
         `;
 
+        const createBatchesTable = `
+            CREATE TABLE IF NOT EXISTS pre_order_batches (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                empresa_id INT NOT NULL,
+                name VARCHAR(255) NULL,
+                total_orders INT DEFAULT 0,
+                total_value DECIMAL(10,2) DEFAULT 0,
+                closed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (empresa_id) REFERENCES empresas(id) ON DELETE CASCADE,
+                INDEX idx_empresa_batch (empresa_id)
+            );
+        `;
+
+        // Try to add batch_id column if it doesn't exist (migration)
+        const addBatchIdColumn = `
+            ALTER TABLE pre_orders ADD COLUMN IF NOT EXISTS batch_id INT NULL;
+        `;
+        const addIntlOrderColumn = `
+            ALTER TABLE pre_orders ADD COLUMN IF NOT EXISTS international_order TINYINT(1) DEFAULT 0;
+        `;
+        const addIntlCountryColumn = `
+            ALTER TABLE pre_orders ADD COLUMN IF NOT EXISTS international_country VARCHAR(50) NULL;
+        `;
+        // Upgrade photo_url to LONGTEXT if needed (safe to run multiple times)
+        const upgradePhotoUrl = `
+            ALTER TABLE pre_orders MODIFY COLUMN photo_url LONGTEXT NULL;
+        `;
+        const upgradeCategoryColumn = `
+            ALTER TABLE pre_orders MODIFY COLUMN category TEXT NULL;
+        `;
+
         await pool.query(createOrdersTable);
         await pool.query(createPaymentsTable);
+        await pool.query(createBatchesTable);
+
+        // MySQL 5.7 compatible column migration helper
+        const addColumnIfMissing = async (table, column, definition) => {
+            const [cols] = await pool.query(`SHOW COLUMNS FROM ${table} LIKE ?`, [column]);
+            if (cols.length === 0) {
+                await pool.query(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+            }
+        };
+        const modifyColumnType = async (table, column, definition) => {
+            try { await pool.query(`ALTER TABLE ${table} MODIFY COLUMN ${column} ${definition}`); } catch (e) { /* ignore */ }
+        };
+
+        await addColumnIfMissing('pre_orders', 'batch_id', 'INT NULL');
+        await addColumnIfMissing('pre_orders', 'international_order', 'TINYINT(1) DEFAULT 0');
+        await addColumnIfMissing('pre_orders', 'international_country', 'VARCHAR(50) NULL');
+        await modifyColumnType('pre_orders', 'photo_url', 'LONGTEXT NULL');
+        await modifyColumnType('pre_orders', 'category', 'TEXT NULL');
+
 
         res.json({ message: 'Tables initialized successfully' });
     } catch (error) {
@@ -72,24 +124,23 @@ router.get('/init-tables-public-setup-secure', async (req, res) => {
     }
 });
 
+
 // All routes require authentication and active empresa
 router.use(authenticateToken);
 router.use(validateEmpresaActive);
 
 
 
-// GET all pre-orders
+// GET open pre-orders (no batch assigned)
 router.get('/', async (req, res) => {
     try {
         const empresaId = getEmpresaId(req);
         const [rows] = await pool.query(`
             SELECT * FROM pre_orders 
-            WHERE empresa_id = ? 
+            WHERE empresa_id = ? AND batch_id IS NULL
             ORDER BY created_at DESC
         `, [empresaId]);
 
-        // Fetch payments for each order? Or fetch on demand?
-        // Let's fetch payments to match frontend structure
         const ordersWithPayments = await Promise.all(rows.map(async (order) => {
             const [payments] = await pool.query(`
                 SELECT * FROM pre_order_payments 
@@ -99,8 +150,6 @@ router.get('/', async (req, res) => {
 
             return {
                 ...order,
-                id: order.id, // Database ID
-                localId: new Date(order.created_at).getTime(), // Fallback for frontend key if needed
                 clientName: order.client_name,
                 clientNumber: order.client_number,
                 totalPrice: order.total_price,
@@ -108,16 +157,19 @@ router.get('/', async (req, res) => {
                 lastPaymentDate: order.last_payment_date ? new Date(order.last_payment_date).toLocaleDateString() : null,
                 isPaidInFull: order.is_paid_in_full === 1,
                 orderNumber: order.order_number,
+                photos: (() => { try { return JSON.parse(order.photo_url || '[]'); } catch { return order.photo_url ? [order.photo_url] : []; } })(),
+                categories: (() => { try { return JSON.parse(order.category || '[]'); } catch { return order.category ? [order.category] : []; } })(),
+                internationalOrder: !!order.international_order,
+                internationalCountry: order.international_country || '',
                 payments: payments.map(p => ({
                     amount: p.amount,
                     date: p.payment_date ? new Date(p.payment_date).toLocaleDateString() : null,
                     paymentNumber: p.payment_number
                 })),
-                // Map other snake_case to camelCase for frontend compatibility
                 clientPhone: order.client_phone,
                 clientEmail: order.client_email,
                 clientAddress: order.client_address,
-                group: order.group_name // map group_name to group
+                group: order.group_name
             };
         }));
 
@@ -127,6 +179,125 @@ router.get('/', async (req, res) => {
         res.status(500).json({ error: 'Error fetching pre-orders' });
     }
 });
+
+// GET closed batches with their orders
+router.get('/closed', async (req, res) => {
+    try {
+        const empresaId = getEmpresaId(req);
+
+        const [batches] = await pool.query(`
+            SELECT * FROM pre_order_batches 
+            WHERE empresa_id = ? 
+            ORDER BY closed_at DESC
+        `, [empresaId]);
+
+        const batchesWithOrders = await Promise.all(batches.map(async (batch) => {
+            const [orders] = await pool.query(`
+                SELECT * FROM pre_orders 
+                WHERE empresa_id = ? AND batch_id = ?
+                ORDER BY created_at DESC
+            `, [empresaId, batch.id]);
+
+            const ordersWithPayments = await Promise.all(orders.map(async (order) => {
+                const [payments] = await pool.query(`
+                    SELECT * FROM pre_order_payments 
+                    WHERE pre_order_id = ? ORDER BY payment_number ASC
+                `, [order.id]);
+                return {
+                    ...order,
+                    clientName: order.client_name,
+                    clientNumber: order.client_number,
+                    totalPrice: order.total_price,
+                    totalPaid: order.total_paid,
+                    balance: order.balance,
+                    isPaidInFull: order.is_paid_in_full === 1,
+                    orderNumber: order.order_number,
+                    photos: (() => { try { return JSON.parse(order.photo_url || '[]'); } catch { return order.photo_url ? [order.photo_url] : []; } })(),
+                    categories: (() => { try { return JSON.parse(order.category || '[]'); } catch { return order.category ? [order.category] : []; } })(),
+                    internationalOrder: !!order.international_order,
+                    internationalCountry: order.international_country || '',
+                    group: order.group_name,
+                    payments: payments.map(p => ({ amount: p.amount, date: p.payment_date ? new Date(p.payment_date).toLocaleDateString() : null, paymentNumber: p.payment_number }))
+                };
+            }));
+
+            return {
+                ...batch,
+                closedAt: batch.closed_at,
+                totalOrders: batch.total_orders,
+                totalValue: batch.total_value,
+                orders: ordersWithPayments
+            };
+        }));
+
+        res.json(batchesWithOrders);
+    } catch (error) {
+        console.error('Get closed batches error:', error);
+        res.status(500).json({ error: 'Error fetching closed batches' });
+    }
+});
+
+// POST - Close current open batch (move all open orders to a new batch)
+router.post('/close-batch', async (req, res) => {
+    try {
+        const empresaId = getEmpresaId(req);
+        const { batchName } = req.body;
+
+        const connection = await pool.getConnection();
+        try {
+            await connection.beginTransaction();
+
+            // Count open orders
+            const [openOrders] = await connection.query(`
+                SELECT COUNT(*) as count, COALESCE(SUM(total_price), 0) as total 
+                FROM pre_orders 
+                WHERE empresa_id = ? AND batch_id IS NULL
+            `, [empresaId]);
+
+            const orderCount = openOrders[0].count;
+            if (orderCount === 0) {
+                await connection.rollback();
+                return res.status(400).json({ error: 'No hay pedidos abiertos para cerrar' });
+            }
+
+            // Create batch record
+            const batchLabel = batchName || `Lote ${new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' })}`;
+            const [batchResult] = await connection.query(`
+                INSERT INTO pre_order_batches (empresa_id, name, total_orders, total_value, closed_at)
+                VALUES (?, ?, ?, ?, NOW())
+            `, [empresaId, batchLabel, orderCount, openOrders[0].total]);
+
+            const batchId = batchResult.insertId;
+
+            // Assign all open orders to this batch
+            await connection.query(`
+                UPDATE pre_orders SET batch_id = ?, updated_at = NOW()
+                WHERE empresa_id = ? AND batch_id IS NULL
+            `, [batchId, empresaId]);
+
+            await connection.commit();
+            res.json({
+                message: 'Lote cerrado exitosamente',
+                batchId,
+                batchName: batchLabel,
+                totalOrders: orderCount,
+                totalValue: openOrders[0].total
+            });
+
+        } catch (err) {
+            await connection.rollback();
+            throw err;
+        } finally {
+            connection.release();
+        }
+
+    } catch (error) {
+        console.error('Close batch error:', error);
+        res.status(500).json({ error: 'Error cerrando el lote' });
+    }
+});
+
+
 
 // CREATE new pre-order
 router.post('/', async (req, res) => {
@@ -143,13 +314,26 @@ router.post('/', async (req, res) => {
         try {
             await connection.beginTransaction();
 
+            // Build photo_url: serialize photos[] array as JSON, fallback to single photo string
+            let photoUrlValue = null;
+            if (Array.isArray(data.photos) && data.photos.length > 0) {
+                photoUrlValue = JSON.stringify(data.photos);
+            } else if (data.photo) {
+                photoUrlValue = JSON.stringify([data.photo]);
+            }
+
+            // Serialize categories
+            const categoryValue = Array.isArray(data.categories)
+                ? JSON.stringify(data.categories)
+                : (data.category || null);
+
             const [result] = await connection.query(`
                 INSERT INTO pre_orders (
                     empresa_id, order_number, client_number, client_name, client_phone, 
                     client_email, client_address, title, artist, group_name, language, 
-                    category, pages, isbn, photo_url, total_price, deposit, total_paid, 
+                    category, photo_url, total_price, deposit, total_paid, 
                     balance, status, is_paid_in_full, last_payment_date
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `, [
                 empresaId,
                 data.orderNumber,
@@ -160,25 +344,31 @@ router.post('/', async (req, res) => {
                 data.clientAddress,
                 data.title,
                 data.artist,
-                data.group || data.group_name, // Handle both
+                data.group || data.group_name,
                 data.language,
-                data.category,
-                data.pages,
-                data.isbn,
-                data.photo, // Assuming this is URL or Base64 string? If Base64 string is too long for TEXT, it might fail. Use specific column type or just URL.
-                // Note: If photo is huge base64, standard MYSQL TEXT is 64KB. LONGTEXT is 4GB.
-                // We should ensure schema uses TEXT or verify size. 
-                // For now, let's assume it fits or is null.
+                categoryValue,
+                photoUrlValue,
                 parseFloat(data.totalPrice),
                 parseFloat(data.deposit),
                 parseFloat(data.totalPaid || data.deposit),
                 parseFloat(data.balance),
                 data.status || 'pending',
                 data.isPaidInFull ? 1 : 0,
-                new Date() // last_payment_date is today
+                new Date()
             ]);
 
             const preOrderId = result.insertId;
+
+            // Try to set international fields — graceful fallback if columns don't exist yet
+            try {
+                await connection.query(
+                    `UPDATE pre_orders SET international_order = ?, international_country = ? WHERE id = ?`,
+                    [data.internationalOrder ? 1 : 0, data.internationalCountry || null, preOrderId]
+                );
+            } catch (intlErr) {
+                // Columns might not exist in older DB — non-fatal
+                console.warn('International columns not yet available in DB:', intlErr.message);
+            }
 
             // Insert initial payment if deposit > 0
             if (data.payments && data.payments.length > 0) {

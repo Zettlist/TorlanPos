@@ -3,6 +3,18 @@ import { API_URL } from '../config';
 import { useAuth } from '../context/AuthContext';
 import { generateProductLabel } from '../utils/labelGenerator';
 
+const PRESET_TAGS = [
+    'Manga', 'Revistas', 'BL', 'Shonen', 'Seinen', 'Fantasía', 'GL', 'Manhwa',
+    'Romance', 'Novela Ligera', 'Ciencia Ficción', 'Costumbrismo', 'Psicológico',
+    'Comedia', 'Shojo', 'Terror', 'Preventa'
+];
+
+const ADULT_PRESET_TAGS = [
+    'Furry', 'NTR', 'Milf', 'Shotacon', 'Futanari', 'Bara', 'Yaoi',
+    'Vanilla', 'Tentaculos', 'Yuri', 'Parodias', 'Original', 'Maid',
+    'Escolar', 'Mind Control', 'Pokemon', 'Fetish', 'Videojuegos'
+];
+
 // Predefined extras options
 const AVAILABLE_EXTRAS = [];
 
@@ -88,6 +100,39 @@ const CreatableSelect = ({ label, value, onChange, options, placeholder, ...prop
     );
 };
 
+// Simple Modal Component
+const Modal = ({ type, title, isOpen, onClose, children }) => {
+    if (!isOpen) return null;
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
+            <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-2xl overflow-hidden animate-scale-in">
+                <div className="flex justify-between items-center p-4 border-b border-slate-700 bg-slate-900/50">
+                    <h3 className="text-xl font-bold text-white">{title}</h3>
+                    <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <div className="p-6 max-h-[70vh] overflow-y-auto">
+                    {children}
+                </div>
+                <div className="p-4 border-t border-slate-700 bg-slate-900/50 flex justify-end">
+                    <button onClick={onClose} className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors">
+                        Cerrar
+                    </button>
+                    {type === 'print' && (
+                        <button className="ml-2 px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-lg transition-colors flex items-center gap-2">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                            Imprimir Etiqueta
+                        </button>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
 export default function Products() {
     const { token } = useAuth();
     const [products, setProducts] = useState([]);
@@ -102,12 +147,10 @@ export default function Products() {
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
     const [formData, setFormData] = useState({
         name: '',
-        product_type: 'Libro', // Default to Libro
         cost_price: '',
         sale_price: '',
         stock: '',
-        category: '',
-        gender: '',
+        category: 'Manga',
         sbin_code: '',
         isbn: '',
         publication_date: '',
@@ -116,12 +159,19 @@ export default function Products() {
         dimensions: { length: '', width: '', height: '' },
         weight: '',
         page_color: 'Blanco y Negro',
-        language: '',
+        language: 'Español',
         supplier_id: '',
         supplier_price: '',
         extras: [],
-        barcode: ''
+        barcode: '',
+        tags: [],
+        is_adult: false,
+        artist: '',
+        group_name: ''
     });
+
+    // Adult tab state
+    const [activeTab, setActiveTab] = useState('general'); // 'general' | 'adult'
 
     // Extras modal state
     const [showExtrasModal, setShowExtrasModal] = useState(false);
@@ -132,13 +182,19 @@ export default function Products() {
     const [imageFile, setImageFile] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
     const [zoomImage, setZoomImage] = useState(null);
+    const [previewProduct, setPreviewProduct] = useState(null);
+
+    // Tags state
+    const [tagSuggestions, setTagSuggestions] = useState([]);
+    const [tagInput, setTagInput] = useState('');
+    const [showTagDropdown, setShowTagDropdown] = useState(false);
 
     // Search state
     const [searchQuery, setSearchQuery] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Suggestions state
-    const [suggestions, setSuggestions] = useState({ categories: [], publishers: [], genders: [] });
+    const [suggestions, setSuggestions] = useState({ categories: [], publishers: [] });
 
     // Helper to parse extras
     const parseExtras = (extras) => {
@@ -176,13 +232,6 @@ export default function Products() {
     };
 
     // Extract unique values (Client-side fail-safe if API fails)
-    const uniqueCategories = useMemo(() => {
-        return suggestions?.categories || [];
-    }, [suggestions]);
-
-    const uniqueGenders = useMemo(() => {
-        return suggestions?.genders || [];
-    }, [suggestions]);
 
     const uniquePublishers = useMemo(() => {
         if (suggestions.publishers.length > 0) return suggestions.publishers;
@@ -204,6 +253,14 @@ export default function Products() {
 
         return () => clearTimeout(timer);
     }, [formData.sbin_code, editingProduct]);
+
+    // Auto-check adult content for specific categories
+    useEffect(() => {
+        const adultCategories = ['Doujinshi', 'Manga Hentai', 'Revista Hentai'];
+        if (adultCategories.includes(formData.category)) {
+            setFormData(prev => ({ ...prev, is_adult: true }));
+        }
+    }, [formData.category]);
 
     const checkSbinDuplicate = async (sbin_code) => {
         setSbinStatus(prev => ({ ...prev, checking: true }));
@@ -243,12 +300,21 @@ export default function Products() {
 
     const fetchSuggestions = async () => {
         try {
-            const response = await fetch(`${API_URL}/products/suggestions`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (response.ok) {
-                const data = await response.json();
+            const [sugResponse, tagsResponse] = await Promise.all([
+                fetch(`${API_URL}/products/suggestions`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                }),
+                fetch(`${API_URL}/products/tags`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                })
+            ]);
+            if (sugResponse.ok) {
+                const data = await sugResponse.json();
                 setSuggestions(data);
+            }
+            if (tagsResponse.ok) {
+                const tagsData = await tagsResponse.json();
+                setTagSuggestions(tagsData);
             }
         } catch (error) {
             console.error('Error fetching suggestions:', error);
@@ -305,12 +371,20 @@ export default function Products() {
             formDataToSend.append('sale_price', formData.sale_price);
             formDataToSend.append('stock', formData.stock || 0);
             formDataToSend.append('category', formData.category);
-            formDataToSend.append('gender', formData.gender);
             formDataToSend.append('sbin_code', formData.sbin_code);
             formDataToSend.append('isbn', formData.isbn);
             formDataToSend.append('barcode', formData.barcode);
             formDataToSend.append('publication_date', formData.publication_date);
-            formDataToSend.append('publisher', formData.publisher);
+            formDataToSend.append('publisher', formData.publisher ? formData.publisher.value : '');
+
+            // Si es un producto adulto, enviar campos extra. Si no, forzar string vacio.
+            if (formData.is_adult) {
+                formDataToSend.append('artist', formData.artist || '');
+                formDataToSend.append('group_name', formData.group_name || '');
+            } else {
+                formDataToSend.append('artist', '');
+                formDataToSend.append('group_name', '');
+            }
             formDataToSend.append('page_count', formData.page_count);
             formDataToSend.append('weight', formData.weight);
             formDataToSend.append('page_color', formData.page_color);
@@ -320,6 +394,8 @@ export default function Products() {
 
             formDataToSend.append('dimensions', JSON.stringify(formData.dimensions));
             formDataToSend.append('extras', JSON.stringify(formData.extras || []));
+            formDataToSend.append('tags', JSON.stringify(formData.tags || []));
+            formDataToSend.append('is_adult', formData.is_adult ? '1' : '0');
 
             if (imageFile) {
                 formDataToSend.append('image', imageFile);
@@ -365,12 +441,10 @@ export default function Products() {
         setShowForm(false);
         setEditingProduct(null);
         setFormData({
-            name: '', product_type: 'Libro', cost_price: '', sale_price: '', stock: '', category: '', sbin_code: '', isbn: '',
-            publication_date: '', publisher: '', page_count: '',
-            dimensions: { length: '', width: '', height: '' }, weight: '',
-            page_color: 'Blanco y Negro', language: '',
-            supplier_id: '', supplier_price: '',
-            extras: [], barcode: ''
+            name: '', cost_price: '', sale_price: '', stock: '', category: 'Manga', sbin_code: '', isbn: '',
+            extras: [], publication_date: '', publisher: '', page_count: '', dimensions: { length: '', width: '', height: '' }, weight: '',
+            page_color: 'Blanco y Negro', language: 'Español', supplier_id: '', supplier_price: '', barcode: '', tags: [],
+            is_adult: false, artist: '', group_name: ''
         });
         setSbinStatus({ checking: false, isDuplicate: false, existingProduct: null });
         setSelectedExtras([]);
@@ -422,7 +496,8 @@ export default function Products() {
     };
 
     const sortedProducts = useMemo(() => {
-        let sortableItems = [...products];
+        // Filter by tab (General vs Adult)
+        let sortableItems = products.filter(p => activeTab === 'adult' ? p.is_adult : !p.is_adult);
 
         // 1. Filter first
         if (searchQuery.trim()) {
@@ -483,7 +558,7 @@ export default function Products() {
             });
         }
         return sortableItems;
-    }, [products, sortConfig, searchQuery]);
+    }, [products, sortConfig, searchQuery, activeTab]);
 
     const handleEdit = (product) => {
         setEditingProduct(product);
@@ -510,8 +585,7 @@ export default function Products() {
             cost_price: product.cost_price || '',
             sale_price: product.sale_price || product.price || '',
             stock: product.stock.toString(),
-            category: product.category || '',
-            gender: product.gender || '',
+            category: product.category || 'Manga',
             sbin_code: product.sbin_code || product.isbn || '',
             isbn: product.isbn || product.sbin_code || '',
             publication_date: product.publication_date || '',
@@ -524,7 +598,9 @@ export default function Products() {
             supplier_id: product.supplier_id || '',
             supplier_price: product.supplier_price || '',
             extras: parsedExtras,
-            barcode: product.barcode || ''
+            barcode: product.barcode || '',
+            tags: product.tags || [],
+            is_adult: Boolean(product.is_adult)
         });
         setSelectedExtras(parsedExtras);
         setSbinStatus({ checking: false, isDuplicate: false, existingProduct: null });
@@ -604,11 +680,11 @@ export default function Products() {
                         setShowForm(true);
                         setEditingProduct(null);
                         setFormData({
-                            name: '', cost_price: '', sale_price: '', stock: '', category: '', gender: '', sbin_code: '', isbn: '',
+                            name: '', cost_price: '', sale_price: '', stock: '', category: 'Manga', sbin_code: '', isbn: '',
                             publication_date: '', publisher: '', page_count: '',
                             dimensions: { length: '', width: '', height: '' }, weight: '',
                             page_color: 'Blanco y Negro', language: '',
-                            supplier_id: '', supplier_price: '', extras: [], barcode: ''
+                            supplier_id: '', supplier_price: '', extras: [], barcode: '', tags: [], is_adult: false
                         });
                         setSelectedExtras([]);
                         setImageFile(null);
@@ -622,6 +698,27 @@ export default function Products() {
                     Nuevo Producto
                 </button>
             </div>
+
+            {/* Tabs for General / Adult */}
+            {!showForm && (
+                <div className="flex border-b border-white/10 mb-6">
+                    <button
+                        onClick={() => setActiveTab('general')}
+                        className={`px-4 py-3 text-sm font-medium transition-colors relative ${activeTab === 'general' ? 'text-primary-400' : 'text-slate-400 hover:text-slate-200'}`}
+                    >
+                        Catálogo General
+                        {activeTab === 'general' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary-500" />}
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('adult')}
+                        className={`px-4 py-3 text-sm font-medium transition-colors relative flex items-center gap-2 ${activeTab === 'adult' ? 'text-rose-400' : 'text-slate-400 hover:text-slate-200'}`}
+                    >
+                        Contenido Adulto
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300">18+</span>
+                        {activeTab === 'adult' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-rose-500" />}
+                    </button>
+                </div>
+            )}
 
             {/* Search Bar - No changes */}
             <div className="relative">
@@ -890,7 +987,7 @@ export default function Products() {
                                 </div>
                                 <p className="text-xs text-slate-500 mt-1">El código generado también se usará para escáner</p>
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-3 gap-4">
                                 <div>
                                     <label className="block text-sm text-slate-400 mb-1">Precio de Costo *</label>
                                     <input
@@ -919,8 +1016,6 @@ export default function Products() {
                                         required
                                     />
                                 </div>
-                            </div>
-                            <div className="grid grid-cols-3 gap-4">
                                 <div>
                                     <label className="block text-sm text-slate-400 mb-1">Stock</label>
                                     <input
@@ -932,61 +1027,84 @@ export default function Products() {
                                         placeholder="0"
                                     />
                                 </div>
-                                <div>
-                                    <CreatableSelect
-                                        label="Categoría"
-                                        value={formData.category}
-                                        onChange={(val) => setFormData(prev => ({ ...prev, category: val }))}
-                                        options={uniqueCategories}
-                                        placeholder="Ej: Bebidas..."
-                                        required
-                                    />
-                                </div>
-                                <div>
-                                    <CreatableSelect
-                                        label="Género"
-                                        value={formData.gender}
-                                        onChange={(val) => setFormData(prev => ({ ...prev, gender: val }))}
-                                        options={uniqueGenders}
-                                        placeholder="Ej: Shonen, Seinen..."
-                                        required={false}
-                                    />
-                                </div>
                             </div>
-                            {/* E-commerce & Technical Details */}
-                            <div className="pt-4 border-t border-white/10 mb-4">
-                                <h3 className="text-sm font-semibold text-white mb-4">Detalles Técnicos / E-commerce</h3>
 
-                                {/* Product Type Selector */}
-                                <div className="flex gap-4 mb-4">
-                                    <label className="flex items-center gap-2 cursor-pointer group">
-                                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${formData.product_type === 'Libro' ? 'border-primary-500' : 'border-slate-500 group-hover:border-slate-400'}`}>
-                                            {formData.product_type === 'Libro' && <div className="w-2.5 h-2.5 rounded-full bg-primary-500" />}
-                                        </div>
+                            {/* Adult Content Checkbox */}
+                            <div className="mb-4">
+                                <label className="flex items-center gap-3 cursor-pointer group w-fit">
+                                    <div className={`w-5 h-5 rounded flex items-center justify-center transition-colors ${formData.is_adult ? 'bg-rose-500 border-rose-500' : 'border-2 border-slate-500 group-hover:border-slate-400'}`}>
+                                        {formData.is_adult && (
+                                            <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                            </svg>
+                                        )}
+                                    </div>
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.is_adult}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, is_adult: e.target.checked }))}
+                                        className="hidden"
+                                    />
+                                    <span className={`text-sm font-medium transition-colors ${formData.is_adult ? 'text-rose-400' : 'text-slate-300'}`}>
+                                        Producto para adultos (18+)
+                                    </span>
+                                </label>
+                            </div>
+
+                            {/* Adult Content Specific Fields */}
+                            {formData.is_adult && (
+                                <div className="grid grid-cols-2 gap-4 mt-4 p-4 border rounded-xl bg-red-500/5 inset-0 border-red-500/20 mb-4">
+                                    <div>
+                                        <label className="block text-sm text-red-200 mb-1">Artista</label>
                                         <input
-                                            type="radio"
-                                            name="product_type"
-                                            value="Libro"
-                                            checked={formData.product_type === 'Libro'}
-                                            onChange={(e) => setFormData({ ...formData, product_type: e.target.value })}
-                                            className="hidden"
+                                            type="text"
+                                            value={formData.artist || ''}
+                                            onChange={(e) => setFormData({ ...formData, artist: e.target.value })}
+                                            className="input-glass border-red-500/30 focus:border-red-400 placeholder:text-red-900/40"
+                                            placeholder="Nombre del artista"
                                         />
-                                        <span className={`text-sm ${formData.product_type === 'Libro' ? 'text-white' : 'text-slate-400 group-hover:text-slate-300'}`}>Libro</span>
-                                    </label>
-                                    <label className="flex items-center gap-2 cursor-pointer group">
-                                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${formData.product_type === 'Accesorio' ? 'border-primary-500' : 'border-slate-500 group-hover:border-slate-400'}`}>
-                                            {formData.product_type === 'Accesorio' && <div className="w-2.5 h-2.5 rounded-full bg-primary-500" />}
-                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm text-red-200 mb-1">Grupo / Círculo</label>
                                         <input
-                                            type="radio"
-                                            name="product_type"
-                                            value="Accesorio"
-                                            checked={formData.product_type === 'Accesorio'}
-                                            onChange={(e) => setFormData({ ...formData, product_type: e.target.value, page_count: '', page_color: 'Blanco y Negro' })}
-                                            className="hidden"
+                                            type="text"
+                                            value={formData.group_name || ''}
+                                            onChange={(e) => setFormData({ ...formData, group_name: e.target.value })}
+                                            className="input-glass border-red-500/30 focus:border-red-400 placeholder:text-red-900/40"
+                                            placeholder="Nombre del círculo doujin"
                                         />
-                                        <span className={`text-sm ${formData.product_type === 'Accesorio' ? 'text-white' : 'text-slate-400 group-hover:text-slate-300'}`}>Accesorio</span>
-                                    </label>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* E-commerce & Technical Details */}
+                            <div className="mb-4">
+                                <h3 className="text-sm font-semibold text-white mb-4">Categoría y Detalles Técnicos</h3>
+                                <div className="flex flex-wrap gap-4">
+                                    {['Manga', 'Revista', 'Figuras', 'Boxset', 'Calendario', 'Edición Especial', 'Extra', 'Fanbook', 'Libro de Arte'].map(type => (
+                                        <label key={type} className="flex items-center gap-2 cursor-pointer group">
+                                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${formData.category === type ? 'border-primary-500' : 'border-slate-500 group-hover:border-slate-400'}`}>
+                                                {formData.category === type && <div className="w-2.5 h-2.5 rounded-full bg-primary-500" />}
+                                            </div>
+                                            <input
+                                                type="radio"
+                                                name="category"
+                                                value={type}
+                                                checked={formData.category === type}
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    const noPages = ['Figuras', 'Boxset', 'Calendario', 'Extra'].includes(val);
+                                                    setFormData({
+                                                        ...formData,
+                                                        category: val,
+                                                        ...(noPages ? { page_count: '', page_color: '' } : {})
+                                                    });
+                                                }}
+                                                className="hidden"
+                                            />
+                                            <span className={`text-sm ${formData.category === type ? 'text-white' : 'text-slate-400 group-hover:text-slate-300'}`}>{type}</span>
+                                        </label>
+                                    ))}
                                 </div>
 
                                 <div className="space-y-4">
@@ -1029,16 +1147,16 @@ export default function Products() {
 
                                     <div className="grid grid-cols-3 gap-4">
                                         <div>
-                                            <label className={`block text-sm mb-1 ${formData.product_type === 'Accesorio' ? 'text-slate-600' : 'text-slate-400'}`}>Páginas</label>
+                                            <label className={`block text-sm mb-1 ${['Figuras', 'Boxset', 'Calendario', 'Extra'].includes(formData.category) ? 'text-slate-600' : 'text-slate-400'}`}>Páginas</label>
                                             <input
                                                 type="number"
                                                 value={formData.page_count}
                                                 onChange={(e) => setFormData({ ...formData, page_count: e.target.value.replace(/^0+/, '').replace(/\D/g, '') })}
-                                                className={`input-glass ${formData.product_type === 'Accesorio' ? 'opacity-50 cursor-not-allowed bg-slate-800/50' : ''}`}
+                                                className={`input-glass ${['Figuras', 'Boxset', 'Calendario', 'Extra'].includes(formData.category) ? 'opacity-50 cursor-not-allowed bg-slate-800/50' : ''}`}
                                                 placeholder="Num"
                                                 min="1"
-                                                disabled={formData.product_type === 'Accesorio'}
-                                                required={formData.product_type === 'Libro'}
+                                                disabled={['Figuras', 'Boxset', 'Calendario', 'Extra'].includes(formData.category)}
+                                                required={['Manga', 'Revista', 'Edición Especial', 'Fanbook', 'Libro de Arte'].includes(formData.category)}
                                             />
                                         </div>
                                         <div>
@@ -1055,13 +1173,13 @@ export default function Products() {
                                             />
                                         </div>
                                         <div>
-                                            <label className={`block text-sm mb-1 ${formData.product_type === 'Accesorio' ? 'text-slate-600' : 'text-slate-400'}`}>Color Páginas</label>
+                                            <label className={`block text-sm mb-1 ${['Figuras', 'Boxset', 'Calendario', 'Extra'].includes(formData.category) ? 'text-slate-600' : 'text-slate-400'}`}>Color Páginas</label>
                                             <select
                                                 value={formData.page_color}
                                                 onChange={(e) => setFormData({ ...formData, page_color: e.target.value })}
-                                                className={`input-glass ${formData.product_type === 'Accesorio' ? 'opacity-50 cursor-not-allowed bg-slate-800/50' : ''}`}
-                                                required={formData.product_type === 'Libro'}
-                                                disabled={formData.product_type === 'Accesorio'}
+                                                className={`input-glass ${['Figuras', 'Boxset', 'Calendario', 'Extra'].includes(formData.category) ? 'opacity-50 cursor-not-allowed bg-slate-800/50' : ''}`}
+                                                required={['Manga', 'Revista', 'Edición Especial', 'Fanbook', 'Libro de Arte'].includes(formData.category)}
+                                                disabled={['Figuras', 'Boxset', 'Calendario', 'Extra'].includes(formData.category)}
                                             >
                                                 <option value="Blanco y Negro">B/N</option>
                                                 <option value="Color">Color</option>
@@ -1144,6 +1262,97 @@ export default function Products() {
                                         ))}
                                     </div>
                                 )}
+                            </div>
+                            {/* Tags Section */}
+                            <div>
+                                <label className="block text-sm text-slate-400 mb-1">Etiquetas</label>
+                                <div className="relative">
+                                    <div className="input-glass flex flex-wrap items-center gap-1 min-h-[42px] p-2 focus-within:border-primary-500/50">
+                                        {(formData.tags || []).map((tag, i) => (
+                                            <span
+                                                key={i}
+                                                className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-500/20 text-emerald-300 rounded-full text-xs"
+                                            >
+                                                {tag}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setFormData(prev => ({ ...prev, tags: (prev.tags || []).filter((_, idx) => idx !== i) }))}
+                                                    className="hover:text-white transition-colors"
+                                                >
+                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                    </svg>
+                                                </button>
+                                            </span>
+                                        ))}
+                                        <input
+                                            type="text"
+                                            value={tagInput}
+                                            onChange={(e) => {
+                                                setTagInput(e.target.value);
+                                                setShowTagDropdown(true);
+                                            }}
+                                            onFocus={() => setShowTagDropdown(true)}
+                                            onBlur={() => setTimeout(() => setShowTagDropdown(false), 200)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' && tagInput.trim()) {
+                                                    e.preventDefault();
+                                                    const newTag = tagInput.trim();
+                                                    if (!(formData.tags || []).includes(newTag)) {
+                                                        setFormData(prev => ({ ...prev, tags: [...(prev.tags || []), newTag] }));
+                                                    }
+                                                    setTagInput('');
+                                                    setShowTagDropdown(false);
+                                                }
+                                            }}
+                                            className="flex-1 min-w-[120px] bg-transparent border-none outline-none text-white text-sm placeholder-slate-500"
+                                            placeholder={(formData.tags || []).length === 0 ? 'Escribir etiqueta...' : '+'}
+                                        />
+                                    </div>
+                                    {showTagDropdown && (() => {
+                                        const filtered = tagSuggestions.filter(
+                                            t => t.toLowerCase().includes(tagInput.toLowerCase()) && !(formData.tags || []).includes(t)
+                                        );
+                                        return filtered.length > 0 ? (
+                                            <div className="absolute z-50 w-full mt-1 bg-[#1e293b] border border-white/10 rounded-lg shadow-xl max-h-40 overflow-y-auto custom-scrollbar">
+                                                {filtered.map((tag, i) => (
+                                                    <button
+                                                        key={i}
+                                                        type="button"
+                                                        onMouseDown={(e) => {
+                                                            e.preventDefault();
+                                                            if (!(formData.tags || []).includes(tag)) {
+                                                                setFormData(prev => ({ ...prev, tags: [...(prev.tags || []), tag] }));
+                                                            }
+                                                            setTagInput('');
+                                                            setShowTagDropdown(false);
+                                                        }}
+                                                        className="w-full text-left px-3 py-2 text-sm text-slate-300 hover:bg-primary-500/20 hover:text-white transition-colors"
+                                                    >
+                                                        {tag}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        ) : null;
+                                    })()}
+                                </div>
+                                <p className="text-xs text-slate-500 mt-1 mb-2">Presiona Enter para crear una nueva etiqueta</p>
+
+                                {/* Quick select preset tags and database tags */}
+                                <div className="flex flex-wrap gap-1 mt-2">
+                                    {Array.from(new Set([...(formData.is_adult ? ADULT_PRESET_TAGS : PRESET_TAGS), ...tagSuggestions]))
+                                        .filter(tag => !(formData.tags || []).includes(tag))
+                                        .map((tag, i) => (
+                                            <button
+                                                key={`preset-${i}`}
+                                                type="button"
+                                                onClick={() => setFormData(prev => ({ ...prev, tags: [...(prev.tags || []), tag] }))}
+                                                className="px-2 py-1 text-xs bg-slate-800 hover:bg-emerald-500/20 text-slate-400 hover:text-emerald-300 border border-slate-700 hover:border-emerald-500/30 rounded-full transition-all"
+                                            >
+                                                + {tag}
+                                            </button>
+                                        ))}
+                                </div>
                             </div>
                             {/* Supplier Section */}
                             <div className="grid grid-cols-2 gap-4">
@@ -1286,7 +1495,7 @@ export default function Products() {
                                     <td className="table-cell">
                                         <div
                                             className="w-10 h-10 rounded-lg bg-white/5 overflow-hidden border border-white/10 cursor-pointer hover:border-primary-500 transition-colors"
-                                            onClick={() => product.image_url && setZoomImage(product.image_url)}
+                                            onClick={() => setPreviewProduct(product)}
                                         >
                                             {product.image_url ? (
                                                 <img
@@ -1503,6 +1712,106 @@ export default function Products() {
                     </div>
                 </div>
             )}
+
+            {/* Product Preview Modal */}
+            <Modal
+                title={`Detalles del Producto: ${previewProduct?.name}`}
+                isOpen={!!previewProduct}
+                onClose={() => setPreviewProduct(null)}
+            >
+                {previewProduct && (
+                    <div className="space-y-6 text-slate-300">
+                        <div className="flex flex-col md:flex-row gap-6">
+                            <div className="w-full md:w-1/3">
+                                {previewProduct.image_url ? (
+                                    <div className="relative group cursor-pointer" onClick={() => setZoomImage(previewProduct.image_url)}>
+                                        <img
+                                            src={previewProduct.image_url}
+                                            alt={previewProduct.name}
+                                            className="w-full h-auto rounded-lg shadow-lg border border-slate-600 transition-colors group-hover:border-primary-500"
+                                        />
+                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                                            <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="w-full aspect-square bg-slate-700/50 rounded-lg flex items-center justify-center border border-slate-600">
+                                        <svg className="w-12 h-12 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="w-full md:w-2/3 space-y-4">
+                                <div>
+                                    <h4 className="text-sm font-semibold text-primary-400 mb-1">Título</h4>
+                                    <p className="text-xl font-bold text-white leading-tight">{previewProduct.name}</p>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-x-4 gap-y-3 p-4 bg-slate-900/50 rounded-xl border border-slate-700">
+                                    <div>
+                                        <span className="block text-xs text-slate-500 uppercase">Clasificación</span>
+                                        <span className={`inline-block mt-1 text-xs px-2 py-0.5 rounded font-medium ${previewProduct.is_adult ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-primary-500/20 text-primary-400 border border-primary-500/30'}`}>
+                                            {previewProduct.is_adult ? 'Adultos (18+)' : 'General'}
+                                        </span>
+                                    </div>
+
+                                    {!!previewProduct.is_adult && (
+                                        <>
+                                            <div>
+                                                <span className="block text-xs text-slate-500 uppercase">Artista</span>
+                                                <span className="font-medium text-slate-200">{previewProduct.artist || 'N/A'}</span>
+                                            </div>
+                                            <div>
+                                                <span className="block text-xs text-slate-500 uppercase">Grupo / Círculo</span>
+                                                <span className="font-medium text-slate-200">{previewProduct.group_name || 'N/A'}</span>
+                                            </div>
+                                        </>
+                                    )}
+
+                                    <div>
+                                        <span className="block text-xs text-slate-500 uppercase">Categoría</span>
+                                        <span className="font-medium text-slate-200">{previewProduct.category || 'N/A'}</span>
+                                    </div>
+                                    <div>
+                                        <span className="block text-xs text-slate-500 uppercase">Editorial</span>
+                                        <span className="font-medium text-slate-200">{previewProduct.publisher || 'N/A'}</span>
+                                    </div>
+
+                                    <div className="col-span-2 mt-2 pt-2 border-t border-slate-700/50">
+                                        <span className="block text-xs text-slate-500 uppercase mb-2">Etiquetas</span>
+                                        <div className="flex flex-wrap gap-1">
+                                            {previewProduct.tags && previewProduct.tags.length > 0 ? (
+                                                previewProduct.tags.map(tag => (
+                                                    <span key={tag} className="bg-slate-700/50 border border-slate-600 text-slate-300 px-2 py-0.5 rounded-md text-xs">
+                                                        {tag}
+                                                    </span>
+                                                ))
+                                            ) : (
+                                                <span className="text-slate-500 text-sm italic">Sin etiquetas</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="p-3 bg-slate-900/30 rounded-lg border border-slate-700">
+                                        <span className="block text-xs text-slate-500 uppercase mb-1">Stock Disponible</span>
+                                        <span className={`text-2xl font-bold ${previewProduct.stock > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                            {previewProduct.stock} uds.
+                                        </span>
+                                    </div>
+                                    <div className="p-3 bg-slate-900/30 rounded-lg border border-slate-700">
+                                        <span className="block text-xs text-slate-500 uppercase mb-1">Precio de Venta</span>
+                                        <span className="text-2xl font-bold text-emerald-400">${parseFloat(previewProduct.sale_price).toFixed(2)}</span>
+                                        <span className="block text-xs text-slate-500 mt-1">Costo: ${parseFloat(previewProduct.cost_price).toFixed(2)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </Modal>
         </div>
     );
 }

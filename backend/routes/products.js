@@ -24,6 +24,56 @@ const upload = multer({
 
 const router = express.Router();
 
+// ─── Migration endpoint (MySQL 5.7 compatible) ──────────────────────────────
+router.get('/migrate-schema-secure', async (req, res) => {
+    if (req.query.secret !== 'secure-setup-123') {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    try {
+        // Ensure auxiliary tables exist
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS categories (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL UNIQUE,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS publishers (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL UNIQUE,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+
+        const addColIfMissing = async (col, def) => {
+            const [rows] = await pool.query(`SHOW COLUMNS FROM products LIKE ?`, [col]);
+            if (rows.length === 0) {
+                await pool.query(`ALTER TABLE products ADD COLUMN ${col} ${def}`);
+                return `added ${col}`;
+            }
+            return `${col} already exists`;
+        };
+        const results = await Promise.all([
+            addColIfMissing('category_id', 'INT NULL'),
+            addColIfMissing('publisher_id', 'INT NULL'),
+            addColIfMissing('image_url', 'VARCHAR(500) NULL'),
+            addColIfMissing('supplier_id', 'INT NULL'),
+            addColIfMissing('supplier_price', 'DECIMAL(10,2) NULL'),
+            addColIfMissing('gender', 'VARCHAR(50) NULL'),
+            addColIfMissing('is_adult', 'TINYINT(1) DEFAULT 0'),
+            addColIfMissing('artist', 'VARCHAR(255) NULL'),
+            addColIfMissing('group_name', 'VARCHAR(255) NULL'),
+            addColIfMissing('sbin_code', 'VARCHAR(100) NULL'),
+        ]);
+        res.json({ message: 'Products schema migrated', results });
+    } catch (error) {
+        console.error('Products migration error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+// ─────────────────────────────────────────────────────────────────────────────
+
 // All routes require authentication and active empresa
 router.use(authenticateToken);
 router.use(validateEmpresaActive);
@@ -81,27 +131,44 @@ router.get('/suggestions', async (req, res) => {
             return res.status(403).json({ error: 'Acceso denegado. Usuario sin empresa asignada.' });
         }
 
-        const [categories] = await pool.query(
-            'SELECT DISTINCT category FROM products WHERE empresa_id = ? AND category IS NOT NULL AND category != "" ORDER BY category',
-            [empresaId]
-        );
-
-        const [publishers] = await pool.query(
-            'SELECT DISTINCT publisher FROM products WHERE empresa_id = ? AND publisher IS NOT NULL AND publisher != "" ORDER BY publisher',
-            [empresaId]
-        );
-        const [genders] = await pool.query(
-            'SELECT DISTINCT gender FROM products WHERE empresa_id = ? AND gender IS NOT NULL AND gender != "" ORDER BY gender',
-            [empresaId]
-        );
+        // Run both queries in parallel
+        const [[categories], [publishers]] = await Promise.all([
+            pool.query(
+                'SELECT DISTINCT category FROM products WHERE empresa_id = ? AND category IS NOT NULL AND category != "" ORDER BY category',
+                [empresaId]
+            ),
+            pool.query(
+                'SELECT DISTINCT publisher FROM products WHERE empresa_id = ? AND publisher IS NOT NULL AND publisher != "" ORDER BY publisher',
+                [empresaId]
+            )
+        ]);
 
         res.json({
             categories: categories.map(c => c.category),
-            publishers: publishers.map(p => p.publisher),
-            genders: genders.map(g => g.gender)
+            publishers: publishers.map(p => p.publisher)
         });
     } catch (error) {
         console.error('Get suggestions error:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+// Get all tags for the empresa
+router.get('/tags', async (req, res) => {
+    try {
+        const empresaId = getEmpresaId(req);
+        if (!empresaId) {
+            return res.status(403).json({ error: 'Acceso denegado. Usuario sin empresa asignada.' });
+        }
+
+        const [tags] = await pool.query(
+            'SELECT id, name FROM tags WHERE empresa_id = ? ORDER BY name',
+            [empresaId]
+        );
+
+        res.json(tags.map(t => t.name));
+    } catch (error) {
+        console.error('Get tags error:', error);
         res.status(500).json({ error: 'Error interno del servidor' });
     }
 });
@@ -126,12 +193,23 @@ router.get('/', async (req, res) => {
             });
         }
 
-        const [products] = await pool.query(
-            'SELECT * FROM products WHERE empresa_id = ? ORDER BY name',
-            [empresaId]
-        );
+        const [products] = await pool.query(`
+            SELECT p.*, GROUP_CONCAT(t.name ORDER BY t.name SEPARATOR ',') as tags
+            FROM products p
+            LEFT JOIN product_tags pt ON p.id = pt.product_id
+            LEFT JOIN tags t ON pt.tag_id = t.id
+            WHERE p.empresa_id = ?
+            GROUP BY p.id
+            ORDER BY p.name
+        `, [empresaId]);
 
-        res.json(products);
+        // Parse tags from comma-separated string to array
+        const productsWithTags = products.map(p => ({
+            ...p,
+            tags: p.tags ? p.tags.split(',') : []
+        }));
+
+        res.json(productsWithTags);
     } catch (error) {
         console.error('Get products error:', error);
         res.status(500).json({ error: 'Error interno del servidor' });
@@ -229,7 +307,9 @@ router.get('/check-sbin', async (req, res) => {
 router.post('/', requireInventoryWrite, upload.single('image'), async (req, res) => {
     try {
         const empresaId = getEmpresaId(req);
-        const { name, cost_price, sale_price, stock, category, gender, barcode, sbin_code, isbn, extras, publication_date, publisher, page_count, dimensions, weight, page_color, language, supplier_id, supplier_price } = req.body;
+        const { name, cost_price, sale_price, stock, category, gender, barcode, sbin_code, isbn,
+            extras, publication_date, publisher, page_count, dimensions, weight, page_color,
+            language, supplier_id, supplier_price, is_adult, artist, group_name } = req.body;
 
         if (!empresaId) {
             return res.status(403).json({ error: 'Acceso denegado. Usuario sin empresa asignada.' });
@@ -320,17 +400,20 @@ router.post('/', requireInventoryWrite, upload.single('image'), async (req, res)
             }
         }
 
+        // ... validation ...
+
         const [result] = await pool.query(`
             INSERT INTO products (
                 empresa_id, name, price, cost_price, sale_price, stock, category, category_id, barcode, sbin_code, isbn, 
                 extras, publication_date, publisher, publisher_id, page_count, dimensions, 
-                weight, page_color, language, supplier_id, supplier_price, image_url, gender
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                weight, page_color, language, supplier_id, supplier_price, image_url, gender, is_adult, artist, group_name
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
             empresaId, name, sale_price, cost_price, sale_price, stock || 0, category || null, categoryId,
             finalBarcode || null, sbin_code || null, isbn || null, extras || null,
             publication_date || null, publisher || null, publisherId, page_count || null, dimensions || null,
-            weight || null, page_color || null, language || null, supplier_id || null, supplier_price || null, imageUrl, gender || null
+            weight || null, page_color || null, language || null, supplier_id || null, supplier_price || null, imageUrl, null,
+            (is_adult === '1' || is_adult === true) ? 1 : 0, artist || null, group_name || null
         ]);
 
         res.json({
@@ -339,6 +422,16 @@ router.post('/', requireInventoryWrite, upload.single('image'), async (req, res)
             barcode: finalBarcode,
             image_url: imageUrl
         });
+
+        // Save tags asynchronously (don't block the response)
+        const tags = req.body.tags;
+        if (tags) {
+            try {
+                await saveProductTags(pool, result.insertId, empresaId, tags);
+            } catch (tagError) {
+                console.error('Error saving tags:', tagError);
+            }
+        }
     } catch (error) {
         console.error('Create product error:', error);
         res.status(500).json({ error: 'Error interno del servidor' });
@@ -349,8 +442,8 @@ router.post('/', requireInventoryWrite, upload.single('image'), async (req, res)
 router.put('/:id', requireInventoryWrite, upload.single('image'), async (req, res) => {
     try {
         const empresaId = getEmpresaId(req);
+        const { name, cost_price, sale_price, stock, category, gender, barcode, sbin_code, isbn, extras, publication_date, publisher, page_count, dimensions, weight, page_color, language, supplier_id, supplier_price, is_adult, artist, group_name } = req.body;
         const { id } = req.params;
-        const { name, cost_price, sale_price, stock, category, gender, barcode, sbin_code, isbn, extras, publication_date, publisher, page_count, dimensions, weight, page_color, language, supplier_id, supplier_price } = req.body;
 
         if (!empresaId) {
             return res.status(403).json({ error: 'Acceso denegado. Usuario sin empresa asignada.' });
@@ -389,20 +482,32 @@ router.put('/:id', requireInventoryWrite, upload.single('image'), async (req, re
             if (existing.length > 0) return res.status(400).json({ error: 'El código de barras ya existe en otro producto' });
         }
 
+        // ...
+
         await pool.query(`
             UPDATE products SET 
                 name = ?, cost_price = ?, sale_price = ?, stock = ?, category = ?, gender = ?, barcode = ?, 
                 sbin_code = ?, isbn = ?, extras = ?, publication_date = ?, 
                 publisher = ?, page_count = ?, dimensions = ?, weight = ?, page_color = ?, language = ?,
-                supplier_id = ?, supplier_price = ?, image_url = ?
+                supplier_id = ?, supplier_price = ?, image_url = ?, is_adult = ?, artist = ?, group_name = ?
             WHERE id = ? AND empresa_id = ?
         `, [
-            name, cost_price, sale_price, stock || 0, category || null, gender || null, barcode || null,
+            name, cost_price, sale_price, stock || 0, category || null, null, barcode || null,
             sbin_code || null, isbn || null, extras || null,
             publication_date || null, publisher || null, page_count || null, dimensions || null,
             weight || null, page_color || null, language || null,
-            supplier_id || null, supplier_price || null, imageUrl, id, empresaId
+            supplier_id || null, supplier_price || null, imageUrl, (is_adult === '1' || is_adult === true) ? 1 : 0, artist || null, group_name || null, id, empresaId
         ]);
+
+        // Save tags
+        const tags = req.body.tags;
+        if (tags !== undefined) {
+            try {
+                await saveProductTags(pool, id, empresaId, tags);
+            } catch (tagError) {
+                console.error('Error saving tags:', tagError);
+            }
+        }
 
         res.json({ message: 'Producto actualizado correctamente', image_url: imageUrl });
     } catch (error) {
@@ -597,4 +702,50 @@ router.post('/print-label', async (req, res) => {
     }
 });
 
+// Helper: Save product tags (create new tags on-the-fly, manage junction table)
+async function saveProductTags(pool, productId, empresaId, tagsInput) {
+    // Parse tags — accept JSON string or array
+    let tagNames = [];
+    if (typeof tagsInput === 'string') {
+        try {
+            tagNames = JSON.parse(tagsInput);
+        } catch {
+            tagNames = tagsInput.split(',').map(t => t.trim()).filter(Boolean);
+        }
+    } else if (Array.isArray(tagsInput)) {
+        tagNames = tagsInput.map(t => t.trim()).filter(Boolean);
+    }
+
+    // Remove duplicates
+    tagNames = [...new Set(tagNames)];
+
+    // Clear existing product_tags for this product
+    await pool.query('DELETE FROM product_tags WHERE product_id = ?', [productId]);
+
+    if (tagNames.length === 0) return;
+
+    // For each tag name, get or create the tag, then insert the junction row
+    for (const tagName of tagNames) {
+        // INSERT IGNORE to handle the unique constraint gracefully
+        await pool.query(
+            'INSERT IGNORE INTO tags (empresa_id, name) VALUES (?, ?)',
+            [empresaId, tagName]
+        );
+
+        // Get the tag id
+        const [tagRows] = await pool.query(
+            'SELECT id FROM tags WHERE empresa_id = ? AND name = ?',
+            [empresaId, tagName]
+        );
+
+        if (tagRows.length > 0) {
+            await pool.query(
+                'INSERT IGNORE INTO product_tags (product_id, tag_id) VALUES (?, ?)',
+                [productId, tagRows[0].id]
+            );
+        }
+    }
+}
+
 export default router;
+

@@ -19,6 +19,7 @@ import suppliersRoutes from './routes/suppliers.js';
 import cronRoutes from './routes/cronRoutes.js';
 import preventasRoutes from './routes/preventas.js';
 import anticiposRoutes from './routes/anticipos.js';
+import publicCatalogRoutes from './routes/publicCatalog.js';
 
 import { runSchemaMigrations } from './migrations/startup.js';
 
@@ -120,6 +121,7 @@ app.use('/api/suppliers', suppliersRoutes);
 app.use('/api/cron', cronRoutes);
 app.use('/api/preventas', preventasRoutes);
 app.use('/api/anticipos', anticiposRoutes);
+app.use('/api/public/catalog', publicCatalogRoutes); // Public API (no auth) for external consumers
 console.log('✅ Routes loaded successfully');
 
 // =============================================================================
@@ -161,9 +163,7 @@ async function startServer() {
         await initDatabase();
         console.log('✅ Database connected');
 
-        // Run schema migrations
-        await runSchemaMigrations();
-
+        // Start listening immediately so App Engine doesn't timeout the cold start
         app.listen(PORT, () => {
             console.log('\n' + '='.repeat(60));
             console.log(`🚀 Server running on port ${PORT}`);
@@ -171,11 +171,17 @@ async function startServer() {
             console.log('🌐 CORS: Enabled (origin: *)');
             console.log('📝 Request logging: Enabled');
             console.log('='.repeat(60) + '\n');
-
-            // Start cron jobs
-            // Note: Internal node-cron removed in favor of App Engine Cron
             console.log('⏰ App Engine Cron endpoints ready at /api/cron');
         });
+
+        // Run schema migrations asynchronously in the background
+        console.log('🔄 Running schema migrations in background...');
+        runSchemaMigrations().then(() => {
+            console.log('✅ Background schema migrations completed.');
+        }).catch(err => {
+            console.error('❌ Background schema migrations failed:', err);
+        });
+
     } catch (error) {
         console.error('\n❌ Failed to start server:', error.message);
         console.error('Stack:', error.stack);

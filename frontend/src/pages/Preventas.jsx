@@ -63,13 +63,14 @@ export default function Preventas() {
         artist: '',
         group: '',
         language: '',
-        category: '',
-        pages: '',
-        isbn: '',
-        photo: null
+        categories: [],
+        internationalOrder: false,
+        internationalCountry: '',
+        photos: []
     });
 
     // Modal States
+    const [activeTab, setActiveTab] = useState('open');
     const [selectedClient, setSelectedClient] = useState(null);
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [showLiquidateModal, setShowLiquidateModal] = useState(false);
@@ -79,17 +80,19 @@ export default function Preventas() {
     const [showQRDownload, setShowQRDownload] = useState(false);
     const [qrOrderData, setQrOrderData] = useState(null);
     const [receiptImageURL, setReceiptImageURL] = useState(null);
+    // Batch states
+    const [closedBatches, setClosedBatches] = useState([]);
+    const [showCloseBatchModal, setShowCloseBatchModal] = useState(false);
+    const [batchName, setBatchName] = useState('');
+    const [closingBatch, setClosingBatch] = useState(false);
+    const [expandedBatch, setExpandedBatch] = useState(null);
 
-    // Fetch Items from API
     const fetchItems = async () => {
         try {
             const token = localStorage.getItem('token');
             const response = await fetch(`${API_URL}/preventas`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+                headers: { 'Authorization': `Bearer ${token}` }
             });
-
             if (response.ok) {
                 const data = await response.json();
                 setItems(data);
@@ -99,8 +102,24 @@ export default function Preventas() {
         }
     };
 
+    const fetchClosedBatches = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_URL}/preventas/closed`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setClosedBatches(data);
+            }
+        } catch (error) {
+            console.error('Error fetching closed batches:', error);
+        }
+    };
+
     useEffect(() => {
         fetchItems();
+        fetchClosedBatches();
     }, []);
 
     // Generate PDF Receipt
@@ -159,15 +178,171 @@ export default function Preventas() {
         return url;
     };
 
+    // Generate Supplier Report - all orders grouped by client
+    const generateSupplierReport = () => {
+        const doc = new jsPDF();
+        const pageW = doc.internal.pageSize.getWidth();
+        const pageH = doc.internal.pageSize.getHeight();
+        const margin = 15;
+        const now = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' });
+
+        // ── Header ──────────────────────────────────────────────────────
+        doc.setFillColor(30, 41, 59); // slate-800
+        doc.rect(0, 0, pageW, 32, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(18);
+        doc.setFont('helvetica', 'bold');
+        doc.text('REPORTE DE CIERRE DE PEDIDO', pageW / 2, 13, { align: 'center' });
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Fecha de cierre: ${now}`, pageW / 2, 23, { align: 'center' });
+
+        // ── Summary bar ─────────────────────────────────────────────────
+        const totalOrders = items.length;
+        const pendingOrders = items.filter(i => !i.isPaidInFull).length;
+        const totalValue = items.reduce((s, i) => s + parseFloat(i.totalPrice || 0), 0);
+
+        doc.setFillColor(241, 245, 249); // slate-100
+        doc.rect(0, 32, pageW, 18, 'F');
+        doc.setTextColor(30, 41, 59);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Total pedidos: ${totalOrders}`, margin, 43);
+        doc.text(`Pendientes: ${pendingOrders}`, pageW / 2 - 20, 43);
+        doc.text(`Valor total: $${formatPrice(totalValue)}`, pageW - margin, 43, { align: 'right' });
+
+        // ── Group by client ──────────────────────────────────────────────
+        const byClient = {};
+        items.forEach(item => {
+            const key = item.clientNumber;
+            if (!byClient[key]) byClient[key] = { clientNumber: item.clientNumber, clientName: item.clientName, orders: [] };
+            byClient[key].orders.push(item);
+        });
+
+        let y = 58;
+        const clients = Object.values(byClient);
+
+        clients.forEach((client, ci) => {
+            // Page break check
+            if (y > pageH - 40) {
+                doc.addPage();
+                y = 20;
+            }
+
+            // ── Client header block ──────────────────────────────────────
+            doc.setFillColor(99, 102, 241); // indigo/primary
+            doc.rect(margin - 3, y - 5, pageW - (margin - 3) * 2, 12, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'bold');
+            doc.text(`CLIENTE: ${client.clientName || 'Sin nombre'}  |  ${client.clientNumber}`, margin, y + 3);
+            doc.text(`(${client.orders.length} pedido${client.orders.length > 1 ? 's' : ''})`, pageW - margin, y + 3, { align: 'right' });
+            y += 14;
+
+            // ── Column headers ───────────────────────────────────────────
+            doc.setFillColor(226, 232, 240);
+            doc.rect(margin - 3, y - 4, pageW - (margin - 3) * 2, 9, 'F');
+            doc.setTextColor(71, 85, 105);
+            doc.setFontSize(7.5);
+            doc.setFont('helvetica', 'bold');
+            doc.text('No. PEDIDO', margin, y + 2);
+            doc.text('TÍTULO', margin + 35, y + 2);
+            doc.text('ARTISTA', margin + 90, y + 2);
+            doc.text('CATEGORÍA', margin + 130, y + 2);
+            doc.text('TOTAL', pageW - margin, y + 2, { align: 'right' });
+            y += 10;
+
+            // ── Orders for this client ───────────────────────────────────
+            client.orders.forEach((order, oi) => {
+                if (y > pageH - 20) {
+                    doc.addPage();
+                    y = 20;
+                }
+
+                // Row background alternating
+                if (oi % 2 === 0) {
+                    doc.setFillColor(248, 250, 252);
+                    doc.rect(margin - 3, y - 4, pageW - (margin - 3) * 2, 9, 'F');
+                }
+
+                doc.setTextColor(15, 23, 42);
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(8);
+                doc.text(order.orderNumber || '', margin, y + 2);
+                doc.text((order.title || '').substring(0, 28), margin + 35, y + 2);
+                doc.text((order.artist || '').substring(0, 20), margin + 90, y + 2);
+                const cats = Array.isArray(order.categories) ? order.categories.join('/') : (order.category || '');
+                doc.text(cats.substring(0, 18), margin + 130, y + 2);
+
+                // Balance indicator
+                const isLiq = order.isPaidInFull;
+                doc.setTextColor(isLiq ? 22 : 234, isLiq ? 163 : 88, isLiq ? 74 : 12);
+                doc.setFont('helvetica', 'bold');
+                doc.text(`$${formatPrice(order.totalPrice)}`, pageW - margin, y + 2, { align: 'right' });
+                doc.setTextColor(15, 23, 42);
+                y += 9;
+
+                // International flag
+                if (order.internationalOrder && order.internationalCountry) {
+                    doc.setFont('helvetica', 'italic');
+                    doc.setFontSize(7);
+                    doc.setTextColor(99, 102, 241);
+                    doc.text(`  ↳ Pedido internacional: ${order.internationalCountry}`, margin + 5, y);
+                    y += 7;
+                    doc.setTextColor(15, 23, 42);
+                }
+            });
+
+            // ── Client subtotal ──────────────────────────────────────────
+            const clientTotal = client.orders.reduce((s, o) => s + parseFloat(o.totalPrice || 0), 0);
+            const clientPaid = client.orders.reduce((s, o) => s + (parseFloat(o.totalPrice || 0) - parseFloat(o.balance || 0)), 0);
+            doc.setDrawColor(200, 200, 210);
+            doc.line(margin, y, pageW - margin, y);
+            y += 5;
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(8.5);
+            doc.setTextColor(30, 41, 59);
+            doc.text(`Subtotal: $${formatPrice(clientTotal)}  |  Pagado: $${formatPrice(clientPaid)}  |  Saldo: $${formatPrice(clientTotal - clientPaid)}`, pageW - margin, y, { align: 'right' });
+            y += 14;
+        });
+
+        // ── Footer on last page ──────────────────────────────────────────
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'italic');
+        doc.setTextColor(100, 116, 139);
+        doc.text(`Generado el ${now} — Torlan POS`, pageW / 2, pageH - 8, { align: 'center' });
+
+        const blob = doc.output('blob');
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `Pedido-Proveedor-${new Date().toISOString().slice(0, 10)}.pdf`;
+        link.click();
+        URL.revokeObjectURL(url);
+    };
+
     const handlePhotoChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
+        const files = Array.from(e.target.files);
+        files.forEach(file => {
             const reader = new FileReader();
             reader.onloadend = () => {
-                setFormData(prev => ({ ...prev, photo: reader.result }));
+                setFormData(prev => ({ ...prev, photos: [...prev.photos, reader.result] }));
             };
             reader.readAsDataURL(file);
-        }
+        });
+    };
+
+    const removePhoto = (index) => {
+        setFormData(prev => ({ ...prev, photos: prev.photos.filter((_, i) => i !== index) }));
+    };
+
+    const handleCategoryChange = (cat) => {
+        setFormData(prev => {
+            const cats = prev.categories.includes(cat)
+                ? prev.categories.filter(c => c !== cat)
+                : [...prev.categories, cat];
+            return { ...prev, categories: cats };
+        });
     };
 
     const handleChange = (e) => {
@@ -230,10 +405,10 @@ export default function Preventas() {
                     artist: '',
                     group: '',
                     language: '',
-                    category: '',
-                    pages: '',
-                    isbn: '',
-                    photo: null
+                    categories: [],
+                    internationalOrder: false,
+                    internationalCountry: '',
+                    photos: []
                 });
                 alert('Preventa registrada exitosamente');
             } else {
@@ -286,6 +461,36 @@ export default function Preventas() {
         } catch (error) {
             console.error('Liquidate error:', error);
             alert('Error de conexión');
+        }
+    };
+
+    // Handle close batch
+    const handleCloseBatch = async () => {
+        setClosingBatch(true);
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_URL}/preventas/close-batch`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ batchName: batchName.trim() || undefined })
+            });
+            const data = await response.json();
+            if (response.ok) {
+                // Generate PDF report before clearing
+                generateSupplierReport();
+                await fetchItems();
+                await fetchClosedBatches();
+                setShowCloseBatchModal(false);
+                setBatchName('');
+                setActiveTab('closed');
+            } else {
+                alert(`Error: ${data.error}`);
+            }
+        } catch (error) {
+            console.error('Error closing batch:', error);
+            alert('Error de conexión');
+        } finally {
+            setClosingBatch(false);
         }
     };
 
@@ -471,13 +676,12 @@ export default function Preventas() {
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                             <div className="space-y-1">
-                                <label className="text-sm text-slate-400">Nombre del Cliente *</label>
+                                <label className="text-sm text-slate-400">Nombre del Cliente</label>
                                 <input
                                     type="text"
                                     name="clientName"
                                     value={formData.clientName}
                                     onChange={handleChange}
-                                    required
                                     className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
                                     placeholder="Nombre completo"
                                 />
@@ -490,8 +694,7 @@ export default function Preventas() {
                                     name="clientPhone"
                                     value={formData.clientPhone}
                                     onChange={handleChange}
-                                    disabled
-                                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500 opacity-50 cursor-not-allowed"
+                                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
                                     placeholder="000-000-0000"
                                 />
                             </div>
@@ -503,8 +706,7 @@ export default function Preventas() {
                                     name="clientEmail"
                                     value={formData.clientEmail}
                                     onChange={handleChange}
-                                    disabled
-                                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500 opacity-50 cursor-not-allowed"
+                                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
                                     placeholder="correo@ejemplo.com"
                                 />
                             </div>
@@ -516,8 +718,7 @@ export default function Preventas() {
                                     name="clientAddress"
                                     value={formData.clientAddress}
                                     onChange={handleChange}
-                                    disabled
-                                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500 opacity-50 cursor-not-allowed"
+                                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
                                     placeholder="Dirección del cliente"
                                 />
                             </div>
@@ -609,53 +810,83 @@ export default function Preventas() {
                             </select>
                         </div>
 
-                        <div className="space-y-1">
+                        {/* Category Checkboxes */}
+                        <div className="space-y-2 col-span-1 md:col-span-2 lg:col-span-2">
                             <label className="text-sm text-slate-400">Categoría</label>
-                            <input
-                                type="text"
-                                name="category"
-                                value={formData.category}
-                                onChange={handleChange}
-                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                                placeholder="Ficción, Texto, etc."
-                            />
+                            <div className="flex flex-wrap gap-3">
+                                {['Revista', 'Manga', 'Figura', 'Adultos'].map(cat => (
+                                    <label key={cat} className="flex items-center gap-2 cursor-pointer group">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.categories.includes(cat)}
+                                            onChange={() => handleCategoryChange(cat)}
+                                            className="w-4 h-4 rounded accent-primary-500"
+                                        />
+                                        <span className="text-sm text-slate-300 group-hover:text-white transition-colors">{cat}</span>
+                                    </label>
+                                ))}
+                            </div>
                         </div>
 
-                        <div className="space-y-1">
-                            <label className="text-sm text-slate-400">Páginas</label>
-                            <input
-                                type="number"
-                                name="pages"
-                                value={formData.pages}
-                                onChange={handleChange}
-                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                                placeholder="0"
-                            />
+                        {/* International Order */}
+                        <div className="space-y-2 col-span-1 md:col-span-2 lg:col-span-2">
+                            <label className="text-sm text-slate-400">Pedido Internacional</label>
+                            <div className="flex items-center gap-4">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.internationalOrder}
+                                        onChange={e => setFormData(prev => ({ ...prev, internationalOrder: e.target.checked, internationalCountry: e.target.checked ? prev.internationalCountry : '' }))}
+                                        className="w-4 h-4 rounded accent-primary-500"
+                                    />
+                                    <span className="text-sm text-slate-300">Es pedido internacional</span>
+                                </label>
+                                {formData.internationalOrder && (
+                                    <div className="flex gap-3">
+                                        {['España', 'Japón'].map(country => (
+                                            <label key={country} className="flex items-center gap-2 cursor-pointer group">
+                                                <input
+                                                    type="radio"
+                                                    name="internationalCountry"
+                                                    value={country}
+                                                    checked={formData.internationalCountry === country}
+                                                    onChange={() => setFormData(prev => ({ ...prev, internationalCountry: country }))}
+                                                    className="accent-primary-500"
+                                                />
+                                                <span className="text-sm text-slate-300 group-hover:text-white transition-colors">
+                                                    {country === 'España' ? '🇪🇸' : '🇯🇵'} {country}
+                                                </span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
-                        <div className="space-y-1">
-                            <label className="text-sm text-slate-400">ISBN (SIBN)</label>
-                            <input
-                                type="text"
-                                name="isbn"
-                                value={formData.isbn}
-                                onChange={handleChange}
-                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                                placeholder="Código ISBN"
-                            />
-                        </div>
-
-                        <div className="space-y-1 col-span-1 md:col-span-2">
-                            <label className="text-sm text-slate-400">Fotografía</label>
+                        {/* Multi-Photo Upload */}
+                        <div className="space-y-2 col-span-1 md:col-span-2 lg:col-span-4">
+                            <label className="text-sm text-slate-400">Fotografías (puedes subir varias)</label>
                             <input
                                 type="file"
                                 accept="image/*"
+                                multiple
                                 onChange={handlePhotoChange}
                                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-600 file:text-white hover:file:bg-primary-700"
                             />
-                            {formData.photo && (
-                                <div className="mt-2 text-center">
-                                    <img src={formData.photo} alt="Vista previa" className="h-20 w-auto object-contain mx-auto rounded-md border border-slate-600" />
+                            {formData.photos.length > 0 && (
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                    {formData.photos.map((photo, idx) => (
+                                        <div key={idx} className="relative group">
+                                            <img src={photo} alt={`Foto ${idx + 1}`} className="h-20 w-20 object-cover rounded-md border border-slate-600" />
+                                            <button
+                                                type="button"
+                                                onClick={() => removePhoto(idx)}
+                                                className="absolute -top-1 -right-1 bg-red-600 hover:bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                            >
+                                                ×
+                                            </button>
+                                        </div>
+                                    ))}
                                 </div>
                             )}
                         </div>
@@ -678,77 +909,257 @@ export default function Preventas() {
 
             {/* Table Card */}
             <div className="bg-slate-800 rounded-xl shadow-sm border border-slate-700 overflow-hidden">
-                <div className="p-4 border-b border-slate-700">
-                    <h2 className="text-lg font-semibold text-slate-200">Registros de Preventa</h2>
+                {/* Tabs + Actions header */}
+                <div className="p-4 border-b border-slate-700 flex items-center justify-between flex-wrap gap-3">
+                    {/* Tab selectors */}
+                    <div className="flex items-center gap-1 bg-slate-900/60 rounded-lg p-1">
+                        <button
+                            onClick={() => setActiveTab('open')}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-all ${activeTab === 'open' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}
+                        >
+                            <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span>
+                            Pedidos Abiertos
+                            <span className="ml-1 bg-slate-700 text-slate-300 rounded-full px-2 py-0.5 text-xs">{items.length}</span>
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('closed')}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-all ${activeTab === 'closed' ? 'bg-slate-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}
+                        >
+                            <span className="w-2 h-2 rounded-full bg-slate-500 inline-block"></span>
+                            Pedidos Cerrados
+                            <span className="ml-1 bg-slate-700 text-slate-300 rounded-full px-2 py-0.5 text-xs">{closedBatches.length}</span>
+                        </button>
+                    </div>
+                    {/* Cerrar Pedido button (only shown on open tab) */}
+                    {activeTab === 'open' && (
+                        <button
+                            onClick={() => setShowCloseBatchModal(true)}
+                            disabled={items.length === 0}
+                            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold py-2 px-5 rounded-lg transition-all shadow-lg hover:shadow-indigo-500/30 active:scale-95"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Cerrar Pedido
+                        </button>
+                    )}
                 </div>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm text-slate-300">
-                        <thead className="bg-slate-900/50 text-slate-400 uppercase text-xs">
-                            <tr>
-                                <th className="px-6 py-3">No. Pedido</th>
-                                <th className="px-6 py-3">No. Cliente</th>
-                                <th className="px-6 py-3">Foto</th>
-                                <th className="px-6 py-3">Título</th>
-                                <th className="px-6 py-3">Autor</th>
-                                <th className="px-6 py-3 text-right">Saldo</th>
-                                <th className="px-6 py-3 text-center">Estado</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-700">
-                            {items.length === 0 ? (
+
+                {/* Close Batch Confirmation Modal */}
+                {showCloseBatchModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+                        <div className="bg-slate-800 rounded-2xl shadow-2xl border border-indigo-500/30 w-full max-w-md mx-4 p-6 space-y-5">
+                            <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 bg-indigo-600/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                                    <svg className="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold text-slate-100">Cerrar Pedido</h3>
+                                    <p className="text-sm text-slate-400">Se moverán <span className="font-semibold text-indigo-400">{items.length} pedidos</span> al historial</p>
+                                </div>
+                            </div>
+
+                            <p className="text-sm text-slate-300">
+                                Al cerrar el pedido se generará un PDF para el proveedor y todos los pedidos actuales pasarán al historial de <strong>Pedidos Cerrados</strong>. El área de pedidos abiertos quedará vacía para la siguiente temporada.
+                            </p>
+
+                            <div className="space-y-1">
+                                <label className="text-xs text-slate-400 font-medium">Nombre del lote (opcional)</label>
+                                <input
+                                    type="text"
+                                    value={batchName}
+                                    onChange={e => setBatchName(e.target.value)}
+                                    placeholder={`Ej. Temporada Febrero 2026`}
+                                    className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-slate-600"
+                                />
+                            </div>
+
+                            <div className="flex gap-3 pt-2">
+                                <button
+                                    onClick={() => { setShowCloseBatchModal(false); setBatchName(''); }}
+                                    className="flex-1 bg-slate-700 hover:bg-slate-600 text-slate-300 font-medium py-2 rounded-lg transition-colors"
+                                    disabled={closingBatch}
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={handleCloseBatch}
+                                    disabled={closingBatch}
+                                    className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+                                >
+                                    {closingBatch ? (
+                                        <><svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" /></svg> Cerrando...</>
+                                    ) : (
+                                        <><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg> Confirmar y Cerrar</>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* OPEN ORDERS TAB */}
+                {activeTab === 'open' && (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm text-slate-300">
+                            <thead className="bg-slate-900/50 text-slate-400 uppercase text-xs">
                                 <tr>
-                                    <td colSpan="8" className="px-6 py-8 text-center text-slate-500 italic">
-                                        No hay registros en la tabla aún.
-                                    </td>
+                                    <th className="px-6 py-3">No. Pedido</th>
+                                    <th className="px-6 py-3">No. Cliente</th>
+                                    <th className="px-6 py-3">Foto</th>
+                                    <th className="px-6 py-3">Título</th>
+                                    <th className="px-6 py-3">Autor</th>
+                                    <th className="px-6 py-3 text-right">Saldo</th>
+                                    <th className="px-6 py-3 text-center">Estado</th>
                                 </tr>
-                            ) : (
-                                items.map((item) => (
-                                    <tr key={item.id} className="hover:bg-slate-700/30 transition-colors">
-                                        <td className="px-6 py-4">
-                                            <button
-                                                onClick={() => setSelectedOrder(item)}
-                                                className="text-primary-400 hover:text-primary-300 hover:underline font-mono font-medium"
-                                            >
-                                                #{item.orderNumber}
-                                            </button>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <button
-                                                onClick={() => setSelectedClient(item.clientNumber)}
-                                                className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-2 py-1 rounded transition-colors font-mono"
-                                            >
-                                                {item.clientNumber}
-                                            </button>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            {item.photo ? (
-                                                <img src={item.photo} alt={item.title} className="w-10 h-10 object-cover rounded-md" />
-                                            ) : (
-                                                <div className="w-10 h-10 bg-slate-700 rounded-md flex items-center justify-center text-xs text-slate-500">N/A</div>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4 font-medium text-slate-200">{item.title}</td>
-                                        <td className="px-6 py-4">{item.artist}</td>
-                                        <td className="px-6 py-4 text-right font-medium">
-                                            <span className={item.balance > 0 ? "text-orange-400" : "text-green-400"}>
-                                                ${formatPrice(item.balance)}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-center">
-                                            <span className={`text-xs px-2 py-1 rounded font-medium ${item.isPaidInFull
-                                                ? "bg-green-600/20 text-green-400 ring-1 ring-green-500/30"
-                                                : "bg-orange-600/20 text-orange-400 ring-1 ring-orange-500/30"
-                                                }`}>
-                                                {item.isPaidInFull ? "Liquidado" : "Apartado"}
-                                            </span>
+                            </thead>
+                            <tbody className="divide-y divide-slate-700">
+                                {items.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="8" className="px-6 py-8 text-center text-slate-500 italic">
+                                            No hay pedidos abiertos. Usa el formulario de arriba para registrar una preventa.
                                         </td>
                                     </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div >
+                                ) : (
+                                    items.map((item) => (
+                                        <tr key={item.id} className="hover:bg-slate-700/30 transition-colors">
+                                            <td className="px-6 py-4">
+                                                <button
+                                                    onClick={() => setSelectedOrder(item)}
+                                                    className="text-primary-400 hover:text-primary-300 hover:underline font-mono font-medium"
+                                                >
+                                                    #{item.orderNumber}
+                                                </button>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <button
+                                                    onClick={() => setSelectedClient(item.clientNumber)}
+                                                    className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-2 py-1 rounded transition-colors font-mono"
+                                                >
+                                                    {item.clientNumber}
+                                                </button>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                {item.photo ? (
+                                                    <img src={item.photo} alt={item.title} className="w-10 h-10 object-cover rounded-md" />
+                                                ) : (
+                                                    <div className="w-10 h-10 bg-slate-700 rounded-md flex items-center justify-center text-xs text-slate-500">N/A</div>
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4 font-medium text-slate-200">{item.title}</td>
+                                            <td className="px-6 py-4">{item.artist}</td>
+                                            <td className="px-6 py-4 text-right font-medium">
+                                                <span className={item.balance > 0 ? "text-orange-400" : "text-green-400"}>
+                                                    ${formatPrice(item.balance)}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <span className={`text-xs px-2 py-1 rounded font-medium ${item.isPaidInFull
+                                                    ? "bg-green-600/20 text-green-400 ring-1 ring-green-500/30"
+                                                    : "bg-orange-600/20 text-orange-400 ring-1 ring-orange-500/30"
+                                                    }`}>
+                                                    {item.isPaidInFull ? "Liquidado" : "Apartado"}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                )} {/* end open tab */}
+
+                {/* CLOSED BATCHES TAB */}
+                {activeTab === 'closed' && (
+                    <div className="p-4 space-y-3">
+                        {closedBatches.length === 0 ? (
+                            <div className="py-12 text-center text-slate-500 italic">
+                                <svg className="w-12 h-12 mx-auto mb-3 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                                </svg>
+                                No hay lotes cerrados aún. Cuando cierres un pedido aparecerá aquí.
+                            </div>
+                        ) : (
+                            closedBatches.map((batch) => (
+                                <div key={batch.id} className="bg-slate-900/50 rounded-xl border border-slate-700 overflow-hidden">
+                                    {/* Batch header */}
+                                    <button
+                                        onClick={() => setExpandedBatch(expandedBatch === batch.id ? null : batch.id)}
+                                        className="w-full flex items-center justify-between p-4 hover:bg-slate-700/30 transition-colors"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-9 h-9 bg-slate-700 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8" />
+                                                </svg>
+                                            </div>
+                                            <div className="text-left">
+                                                <p className="text-sm font-semibold text-slate-200">{batch.name}</p>
+                                                <p className="text-xs text-slate-500">
+                                                    Cerrado: {new Date(batch.closedAt || batch.closed_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' })}
+                                                    &nbsp;·&nbsp;{batch.totalOrders} pedidos
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-4">
+                                            <div className="text-right">
+                                                <p className="text-sm font-bold text-slate-100">${formatPrice(batch.totalValue || batch.total_value)}</p>
+                                                <p className="text-xs text-slate-500">Valor total</p>
+                                            </div>
+                                            <svg className={`w-5 h-5 text-slate-400 transition-transform ${expandedBatch === batch.id ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                            </svg>
+                                        </div>
+                                    </button>
+
+                                    {/* Expanded orders */}
+                                    {expandedBatch === batch.id && (
+                                        <div className="border-t border-slate-700">
+                                            <table className="w-full text-left text-sm text-slate-300">
+                                                <thead className="bg-slate-800/80 text-slate-400 uppercase text-xs">
+                                                    <tr>
+                                                        <th className="px-4 py-2">No. Pedido</th>
+                                                        <th className="px-4 py-2">Cliente</th>
+                                                        <th className="px-4 py-2">Título</th>
+                                                        <th className="px-4 py-2">Categoría</th>
+                                                        <th className="px-4 py-2 text-right">Total</th>
+                                                        <th className="px-4 py-2 text-center">Estado</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-700/60">
+                                                    {batch.orders.map((order) => (
+                                                        <tr key={order.id} className="hover:bg-slate-700/20 transition-colors">
+                                                            <td className="px-4 py-3">
+                                                                <button
+                                                                    onClick={() => setSelectedOrder(order)}
+                                                                    className="text-primary-400 hover:text-primary-300 hover:underline font-mono text-xs"
+                                                                >
+                                                                    #{order.orderNumber}
+                                                                </button>
+                                                            </td>
+                                                            <td className="px-4 py-3 text-xs text-slate-300">{order.clientName || order.clientNumber}</td>
+                                                            <td className="px-4 py-3 text-xs text-slate-300 max-w-[180px] truncate">{order.title}</td>
+                                                            <td className="px-4 py-3 text-xs text-slate-400">{Array.isArray(order.categories) ? order.categories.join(', ') : order.category}</td>
+                                                            <td className="px-4 py-3 text-right text-xs font-medium text-slate-200">${formatPrice(order.totalPrice)}</td>
+                                                            <td className="px-4 py-3 text-center">
+                                                                <span className={`text-xs px-2 py-0.5 rounded font-medium ${order.isPaidInFull ? 'bg-green-600/20 text-green-400 ring-1 ring-green-500/30' : 'bg-orange-600/20 text-orange-400 ring-1 ring-orange-500/30'}`}>
+                                                                    {order.isPaidInFull ? 'Liquidado' : 'Apartado'}
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                </div>
+                            ))
+                        )}
+                    </div>
+                )} {/* end closed tab */}
+            </div>
 
             {/* Client History Modal */}
             < Modal
@@ -805,10 +1216,14 @@ export default function Preventas() {
                 {selectedOrder && (
                     <div className="space-y-6">
                         <div className="flex flex-col md:flex-row gap-6">
-                            {/* Photo */}
+                            {/* Photos */}
                             <div className="w-full md:w-1/3">
-                                {selectedOrder.photo ? (
-                                    <img src={selectedOrder.photo} alt={selectedOrder.title} className="w-full h-auto rounded-lg shadow-lg border border-slate-600" />
+                                {(selectedOrder.photos?.length > 0 || selectedOrder.photo) ? (
+                                    <div className="flex flex-col gap-2">
+                                        {(selectedOrder.photos?.length > 0 ? selectedOrder.photos : [selectedOrder.photo]).map((photo, idx) => (
+                                            <img key={idx} src={photo} alt={`${selectedOrder.title} - Foto ${idx + 1}`} className="w-full h-auto rounded-lg shadow-lg border border-slate-600" />
+                                        ))}
+                                    </div>
                                 ) : (
                                     <div className="w-full aspect-square bg-slate-700 rounded-lg flex items-center justify-center text-slate-500">Sin Foto</div>
                                 )}
@@ -831,12 +1246,16 @@ export default function Preventas() {
                                         <p className="text-slate-200">{selectedOrder.language} - {selectedOrder.category}</p>
                                     </div>
                                     <div>
-                                        <h4 className="text-xs text-slate-500 uppercase">ISBN</h4>
-                                        <p className="font-mono text-slate-300">{selectedOrder.isbn || 'N/A'}</p>
+                                        <h4 className="text-xs text-slate-500 uppercase">Categorías</h4>
+                                        <p className="text-slate-300">
+                                            {Array.isArray(selectedOrder.categories) ? selectedOrder.categories.join(', ') : (selectedOrder.category || 'N/A')}
+                                        </p>
                                     </div>
                                     <div>
-                                        <h4 className="text-xs text-slate-500 uppercase">Páginas</h4>
-                                        <p className="text-slate-300">{selectedOrder.pages}</p>
+                                        <h4 className="text-xs text-slate-500 uppercase">Pedido Internacional</h4>
+                                        <p className="text-slate-300">
+                                            {selectedOrder.internationalOrder ? `✅ ${selectedOrder.internationalCountry || ''}` : 'No'}
+                                        </p>
                                     </div>
                                 </div>
 

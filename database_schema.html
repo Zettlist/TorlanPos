@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Torlan POS - Esquema de Base de Datos</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #fff;
+            color: #1a1a2e;
+            padding: 30px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #3b82f6;
+            padding-bottom: 16px;
+        }
+        .header h1 { font-size: 26px; color: #1e3a5f; }
+        .header p  { color: #64748b; font-size: 13px; margin-top: 4px; }
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 24px;
+            padding: 14px 20px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: #334155;
+        }
+        .dot {
+            width: 14px; height: 14px;
+            border-radius: 3px;
+        }
+
+        #diagram {
+            width: 100%;
+            overflow-x: auto;
+        }
+        .mermaid {
+            display: flex;
+            justify-content: center;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 24px;
+            font-size: 11px;
+            color: #94a3b8;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 12px;
+        }
+
+        @media print {
+            body { padding: 15px; }
+            @page { size: A3 landscape; margin: 15mm; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🗄️ Torlan POS — Esquema de Base de Datos</h1>
+        <p>Base de datos: <strong>torlan_pos</strong> · MySQL · Multi-tenant SaaS · Versión 2026</p>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><div class="dot" style="background:#3b82f6"></div> Multi-tenant (empresas/usuarios)</div>
+        <div class="legend-item"><div class="dot" style="background:#10b981"></div> Ventas y Caja</div>
+        <div class="legend-item"><div class="dot" style="background:#f59e0b"></div> Inventario y Proveedores</div>
+        <div class="legend-item"><div class="dot" style="background:#8b5cf6"></div> Anticipos</div>
+        <div class="legend-item"><div class="dot" style="background:#ef4444"></div> Auditoría y Configuración</div>
+        <div class="legend-item"><strong>PK</strong> = Llave primaria &nbsp;|&nbsp; <strong>FK</strong> = Llave foránea</div>
+    </div>
+
+    <div id="diagram">
+        <div class="mermaid">
+erDiagram
+    empresas {
+        int id PK
+        varchar nombre_empresa
+        enum plan_contratado
+        enum estado
+        int max_usuarios
+        int max_productos
+        datetime fecha_registro
+        varchar billing_cycle_date
+    }
+    users {
+        int id PK
+        varchar username
+        varchar password_hash
+        int empresa_id FK
+        enum role
+        tinyint first_login
+        tinyint has_setup_complete
+        tinyint onboarding_completed
+    }
+    features {
+        int id PK
+        varchar name
+        varchar display_name
+        varchar icon
+    }
+    user_features {
+        int id PK
+        int user_id FK
+        int feature_id FK
+        tinyint is_enabled
+    }
+    suppliers {
+        int id PK
+        varchar name
+        varchar contact_name
+        varchar phone
+        varchar email
+    }
+    products {
+        int id PK
+        int empresa_id FK
+        varchar name
+        decimal price
+        decimal cost_price
+        decimal sale_price
+        int stock
+        varchar category
+        varchar barcode
+        varchar isbn
+        varchar publisher
+        int supplier_id FK
+        decimal supplier_price
+    }
+    sales {
+        int id PK
+        int empresa_id FK
+        int user_id FK
+        decimal total
+        enum payment_method
+        int cash_session_id FK
+        datetime created_at
+    }
+    sale_items {
+        int id PK
+        int sale_id FK
+        int product_id FK
+        int quantity
+        decimal price
+    }
+    cash_sessions {
+        int id PK
+        int empresa_id FK
+        int user_id FK
+        decimal opening_amount
+        decimal expected_amount
+        decimal declared_amount
+        decimal difference
+        enum status
+        datetime opened_at
+        datetime closed_at
+    }
+    sales_goals {
+        int id PK
+        int empresa_id FK
+        int user_id FK
+        enum type
+        decimal target
+        decimal current
+        date period_start
+    }
+    anticipos {
+        int id PK
+        int empresa_id FK
+        varchar customer_name
+        varchar customer_phone
+        decimal total_amount
+        decimal paid_amount
+        enum status
+        int created_by FK
+        timestamp created_at
+    }
+    anticipo_items {
+        int id PK
+        int anticipo_id FK
+        int product_id FK
+        int quantity
+        decimal unit_price
+        decimal subtotal
+    }
+    business_settings {
+        int id PK
+        int empresa_id FK
+        varchar setting_key
+        text setting_value
+    }
+    global_changes_log {
+        int id PK
+        int empresa_id FK
+        varchar event_type
+        text description
+        int user_id FK
+        datetime created_at
+    }
+
+    empresas ||--o{ users : "tiene"
+    empresas ||--o{ products : "tiene"
+    empresas ||--o{ sales : "genera"
+    empresas ||--o{ cash_sessions : "abre"
+    empresas ||--o{ anticipos : "registra"
+    empresas ||--o{ sales_goals : "define"
+    empresas ||--o{ business_settings : "configura"
+    empresas ||--o{ global_changes_log : "registra"
+    users ||--o{ user_features : "tiene"
+    features ||--o{ user_features : "pertenece"
+    users ||--o{ sales : "realiza"
+    users ||--o{ cash_sessions : "abre"
+    users ||--o{ anticipos : "crea"
+    products ||--o{ sale_items : "incluido en"
+    products ||--o{ anticipo_items : "incluido en"
+    sales ||--o{ sale_items : "contiene"
+    cash_sessions ||--o{ sales : "agrupa"
+    anticipos ||--o{ anticipo_items : "contiene"
+    suppliers ||--o{ products : "provee"
+        </div>
+    </div>
+
+    <div class="footer">
+        Generado el 22/02/2026 · Torlan POS v2 · 14 tablas · MySQL 8.0 · InnoDB · utf8mb4
+    </div>
+
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            er: { diagramPadding: 20, layoutDirection: 'TB', minEntityWidth: 100 },
+            themeVariables: {
+                primaryColor: '#dbeafe',
+                primaryTextColor: '#1e3a5f',
+                primaryBorderColor: '#3b82f6',
+                lineColor: '#64748b',
+                fontFamily: 'Segoe UI, Arial, sans-serif'
+            }
+        });
+
+        // Auto-print hint
+        window.onload = () => {
+            console.log('Diagrama listo. Usa Ctrl+P para imprimir/guardar como PDF.');
+        };
+    </script>
+</body>
+</html>

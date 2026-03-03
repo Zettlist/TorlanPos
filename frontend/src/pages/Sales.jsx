@@ -58,6 +58,13 @@ export default function Sales() {
     const [verifiedExtras, setVerifiedExtras] = useState({});
     const [pendingPaymentMethod, setPendingPaymentMethod] = useState(null);
 
+    // Mobile cart drawer state
+    const [mobileCartOpen, setMobileCartOpen] = useState(false);
+
+    // Discount and surcharge state
+    const [discount, setDiscount] = useState(0);
+    const [surcharge, setSurcharge] = useState(0);
+
     const searchInputRef = useRef(null);
     const autocompleteRef = useRef(null);
 
@@ -279,8 +286,15 @@ export default function Sales() {
         setCart(cart.filter(item => item.product_id !== productId));
     };
 
-    const getTotal = () => {
+    const getSubtotal = () => {
         return cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    };
+
+    const getTotal = () => {
+        const subtotal = getSubtotal();
+        const discountAmount = parseFloat(discount) || 0;
+        const surchargeAmount = parseFloat(surcharge) || 0;
+        return subtotal - discountAmount + surchargeAmount;
     };
 
     const getChange = () => {
@@ -353,10 +367,11 @@ export default function Sales() {
     };
 
     const closePaymentModal = () => {
-        setShowPaymentModal(false);
-        setPaymentMethod(null);
+        setShowPaymentModal(false); setPaymentMethod(null);
         setAmountReceived('');
         setSelectedBank('');
+        setDiscount(0);
+        setSurcharge(0);
     };
 
     const [paymentError, setPaymentError] = useState('');
@@ -396,7 +411,9 @@ export default function Sales() {
                     })),
                     payment_method: paymentMethod,
                     card_type: paymentMethod === 'card' ? cardType : null,
-                    bank: paymentMethod === 'card' ? selectedBank : null
+                    bank: paymentMethod === 'card' ? selectedBank : null,
+                    discount: parseFloat(discount) || 0,
+                    surcharge: parseFloat(surcharge) || 0
                 })
             });
 
@@ -408,6 +425,9 @@ export default function Sales() {
                     id: data.id,
                     date: new Date(),
                     items: [...cart],
+                    subtotal: data.subtotal,
+                    discount: data.discount,
+                    surcharge: data.surcharge,
                     total: data.total,
                     paymentMethod,
                     cardType: paymentMethod === 'card' ? cardType : null,
@@ -451,8 +471,10 @@ export default function Sales() {
         );
     }
 
+    const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+
     return (
-        <div className="h-[calc(100vh-2rem)] flex gap-6 animate-fade-in">
+        <div className="flex flex-col md:flex-row gap-6 animate-fade-in" style={{ height: 'calc(100vh - 2rem)' }}>
             {/* Stock Alert Modal */}
             {stockAlert && (
                 <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-slide-up">
@@ -556,8 +578,60 @@ export default function Sales() {
                                     </div>
                                 ))}
                             </div>
-                            <div className="border-t border-white/10 mt-3 pt-3 flex justify-between">
-                                <span className="font-semibold">Total:</span>
+                        </div>
+
+                        {/* Discount and Surcharge Section */}
+                        <div className="space-y-3 mb-4">
+                            {/* Discount */}
+                            <div>
+                                <label className="block text-sm text-slate-400 mb-1">Descuento (opcional)</label>
+                                <input
+                                    type="number"
+                                    value={discount}
+                                    onChange={(e) => setDiscount(e.target.value)}
+                                    className="input-glass"
+                                    placeholder="0.00"
+                                    min="0"
+                                    max={getSubtotal()}
+                                    step="0.01"
+                                />
+                            </div>
+
+                            {/* Surcharge */}
+                            <div>
+                                <label className="block text-sm text-slate-400 mb-1">Aumento (opcional)</label>
+                                <input
+                                    type="number"
+                                    value={surcharge}
+                                    onChange={(e) => setSurcharge(e.target.value)}
+                                    className="input-glass"
+                                    placeholder="0.00"
+                                    min="0"
+                                    step="0.01"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Total Display with Breakdown */}
+                        <div className="bg-white/5 rounded-xl p-4 mb-6">
+                            <div className="flex justify-between text-sm text-slate-400 mb-1">
+                                <span>Subtotal:</span>
+                                <span>${getSubtotal().toFixed(2)}</span>
+                            </div>
+                            {parseFloat(discount) > 0 && (
+                                <div className="flex justify-between text-sm text-emerald-400">
+                                    <span>Descuento:</span>
+                                    <span>-${parseFloat(discount).toFixed(2)}</span>
+                                </div>
+                            )}
+                            {parseFloat(surcharge) > 0 && (
+                                <div className="flex justify-between text-sm text-amber-400">
+                                    <span>Aumento:</span>
+                                    <span>+${parseFloat(surcharge).toFixed(2)}</span>
+                                </div>
+                            )}
+                            <div className="border-t border-white/10 mt-2 pt-2 flex justify-between">
+                                <span className="font-bold">Total:</span>
                                 <span className="text-xl font-bold text-primary-400">${getTotal().toFixed(2)} MXN</span>
                             </div>
                         </div>
@@ -715,7 +789,21 @@ export default function Sales() {
 
                         {/* Ticket Totals */}
                         <div className="p-4 bg-gray-50">
-                            <div className="flex justify-between text-lg font-bold mb-2">
+                            <div className="flex justify-between text-sm mb-1">
+                                <span>Subtotal:</span>
+                                <span>${ticketData.subtotal.toFixed(2)} MXN</span>
+                            </div>
+
+                            {ticketData.discount > 0 && (
+                                <div className="flex justify-between text-sm text-emerald-600">
+                                    <span>Descuento:</span>
+                                    <span>-${ticketData.discount.toFixed(2)} MXN</span>
+                                </div>
+                            )}
+
+                            {/* NO mostrar el aumento en el ticket */}
+
+                            <div className="flex justify-between text-lg font-bold mt-2 pt-2 border-t border-gray-300">
                                 <span>TOTAL:</span>
                                 <span>${ticketData.total.toFixed(2)} MXN</span>
                             </div>
@@ -867,8 +955,8 @@ export default function Sales() {
                     </p>
                 </div>
 
-                <div className="flex-1 overflow-auto">
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                <div className="flex-1 overflow-auto pb-24 md:pb-0">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                         {products.map(product => (
                             <button
                                 key={product.id}
@@ -924,8 +1012,26 @@ export default function Sales() {
                 </div>
             </div>
 
-            {/* Cart Section */}
-            <div className="w-96 flex flex-col glass-card-dark">
+            {/* Mobile Cart FAB - Only visible on mobile when cart has items */}
+            {cart.length > 0 && (
+                <button
+                    onClick={() => setMobileCartOpen(true)}
+                    className="mobile-cart-fab"
+                    aria-label="Ver carrito"
+                >
+                    <div className="relative">
+                        <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                        </svg>
+                        <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
+                            {totalItems}
+                        </span>
+                    </div>
+                </button>
+            )}
+
+            {/* Desktop Cart Section - Hidden on mobile */}
+            <div className="hidden md:flex w-96 flex-col glass-card-dark">
                 <div className="p-4 border-b border-white/10">
                     <div className="flex items-center justify-between">
                         <h2 className="text-lg font-semibold">Ticket de Cobro</h2>
@@ -1036,6 +1142,143 @@ export default function Sales() {
                             </svg>
                             <span className="font-semibold">Pago con Tarjeta</span>
                         </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Mobile Cart Drawer - Only visible on mobile */}
+            <div className={`mobile-cart-drawer md:hidden ${mobileCartOpen ? 'open' : 'closed'}`}>
+                {/* Drag Handle */}
+                <div className="flex justify-center py-2">
+                    <div className="w-12 h-1.5 bg-slate-600 rounded-full"></div>
+                </div>
+
+                <div className="flex flex-col h-full pb-6 overflow-hidden">
+                    <div className="px-4 pb-4 border-b border-white/10 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <h2 className="text-lg font-semibold">Ticket de Cobro</h2>
+                            {cart.length > 0 && (
+                                <span className="px-2 py-1 bg-primary-500/20 text-primary-400 rounded-full text-sm">
+                                    {totalItems} items
+                                </span>
+                            )}
+                        </div>
+                        <button
+                            onClick={() => setMobileCartOpen(false)}
+                            className="p-2 hover:bg-white/10 rounded-lg"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div className="flex-1 overflow-auto px-4 py-4 space-y-3">
+                        {cart.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center h-full text-slate-400">
+                                <svg className="w-16 h-16 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                                </svg>
+                                <p className="text-sm">Escanea productos para comenzar</p>
+                            </div>
+                        ) : (
+                            cart.map(item => (
+                                <div key={item.product_id} className="bg-white/5 rounded-xl p-3">
+                                    <div className="flex items-start gap-3 mb-2">
+                                        <div className="w-12 h-12 rounded-lg bg-black/20 overflow-hidden shrink-0 border border-white/10">
+                                            {item.image_url ? (
+                                                <img
+                                                    src={item.image_url}
+                                                    alt={item.name}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-slate-600">
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-medium text-sm truncate">{item.name}</p>
+                                            {item.sbin_code && (
+                                                <p className="text-xs text-slate-500 font-mono">{item.sbin_code}</p>
+                                            )}
+                                            <p className="text-xs text-slate-400">${item.price.toFixed(2)} c/u</p>
+                                        </div>
+                                        <button
+                                            onClick={() => removeFromCart(item.product_id)}
+                                            className="p-1 hover:bg-red-500/20 rounded text-slate-400 hover:text-red-400 touch-target"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => updateQuantity(item.product_id, -1)}
+                                                className="w-10 h-10 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center touch-target"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                                                </svg>
+                                            </button>
+                                            <span className="w-10 text-center font-medium">{item.quantity}</span>
+                                            <button
+                                                onClick={() => updateQuantity(item.product_id, 1)}
+                                                className="w-10 h-10 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center touch-target"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <p className="font-semibold text-primary-400">
+                                            ${(item.price * item.quantity).toFixed(2)}
+                                        </p>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+
+                    <div className="px-4 pt-4 border-t border-white/10 space-y-4 bg-slate-900">
+                        <div className="flex items-center justify-between text-xl">
+                            <span className="font-medium">Total a Cobrar:</span>
+                            <span className="font-bold text-2xl text-primary-400">
+                                ${getTotal().toFixed(2)}
+                            </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <button
+                                onClick={() => {
+                                    openPaymentModal('cash');
+                                    setMobileCartOpen(false);
+                                }}
+                                disabled={cart.length === 0}
+                                className="btn-primary py-4 flex flex-col items-center gap-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed touch-target"
+                            >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                                </svg>
+                                <span className="font-semibold text-sm">Efectivo</span>
+                            </button>
+                            <button
+                                onClick={() => {
+                                    openPaymentModal('card');
+                                    setMobileCartOpen(false);
+                                }}
+                                disabled={cart.length === 0}
+                                className="btn-primary py-4 flex flex-col items-center gap-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed touch-target"
+                            >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                                </svg>
+                                <span className="font-semibold text-sm">Tarjeta</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

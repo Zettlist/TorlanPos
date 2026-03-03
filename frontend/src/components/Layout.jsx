@@ -1,9 +1,11 @@
 import { NavLink, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Layout({ children }) {
     const { user, logout, hasFeature, isGlobalAdmin, isEmpresaAdmin, getEmpresa } = useAuth();
     const navigate = useNavigate();
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     const handleLogout = () => {
         logout();
@@ -166,9 +168,43 @@ export default function Layout({ children }) {
 
     return (
         <div className="min-h-screen bg-slate-900 relative">
-            {/* Sidebar - Fixed */}
-            <div className="fixed top-0 left-0 h-screen w-72 p-4 z-40">
-                <aside className="w-full h-full glass-card-dark flex flex-col overflow-hidden">
+            {/* Mobile Menu Button - Only visible on mobile */}
+            <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="md:hidden fixed top-4 left-4 z-50 p-3 bg-gradient-to-r from-primary-500 to-accent-500 rounded-xl shadow-xl touch-target"
+                aria-label="Toggle menu"
+            >
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    {mobileMenuOpen ? (
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    ) : (
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    )}
+                </svg>
+            </button>
+
+            {/* Mobile Overlay - Closes menu when clicked */}
+            {mobileMenuOpen && (
+                <div
+                    className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-30"
+                    onClick={() => setMobileMenuOpen(false)}
+                />
+            )}
+
+            {/* Sidebar - Hidden on mobile by default, slide in when menu open */}
+            <div
+                className={`
+                    fixed top-0 left-0 h-screen w-72 p-4 z-40
+                    transition-transform duration-300 ease-out
+                    ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+                    ${!mobileMenuOpen ? 'pointer-events-none md:pointer-events-auto' : 'pointer-events-auto'}
+                `}
+            >
+                <aside
+                    className="w-full h-full glass-card-dark flex flex-col overflow-hidden"
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ pointerEvents: 'auto' }}
+                >
                     {/* Logo */}
                     <div className="flex items-center gap-3 px-2 mb-6 flex-shrink-0 pt-2">
                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-gradient-to-br ${isGlobalAdmin() ? 'from-red-500 to-orange-500' : 'from-primary-500 to-accent-500'
@@ -204,6 +240,7 @@ export default function Layout({ children }) {
                                 key={item.to}
                                 to={item.to}
                                 end={item.to === '/'}
+                                onClick={() => setMobileMenuOpen(false)}
                                 className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
                             >
                                 {item.icon}
@@ -222,6 +259,7 @@ export default function Layout({ children }) {
                                             <NavLink
                                                 key={item.feature}
                                                 to={item.to}
+                                                onClick={() => setMobileMenuOpen(false)}
                                                 className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
                                             >
                                                 {item.icon}
@@ -250,6 +288,7 @@ export default function Layout({ children }) {
 
                                 <NavLink
                                     to="/admin/users"
+                                    onClick={() => setMobileMenuOpen(false)}
                                     className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
                                 >
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -287,8 +326,8 @@ export default function Layout({ children }) {
                 </aside>
             </div>
 
-            {/* Main Content - Pushed by Sidebar Width */}
-            <main className="ml-72 flex-1 p-4 w-auto min-h-screen">
+            {/* Main Content - Pushed by Sidebar Width on desktop, full width on mobile */}
+            <main className="ml-0 md:ml-72 flex-1 p-4 w-auto min-h-screen pt-20 md:pt-4">
                 <div className="max-w-7xl mx-auto">
                     {/* Billing Alert System */}
                     {user?.billing_status?.alert_level !== 'none' && user?.billing_status?.message && (

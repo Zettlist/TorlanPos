@@ -78,6 +78,53 @@ body {
   .table-cell {
     @apply px-4 py-4 text-sm text-slate-300;
   }
+
+  /* Mobile responsive utilities */
+  .mobile-only {
+    @apply block md:hidden;
+  }
+
+  .desktop-only {
+    @apply hidden md:block;
+  }
+
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+
+  /* Mobile cart floating button */
+  .mobile-cart-fab {
+    @apply fixed bottom-6 right-6 w-16 h-16 bg-gradient-to-r from-primary-500 to-accent-500 rounded-full shadow-2xl flex items-center justify-center z-40 md:hidden;
+    @apply hover:scale-110 active:scale-95 transition-transform;
+  }
+
+  /* Mobile cart drawer */
+  .mobile-cart-drawer {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(15, 23, 42, 0.98);
+    /* bg-slate-900/98 */
+    backdrop-filter: blur(24px);
+    border-top: 2px solid rgba(124, 58, 237, 0.3);
+    /* border-primary-500/30 */
+    border-top-left-radius: 1.5rem;
+    border-top-right-radius: 1.5rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    transform: translateY(0);
+    transition: transform 300ms ease-out;
+    z-index: 50;
+    max-height: 85vh;
+  }
+
+  .mobile-cart-drawer.closed {
+    transform: translateY(100%);
+  }
+
+  .mobile-cart-drawer.open {
+    transform: translateY(0);
+  }
 }
 
 /* Custom scrollbar */

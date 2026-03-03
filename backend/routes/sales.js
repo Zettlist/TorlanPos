@@ -82,30 +82,33 @@ router.get('/goals', async (req, res) => {
         const weekStartStr = weekStart.getFullYear() + '-' + String(weekStart.getMonth() + 1).padStart(2, '0') + '-' + String(weekStart.getDate()).padStart(2, '0');
         const monthStartStr = monthStart.getFullYear() + '-' + String(monthStart.getMonth() + 1).padStart(2, '0') + '-' + String(monthStart.getDate()).padStart(2, '0');
 
-        // 1. Get targets from Business Settings (Global for empresa)
-        const [weeklySettings] = await pool.query(
-            "SELECT setting_value FROM business_settings WHERE empresa_id = ? AND setting_key = 'weekly_sales_goal'",
-            [empresaId]
-        );
-        const [monthlySettings] = await pool.query(
-            "SELECT setting_value FROM business_settings WHERE empresa_id = ? AND setting_key = 'monthly_sales_goal'",
-            [empresaId]
-        );
+        // 1 & 2. Run all 4 queries in parallel (goals settings + actual sales)
+        const [
+            [weeklySettings],
+            [monthlySettings],
+            [weeklySalesResult],
+            [monthlySalesResult]
+        ] = await Promise.all([
+            pool.query(
+                "SELECT setting_value FROM business_settings WHERE empresa_id = ? AND setting_key = 'weekly_sales_goal'",
+                [empresaId]
+            ),
+            pool.query(
+                "SELECT setting_value FROM business_settings WHERE empresa_id = ? AND setting_key = 'monthly_sales_goal'",
+                [empresaId]
+            ),
+            pool.query(`
+                SELECT COALESCE(SUM(total), 0) as total FROM sales 
+                WHERE empresa_id = ? AND DATE(DATE_SUB(created_at, INTERVAL 6 HOUR)) >= ?
+            `, [empresaId, weekStartStr]),
+            pool.query(`
+                SELECT COALESCE(SUM(total), 0) as total FROM sales 
+                WHERE empresa_id = ? AND DATE(DATE_SUB(created_at, INTERVAL 6 HOUR)) >= ?
+            `, [empresaId, monthStartStr])
+        ]);
 
         const weeklyTarget = weeklySettings[0]?.setting_value ? parseFloat(weeklySettings[0].setting_value) : 0;
         const monthlyTarget = monthlySettings[0]?.setting_value ? parseFloat(monthlySettings[0].setting_value) : 0;
-
-        // 2. Calculate actual sales for the Company (COLLECTIVE GOAL)
-        // MySQL: Use DATE_SUB(created_at, INTERVAL 6 HOUR) for Mexico City timezone
-        const [weeklySalesResult] = await pool.query(`
-            SELECT COALESCE(SUM(total), 0) as total FROM sales 
-            WHERE empresa_id = ? AND DATE(DATE_SUB(created_at, INTERVAL 6 HOUR)) >= ?
-        `, [empresaId, weekStartStr]);
-
-        const [monthlySalesResult] = await pool.query(`
-            SELECT COALESCE(SUM(total), 0) as total FROM sales 
-            WHERE empresa_id = ? AND DATE(DATE_SUB(created_at, INTERVAL 6 HOUR)) >= ?
-        `, [empresaId, monthStartStr]);
 
         // 3. Return combined data
         res.json({
@@ -187,52 +190,50 @@ router.get('/statistics', async (req, res) => {
         const monthStartStr = `${monthStart.getFullYear()}-${String(monthStart.getMonth() + 1).padStart(2, '0')}-${String(monthStart.getDate()).padStart(2, '0')}`;
 
         // UNIFIED LOGIC: Use DATE_SUB for -6 hours offset (Mexico City timezone)
-
-        // Today's sales
-        const [todaySalesResult] = await pool.query(`
-            SELECT COALESCE(SUM(total), 0) as total, COUNT(*) as count
-            FROM sales 
-            WHERE empresa_id = ? AND DATE(DATE_SUB(created_at, INTERVAL 6 HOUR)) = ?
-        `, [empresaId, todayStr]);
-
-        // This week (MONDAY START)
-        const [weekSalesResult] = await pool.query(`
-            SELECT COALESCE(SUM(total), 0) as total, COUNT(*) as count
-            FROM sales 
-            WHERE empresa_id = ? AND DATE(DATE_SUB(created_at, INTERVAL 6 HOUR)) >= ?
-        `, [empresaId, weekStartStr]);
-
-        // Previous week
-        const [prevWeekSalesResult] = await pool.query(`
-            SELECT COALESCE(SUM(total), 0) as total, COUNT(*) as count
-            FROM sales 
-            WHERE empresa_id = ? 
-              AND DATE(DATE_SUB(created_at, INTERVAL 6 HOUR)) >= ?
-              AND DATE(DATE_SUB(created_at, INTERVAL 6 HOUR)) < ?
-        `, [empresaId, prevWeekStartStr, weekStartStr]);
-
-        // This month
-        const [monthSalesResult] = await pool.query(`
-            SELECT COALESCE(SUM(total), 0) as total, COUNT(*) as count
-            FROM sales 
-            WHERE empresa_id = ? AND DATE(DATE_SUB(created_at, INTERVAL 6 HOUR)) >= ?
-        `, [empresaId, monthStartStr]);
-
-        // Payment method breakdown
-        const [paymentBreakdown] = await pool.query(`
-            SELECT payment_method, COALESCE(SUM(total), 0) as total, COUNT(*) as count
-            FROM sales 
-            WHERE empresa_id = ? AND DATE(DATE_SUB(created_at, INTERVAL 6 HOUR)) >= ?
-            GROUP BY payment_method
-        `, [empresaId, monthStartStr]);
-
-        // Supplier debt (cost of goods for products with a supplier assigned) - TODAY ONLY
-        const [supplierDebtResult] = await pool.query(`
-            SELECT COALESCE(SUM(si.quantity * si.supplier_price_at_sale), 0) as totalDebt
-            FROM sale_items si
-            JOIN sales s ON si.sale_id = s.id
-            WHERE s.empresa_id = ? AND DATE(DATE_SUB(s.created_at, INTERVAL 6 HOUR)) = ?
-        `, [empresaId, todayStr]);
+        // Run all 6 queries in parallel for maximum performance
+        const [
+            [todaySalesResult],
+            [weekSalesResult],
+            [prevWeekSalesResult],
+            [monthSalesResult],
+            [paymentBreakdown],
+            [supplierDebtResult]
+        ] = await Promise.all([
+            pool.query(`
+                SELECT COALESCE(SUM(total), 0) as total, COUNT(*) as count
+                FROM sales 
+                WHERE empresa_id = ? AND DATE(DATE_SUB(created_at, INTERVAL 6 HOUR)) = ?
+            `, [empresaId, todayStr]),
+            pool.query(`
+                SELECT COALESCE(SUM(total), 0) as total, COUNT(*) as count
+                FROM sales 
+                WHERE empresa_id = ? AND DATE(DATE_SUB(created_at, INTERVAL 6 HOUR)) >= ?
+            `, [empresaId, weekStartStr]),
+            pool.query(`
+                SELECT COALESCE(SUM(total), 0) as total, COUNT(*) as count
+                FROM sales 
+                WHERE empresa_id = ? 
+                  AND DATE(DATE_SUB(created_at, INTERVAL 6 HOUR)) >= ?
+                  AND DATE(DATE_SUB(created_at, INTERVAL 6 HOUR)) < ?
+            `, [empresaId, prevWeekStartStr, weekStartStr]),
+            pool.query(`
+                SELECT COALESCE(SUM(total), 0) as total, COUNT(*) as count
+                FROM sales 
+                WHERE empresa_id = ? AND DATE(DATE_SUB(created_at, INTERVAL 6 HOUR)) >= ?
+            `, [empresaId, monthStartStr]),
+            pool.query(`
+                SELECT payment_method, COALESCE(SUM(total), 0) as total, COUNT(*) as count
+                FROM sales 
+                WHERE empresa_id = ? AND DATE(DATE_SUB(created_at, INTERVAL 6 HOUR)) >= ?
+                GROUP BY payment_method
+            `, [empresaId, monthStartStr]),
+            pool.query(`
+                SELECT COALESCE(SUM(si.quantity * si.supplier_price_at_sale), 0) as totalDebt
+                FROM sale_items si
+                JOIN sales s ON si.sale_id = s.id
+                WHERE s.empresa_id = ? AND DATE(DATE_SUB(s.created_at, INTERVAL 6 HOUR)) = ?
+            `, [empresaId, todayStr])
+        ]);
 
         res.json({
             today: todaySalesResult[0] || { total: 0, count: 0 },
@@ -291,7 +292,7 @@ router.get('/:id', async (req, res) => {
 // Create sale
 router.post('/', async (req, res) => {
     try {
-        const { items, payment_method } = req.body;
+        const { items, payment_method, discount, surcharge } = req.body;
         const userId = req.user.id;
         const empresaId = getEmpresaId(req);
 
@@ -322,51 +323,76 @@ router.post('/', async (req, res) => {
             return res.status(400).json({ error: 'Método de pago inválido' });
         }
 
-        // Verify all products belong to user's empresa
-        for (const item of items) {
-            const [productRows] = await pool.query(
-                'SELECT id, supplier_price FROM products WHERE id = ? AND empresa_id = ?',
-                [item.product_id, empresaId]
-            );
+        // Verify all products belong to user's empresa — single query for all items
+        const productIds = items.map(i => i.product_id);
+        const placeholders = productIds.map(() => '?').join(',');
+        const [productRows] = await pool.query(
+            `SELECT id, supplier_price FROM products WHERE empresa_id = ? AND id IN (${placeholders})`,
+            [empresaId, ...productIds]
+        );
 
-            if (productRows.length === 0) {
-                return res.status(400).json({ error: `Producto ${item.product_id} no encontrado` });
-            }
+        if (productRows.length !== items.length) {
+            const foundIds = new Set(productRows.map(p => p.id));
+            const missingId = productIds.find(id => !foundIds.has(id));
+            return res.status(400).json({ error: `Producto ${missingId} no encontrado` });
         }
 
-        // Calculate total from items
-        const calculatedTotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        // Build a map for quick supplier_price lookup
+        const productMap = new Map(productRows.map(p => [p.id, p]));
+
+        // Calculate subtotal from items
+        const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+        // Get discount and surcharge (default to 0 if not provided)
+        const discountAmount = parseFloat(discount) || 0;
+        const surchargeAmount = parseFloat(surcharge) || 0;
+
+        // Validate discount doesn't exceed subtotal
+        if (discountAmount > subtotal) {
+            return res.status(400).json({ error: 'El descuento no puede ser mayor al subtotal' });
+        }
+
+        // Validate amounts are non-negative
+        if (discountAmount < 0 || surchargeAmount < 0) {
+            return res.status(400).json({ error: 'Descuento y aumento deben ser valores positivos' });
+        }
+
+        // Calculate final total: subtotal - discount + surcharge
+        const total = subtotal - discountAmount + surchargeAmount;
 
         const cashSessionId = openSessions[0].id;
 
-        // Create sale
+        // Create sale with discount and surcharge
         const [saleResult] = await pool.query(
-            'INSERT INTO sales (empresa_id, user_id, total, payment_method, cash_session_id) VALUES (?, ?, ?, ?, ?)',
-            [empresaId, userId, calculatedTotal, payment_method, cashSessionId]
+            'INSERT INTO sales (empresa_id, user_id, subtotal, discount, surcharge, total, payment_method, cash_session_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [empresaId, userId, subtotal, discountAmount, surchargeAmount, total, payment_method, cashSessionId]
         );
 
-        // Create sale items
-        for (const item of items) {
-            // Get current supplier price from items if not already matched
-            const [pInfo] = await pool.query('SELECT supplier_price FROM products WHERE id = ?', [item.product_id]);
-            const supplierPrice = pInfo[0]?.supplier_price || null;
+        // Batch insert all sale_items in a single query
+        const saleItemValues = items.map(item => {
+            const supplierPrice = productMap.get(item.product_id)?.supplier_price || null;
+            return [saleResult.insertId, item.product_id, item.quantity, item.price, supplierPrice];
+        });
+        await pool.query(
+            'INSERT INTO sale_items (sale_id, product_id, quantity, price, supplier_price_at_sale) VALUES ?',
+            [saleItemValues]
+        );
 
-            await pool.query(
-                'INSERT INTO sale_items (sale_id, product_id, quantity, price, supplier_price_at_sale) VALUES (?, ?, ?, ?, ?)',
-                [saleResult.insertId, item.product_id, item.quantity, item.price, supplierPrice]
-            );
-
-            // Update stock
-            await pool.query(
-                'UPDATE products SET stock = stock - ? WHERE id = ? AND empresa_id = ?',
-                [item.quantity, item.product_id, empresaId]
-            );
-        }
+        // Batch update stock using CASE WHEN for all products at once
+        const stockCases = items.map(() => 'WHEN id = ? THEN stock - ?').join(' ');
+        const stockValues = items.flatMap(item => [item.product_id, item.quantity]);
+        await pool.query(
+            `UPDATE products SET stock = (CASE ${stockCases} ELSE stock END) WHERE id IN (${placeholders}) AND empresa_id = ?`,
+            [...stockValues, ...productIds, empresaId]
+        );
 
         res.json({
             message: 'Venta registrada correctamente',
             id: saleResult.insertId,
-            total: calculatedTotal
+            subtotal: subtotal,
+            discount: discountAmount,
+            surcharge: surchargeAmount,
+            total: total
         });
     } catch (error) {
         console.error('Create sale error:', error);
