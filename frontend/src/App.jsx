@@ -13,6 +13,8 @@ import ManagerOnboarding from './pages/Onboarding/ManagerOnboarding';
 import CashManager from './pages/CashControl/CashManager';
 import SalesReports from './pages/Reports/SalesReports';
 import Suppliers from './pages/Suppliers';
+import CouponsManager from './pages/admin/CouponsManager';
+import WebOrders from './pages/WebOrders';
 
 import Preventas from './pages/Preventas';
 import Anticipos from './pages/Anticipos';
@@ -104,10 +106,17 @@ function EmpresaRoutes() {
 
                 <Route path="/preventas" element={<Preventas />} />
                 <Route path="/anticipos" element={<Anticipos />} />
+                <Route path="/web-orders" element={<WebOrders />} />
 
 
                 <Route path="/admin/users" element={<UserManager />} />
+                <Route path="/admin/coupons" element={
+                    <RequireManager>
+                        <CouponsManager />
+                    </RequireManager>
+                } />
                 <Route path="/onboarding" element={<ManagerOnboarding />} />
+
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
         </Layout>

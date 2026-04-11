@@ -292,7 +292,8 @@ router.get('/:id', async (req, res) => {
 // Create sale
 router.post('/', async (req, res) => {
     try {
-        const { items, payment_method, discount, surcharge } = req.body;
+        const { items, payment_method, discount, surcharge, coupon_code } = req.body;
+
         const userId = req.user.id;
         const empresaId = getEmpresaId(req);
 
@@ -378,13 +379,19 @@ router.post('/', async (req, res) => {
             [saleItemValues]
         );
 
-        // Batch update stock using CASE WHEN for all products at once
-        const stockCases = items.map(() => 'WHEN id = ? THEN stock - ?').join(' ');
-        const stockValues = items.flatMap(item => [item.product_id, item.quantity]);
-        await pool.query(
-            `UPDATE products SET stock = (CASE ${stockCases} ELSE stock END) WHERE id IN (${placeholders}) AND empresa_id = ?`,
-            [...stockValues, ...productIds, empresaId]
-        );
+        // Handle Coupon Redemption if provided
+        if (coupon_code) {
+            try {
+                await pool.query(
+                    'UPDATE coupons SET usage_count = usage_count + 1 WHERE code = ? AND status = "active" AND (usage_limit IS NULL OR usage_count < usage_limit)',
+                    [coupon_code]
+                );
+            } catch (couponError) {
+                console.error('⚠️ Could not increment coupon usage:', couponError);
+                // We don't fail the sale if only the coupon increment fails, 
+                // but in a production environment, you might want more strictness.
+            }
+        }
 
         res.json({
             message: 'Venta registrada correctamente',
@@ -394,6 +401,7 @@ router.post('/', async (req, res) => {
             surcharge: surchargeAmount,
             total: total
         });
+
     } catch (error) {
         console.error('Create sale error:', error);
         res.status(500).json({ error: 'Error interno del servidor' });

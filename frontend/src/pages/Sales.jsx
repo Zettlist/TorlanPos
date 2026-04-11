@@ -65,6 +65,13 @@ export default function Sales() {
     const [discount, setDiscount] = useState(0);
     const [surcharge, setSurcharge] = useState(0);
 
+    // Coupon state
+    const [couponCode, setCouponCode] = useState('');
+    const [couponLoading, setCouponLoading] = useState(false);
+    const [couponSuccess, setCouponSuccess] = useState('');
+    const [couponError, setCouponError] = useState('');
+
+
     const searchInputRef = useRef(null);
     const autocompleteRef = useRef(null);
 
@@ -372,7 +379,45 @@ export default function Sales() {
         setSelectedBank('');
         setDiscount(0);
         setSurcharge(0);
+        setCouponCode('');
+        setCouponError('');
+        setCouponSuccess('');
     };
+
+    const handleValidateCoupon = async () => {
+        if (!couponCode.trim()) return;
+        setCouponLoading(true);
+        setCouponError('');
+        setCouponSuccess('');
+        
+        try {
+            const response = await fetch(`${API_URL}/coupons/validate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    code: couponCode,
+                    apply_to_amount: getSubtotal()
+                })
+            });
+
+            const data = await response.json();
+            if (response.ok && data.valid) {
+                setDiscount(data.discount_amount);
+                setCouponSuccess(`¡Cupón aplicado! Descuento de $${data.discount_amount} MXN`);
+            } else {
+                setCouponError(data.error || 'Cupón inválido');
+                setDiscount(0);
+            }
+        } catch (error) {
+            setCouponError('Error al validar el cupón');
+        } finally {
+            setCouponLoading(false);
+        }
+    };
+
 
     const [paymentError, setPaymentError] = useState('');
 
@@ -413,8 +458,10 @@ export default function Sales() {
                     card_type: paymentMethod === 'card' ? cardType : null,
                     bank: paymentMethod === 'card' ? selectedBank : null,
                     discount: parseFloat(discount) || 0,
-                    surcharge: parseFloat(surcharge) || 0
+                    surcharge: parseFloat(surcharge) || 0,
+                    coupon_code: couponSuccess ? couponCode : null
                 })
+
             });
 
             const data = await response.json();
@@ -597,7 +644,7 @@ export default function Sales() {
                                 />
                             </div>
 
-                            {/* Surcharge */}
+                             {/* Surcharge */}
                             <div>
                                 <label className="block text-sm text-slate-400 mb-1">Aumento (opcional)</label>
                                 <input
@@ -610,7 +657,45 @@ export default function Sales() {
                                     step="0.01"
                                 />
                             </div>
+
+                            {/* Coupon Code */}
+                            <div className="pt-2">
+                                <label className="block text-sm text-slate-400 mb-1">Código de Cupón</label>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={couponCode}
+                                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                                        className={`input-glass flex-1 ${couponError ? 'border-red-500/50' : couponSuccess ? 'border-emerald-500/50' : ''}`}
+                                        placeholder="Ej. BISONTE10"
+                                        disabled={couponLoading || !!couponSuccess}
+                                    />
+                                    {couponSuccess ? (
+                                        <button 
+                                            onClick={() => {
+                                                setCouponCode('');
+                                                setCouponSuccess('');
+                                                setDiscount(0);
+                                            }}
+                                            className="px-4 py-2 bg-red-500/20 text-red-400 rounded-xl hover:bg-red-500/30 transition-colors text-sm"
+                                        >
+                                            Quitar
+                                        </button>
+                                    ) : (
+                                        <button 
+                                            onClick={handleValidateCoupon}
+                                            disabled={couponLoading || !couponCode}
+                                            className="px-4 py-2 bg-primary-500 text-white rounded-xl hover:bg-primary-600 transition-colors disabled:opacity-50 text-sm font-medium"
+                                        >
+                                            {couponLoading ? '...' : 'Aplicar'}
+                                        </button>
+                                    )}
+                                </div>
+                                {couponError && <p className="text-[10px] text-red-400 mt-1 ml-1">{couponError}</p>}
+                                {couponSuccess && <p className="text-[10px] text-emerald-400 mt-1 ml-1">{couponSuccess}</p>}
+                            </div>
                         </div>
+
 
                         {/* Total Display with Breakdown */}
                         <div className="bg-white/5 rounded-xl p-4 mb-6">

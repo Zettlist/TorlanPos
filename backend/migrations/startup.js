@@ -9,6 +9,8 @@ import { migrateProductSuppliers } from './migrate_product_suppliers.js';
 import { migrateTags } from './migrate_tags.js';
 import { migrateAdultContent } from './migrate_adult_content.js';
 import migrateAdultFields from './migrate_adult_fields.js';
+import { migrateCoupons } from './migrate_coupons.js';
+
 
 export async function runSchemaMigrations() {
     console.log('🔄 Checking database schema migrations...');
@@ -104,6 +106,10 @@ export async function runSchemaMigrations() {
         // 12. Adult Content Fields
         console.log('Running adult fields migration...');
         await migrateAdultFields(connection);
+
+        // 13. Coupons Module Table
+        await migrateCoupons(connection);
+
 
     } catch (error) {
         console.error('❌ Schema Migrations failed:', error);
