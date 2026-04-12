@@ -2,9 +2,44 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { API_URL } from '../config';
 
-function OrderDetailModal({ order, onClose }) {
+const STATUS_CONFIG = {
+    pendiente:  { label: 'Pendiente',  bg: 'bg-amber-500/20',   text: 'text-amber-400',   border: 'border-amber-500/30',   dot: 'bg-amber-400'   },
+    confirmado: { label: 'Confirmado', bg: 'bg-emerald-500/20', text: 'text-emerald-400', border: 'border-emerald-500/30', dot: 'bg-emerald-400' },
+    cancelado:  { label: 'Cancelado',  bg: 'bg-red-500/20',     text: 'text-red-400',     border: 'border-red-500/30',     dot: 'bg-red-400'     },
+};
+
+function StatusBadge({ status }) {
+    const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.pendiente;
     return (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${cfg.bg} ${cfg.text} ${cfg.border}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+            {cfg.label}
+        </span>
+    );
+}
+
+function OrderDetailModal({ order, onClose, onConfirm, onCancel }) {
+    const [acting, setActing] = useState(false);
+    const [resultado, setResultado] = useState(null); // { ok, mensaje }
+
+    const handleConfirm = async () => {
+        setActing(true);
+        const result = await onConfirm(order.id);
+        setResultado(result);
+        setActing(false);
+    };
+
+    const handleCancel = async () => {
+        setActing(true);
+        await onCancel(order.id);
+        setActing(false);
+        onClose();
+    };
+
+    const isPendiente = order.web_status === 'pendiente';
+
+    return (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={!acting ? onClose : undefined}>
             <div
                 className="bg-slate-800 border border-white/10 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
@@ -12,15 +47,18 @@ function OrderDetailModal({ order, onClose }) {
                 {/* Header */}
                 <div className="flex items-start justify-between p-6 border-b border-white/10">
                     <div>
-                        <h2 className="text-xl font-bold">Pedido #{order.id}</h2>
-                        <p className="text-sm text-slate-400 mt-0.5">
+                        <div className="flex items-center gap-3 mb-1">
+                            <h2 className="text-xl font-bold">Pedido #{order.id}</h2>
+                            <StatusBadge status={order.web_status} />
+                        </div>
+                        <p className="text-sm text-slate-400">
                             {new Date(order.created_at).toLocaleDateString('es-MX', {
                                 day: '2-digit', month: 'long', year: 'numeric',
                                 hour: '2-digit', minute: '2-digit'
                             })}
                         </p>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+                    <button onClick={onClose} disabled={acting} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
@@ -28,6 +66,17 @@ function OrderDetailModal({ order, onClose }) {
                 </div>
 
                 <div className="p-6 space-y-6">
+                    {/* Resultado de confirmación */}
+                    {resultado && (
+                        <div className={`rounded-xl p-4 border ${resultado.ok
+                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                            : 'bg-red-500/10 border-red-500/30 text-red-300'}`}
+                        >
+                            <p className="font-semibold">{resultado.ok ? '✅ Pedido confirmado' : '❌ Pedido cancelado por falta de stock'}</p>
+                            {resultado.motivo && <p className="text-sm mt-1 opacity-80">{resultado.motivo}</p>}
+                        </div>
+                    )}
+
                     {/* Cliente */}
                     <div className="bg-white/5 rounded-xl p-4">
                         <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Cliente</p>
@@ -38,9 +87,7 @@ function OrderDetailModal({ order, onClose }) {
                             <div>
                                 <p className="font-medium">{order.nombre} {order.apellido}</p>
                                 <p className="text-sm text-slate-400">{order.email}</p>
-                                {order.client_code && (
-                                    <p className="text-xs text-slate-500 font-mono mt-0.5">{order.client_code}</p>
-                                )}
+                                {order.client_code && <p className="text-xs text-slate-500 font-mono mt-0.5">{order.client_code}</p>}
                             </div>
                         </div>
                     </div>
@@ -68,53 +115,86 @@ function OrderDetailModal({ order, onClose }) {
                     <div>
                         <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Productos</p>
                         <div className="space-y-2">
-                            {order.items?.map((item) => (
-                                <div key={item.id} className="flex items-center gap-3 bg-white/5 rounded-xl p-3">
-                                    {item.image_url ? (
-                                        <img src={item.image_url} alt={item.name} className="w-12 h-12 rounded-lg object-cover flex-shrink-0 bg-white/10" />
-                                    ) : (
-                                        <div className="w-12 h-12 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
-                                            <svg className="w-6 h-6 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                                            </svg>
+                            {order.items?.map((item) => {
+                                const stockInsuficiente = isPendiente && item.stock < item.quantity;
+                                return (
+                                    <div key={item.id} className={`flex items-center gap-3 rounded-xl p-3 ${stockInsuficiente ? 'bg-red-500/10 border border-red-500/20' : 'bg-white/5'}`}>
+                                        {item.image_url ? (
+                                            <img src={item.image_url} alt={item.name} className="w-12 h-12 rounded-lg object-cover flex-shrink-0 bg-white/10" />
+                                        ) : (
+                                            <div className="w-12 h-12 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
+                                                <svg className="w-6 h-6 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                                </svg>
+                                            </div>
+                                        )}
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-medium text-sm truncate">{item.name}</p>
+                                            <div className="flex items-center gap-2 mt-0.5">
+                                                <span className="text-xs text-slate-400">x{item.quantity}</span>
+                                                {isPendiente && (
+                                                    <span className={`text-xs px-1.5 py-0.5 rounded ${stockInsuficiente ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                                                        Stock: {item.stock}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
-                                    )}
-                                    <div className="flex-1 min-w-0">
-                                        <p className="font-medium text-sm truncate">{item.name}</p>
-                                        <p className="text-xs text-slate-400 mt-0.5">x{item.quantity}</p>
+                                        <div className="text-right flex-shrink-0">
+                                            <p className="font-semibold text-sm">${(item.price * item.quantity).toFixed(2)}</p>
+                                            <p className="text-xs text-slate-500">${Number(item.price).toFixed(2)} c/u</p>
+                                        </div>
                                     </div>
-                                    <div className="text-right flex-shrink-0">
-                                        <p className="font-semibold text-sm">${(item.price * item.quantity).toFixed(2)}</p>
-                                        <p className="text-xs text-slate-500">${Number(item.price).toFixed(2)} c/u</p>
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
 
                     {/* Desglose */}
                     <div className="bg-white/5 rounded-xl p-4 space-y-2 text-sm">
                         <div className="flex justify-between text-slate-400">
-                            <span>Subtotal</span>
-                            <span>${Number(order.subtotal).toFixed(2)}</span>
+                            <span>Subtotal</span><span>${Number(order.subtotal).toFixed(2)}</span>
                         </div>
                         {Number(order.discount) > 0 && (
                             <div className="flex justify-between text-emerald-400">
-                                <span>Descuento</span>
-                                <span>-${Number(order.discount).toFixed(2)}</span>
+                                <span>Descuento</span><span>-${Number(order.discount).toFixed(2)}</span>
                             </div>
                         )}
                         {Number(order.surcharge) > 0 && (
                             <div className="flex justify-between text-slate-400">
-                                <span>Envío</span>
-                                <span>${Number(order.surcharge).toFixed(2)}</span>
+                                <span>Envío</span><span>${Number(order.surcharge).toFixed(2)}</span>
                             </div>
                         )}
                         <div className="flex justify-between font-bold text-base pt-2 border-t border-white/10">
-                            <span>Total</span>
-                            <span>${Number(order.total).toFixed(2)}</span>
+                            <span>Total</span><span>${Number(order.total).toFixed(2)}</span>
                         </div>
                     </div>
+
+                    {/* Acciones (solo para pendientes y sin resultado aún) */}
+                    {isPendiente && !resultado && (
+                        <div className="flex gap-3">
+                            <button
+                                onClick={handleConfirm}
+                                disabled={acting}
+                                className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
+                            >
+                                {acting ? (
+                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                ) : (
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                )}
+                                Confirmar Existencia
+                            </button>
+                            <button
+                                onClick={handleCancel}
+                                disabled={acting}
+                                className="px-5 py-3 bg-white/5 hover:bg-red-500/20 disabled:opacity-50 text-red-400 hover:text-red-300 border border-white/10 rounded-xl font-semibold transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
@@ -125,27 +205,47 @@ export default function WebOrders() {
     const { token } = useAuth();
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [filter, setFilter] = useState('pendiente');
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [detailLoading, setDetailLoading] = useState(false);
-    const [total, setTotal] = useState(0);
+    const [counts, setCounts] = useState({ pendiente: 0, confirmado: 0, cancelado: 0, total: 0 });
 
-    const fetchOrders = useCallback(async () => {
+    const fetchOrders = useCallback(async (status = filter) => {
         setLoading(true);
         try {
-            const res = await fetch(`${API_URL}/web-orders`, {
+            const params = status ? `?status=${status}` : '';
+            const res = await fetch(`${API_URL}/web-orders${params}`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const data = await res.json();
             setOrders(data.orders || []);
-            setTotal(data.total || 0);
         } catch {
             setOrders([]);
         } finally {
             setLoading(false);
         }
+    }, [token, filter]);
+
+    // Fetch counts for all statuses
+    const fetchCounts = useCallback(async () => {
+        try {
+            const all = await Promise.all(
+                ['', 'pendiente', 'confirmado', 'cancelado'].map(s =>
+                    fetch(`${API_URL}/web-orders${s ? `?status=${s}` : ''}`, {
+                        headers: { Authorization: `Bearer ${token}` },
+                    }).then(r => r.json()).then(d => ({ status: s || 'total', count: d.total || 0 }))
+                )
+            );
+            const c = {};
+            all.forEach(({ status, count }) => { c[status] = count; });
+            setCounts(c);
+        } catch { /* ignore */ }
     }, [token]);
 
-    useEffect(() => { fetchOrders(); }, [fetchOrders]);
+    useEffect(() => {
+        fetchOrders();
+        fetchCounts();
+    }, [filter]);
 
     const openDetail = async (id) => {
         setDetailLoading(true);
@@ -153,16 +253,39 @@ export default function WebOrders() {
             const res = await fetch(`${API_URL}/web-orders/${id}`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
-            const data = await res.json();
-            setSelectedOrder(data);
-        } catch {
-            // ignore
-        } finally {
-            setDetailLoading(false);
-        }
+            setSelectedOrder(await res.json());
+        } catch { /* ignore */ }
+        finally { setDetailLoading(false); }
     };
 
-    const totalRevenue = orders.reduce((sum, o) => sum + Number(o.total), 0);
+    const handleConfirm = async (id) => {
+        const res = await fetch(`${API_URL}/web-orders/${id}/confirm`, {
+            method: 'PUT',
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        // Update local state
+        setOrders(prev => prev.filter(o => o.id !== id));
+        setSelectedOrder(prev => prev ? { ...prev, web_status: data.confirmado ? 'confirmado' : 'cancelado' } : null);
+        fetchCounts();
+        return { ok: data.confirmado, motivo: data.motivo };
+    };
+
+    const handleCancel = async (id) => {
+        await fetch(`${API_URL}/web-orders/${id}/cancel`, {
+            method: 'PUT',
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        setOrders(prev => prev.filter(o => o.id !== id));
+        fetchCounts();
+    };
+
+    const FILTERS = [
+        { value: 'pendiente',  label: 'Pendientes',  color: 'text-amber-400',   activeBg: 'bg-amber-500/20 border-amber-500/40' },
+        { value: 'confirmado', label: 'Confirmados', color: 'text-emerald-400', activeBg: 'bg-emerald-500/20 border-emerald-500/40' },
+        { value: 'cancelado',  label: 'Cancelados',  color: 'text-red-400',     activeBg: 'bg-red-500/20 border-red-500/40' },
+        { value: '',           label: 'Todos',        color: 'text-slate-300',   activeBg: 'bg-primary-500/20 border-primary-500/40' },
+    ];
 
     return (
         <div className="space-y-6 animate-fade-in">
@@ -176,11 +299,16 @@ export default function WebOrders() {
                             </svg>
                         </span>
                         Pedidos Página Web
+                        {counts.pendiente > 0 && (
+                            <span className="ml-1 px-2 py-0.5 rounded-full bg-amber-500 text-white text-xs font-bold">
+                                {counts.pendiente}
+                            </span>
+                        )}
                     </h1>
                     <p className="text-sm text-slate-400 mt-1">Pedidos confirmados desde Bisonte Shop</p>
                 </div>
                 <button
-                    onClick={fetchOrders}
+                    onClick={() => { fetchOrders(); fetchCounts(); }}
                     className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm transition-colors"
                 >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -191,19 +319,45 @@ export default function WebOrders() {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-2 gap-3">
-                <div className="glass-card-dark rounded-xl p-4 text-center">
-                    <p className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-                        {total}
-                    </p>
-                    <p className="text-xs text-slate-400 mt-1">Pedidos totales</p>
-                </div>
-                <div className="glass-card-dark rounded-xl p-4 text-center">
-                    <p className="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">
-                        ${totalRevenue.toFixed(2)}
-                    </p>
-                    <p className="text-xs text-slate-400 mt-1">Ingresos web</p>
-                </div>
+            <div className="grid grid-cols-3 gap-3">
+                {[
+                    { key: 'pendiente',  label: 'Pendientes',  color: 'from-amber-400 to-orange-400' },
+                    { key: 'confirmado', label: 'Confirmados', color: 'from-emerald-400 to-teal-400' },
+                    { key: 'cancelado',  label: 'Cancelados',  color: 'from-red-400 to-pink-400' },
+                ].map(({ key, label, color }) => (
+                    <button
+                        key={key}
+                        onClick={() => setFilter(key)}
+                        className={`glass-card-dark rounded-xl p-4 text-center transition-all border ${filter === key ? 'border-white/20 bg-white/[0.07]' : 'border-transparent'}`}
+                    >
+                        <p className={`text-2xl font-bold bg-gradient-to-r ${color} bg-clip-text text-transparent`}>
+                            {counts[key] ?? 0}
+                        </p>
+                        <p className="text-xs text-slate-400 mt-1">{label}</p>
+                    </button>
+                ))}
+            </div>
+
+            {/* Filtros */}
+            <div className="flex gap-2 flex-wrap">
+                {FILTERS.map(({ value, label, activeBg }) => (
+                    <button
+                        key={value}
+                        onClick={() => setFilter(value)}
+                        className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors border ${
+                            filter === value
+                                ? `${activeBg} text-white`
+                                : 'bg-white/5 text-slate-400 border-white/10 hover:border-white/20'
+                        }`}
+                    >
+                        {label}
+                        {value === 'pendiente' && counts.pendiente > 0 && (
+                            <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold">
+                                {counts.pendiente}
+                            </span>
+                        )}
+                    </button>
+                ))}
             </div>
 
             {/* Lista */}
@@ -219,7 +373,9 @@ export default function WebOrders() {
                         </svg>
                     </div>
                     <p className="text-slate-400 font-medium">Sin pedidos</p>
-                    <p className="text-slate-500 text-sm mt-1">Aún no hay pedidos confirmados en la tienda web</p>
+                    <p className="text-slate-500 text-sm mt-1">
+                        No hay pedidos {filter ? `"${STATUS_CONFIG[filter]?.label?.toLowerCase()}"` : ''} en este momento
+                    </p>
                 </div>
             ) : (
                 <div className="space-y-3">
@@ -234,23 +390,23 @@ export default function WebOrders() {
                                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center font-semibold text-sm flex-shrink-0">
                                     {order.nombre?.charAt(0)?.toUpperCase() ?? '#'}
                                 </div>
-
                                 <div className="flex-1 min-w-0">
-                                    <p className="font-semibold text-sm">
-                                        {order.nombre ? `${order.nombre} ${order.apellido}` : `Pedido #${order.id}`}
-                                    </p>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <p className="font-semibold text-sm">
+                                            {order.nombre ? `${order.nombre} ${order.apellido}` : `Pedido #${order.id}`}
+                                        </p>
+                                        <StatusBadge status={order.web_status} />
+                                    </div>
                                     <p className="text-xs text-slate-400 truncate mt-0.5">
-                                        {order.email ?? 'Sin email registrado'}
+                                        {order.email ?? 'Sin email'}
                                     </p>
                                 </div>
-
                                 <div className="text-right flex-shrink-0 hidden sm:block">
                                     <p className="font-bold">${Number(order.total).toFixed(2)}</p>
                                     <p className="text-xs text-slate-500">
                                         {order.total_items} {order.total_items === 1 ? 'producto' : 'productos'}
                                     </p>
                                 </div>
-
                                 <div className="text-right flex-shrink-0 hidden md:block">
                                     <p className="text-xs text-slate-400">
                                         {new Date(order.created_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })}
@@ -259,7 +415,6 @@ export default function WebOrders() {
                                         {new Date(order.created_at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
                                     </p>
                                 </div>
-
                                 <svg className="w-4 h-4 text-slate-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                 </svg>
@@ -270,7 +425,12 @@ export default function WebOrders() {
             )}
 
             {selectedOrder && (
-                <OrderDetailModal order={selectedOrder} onClose={() => setSelectedOrder(null)} />
+                <OrderDetailModal
+                    order={selectedOrder}
+                    onClose={() => setSelectedOrder(null)}
+                    onConfirm={handleConfirm}
+                    onCancel={handleCancel}
+                />
             )}
         </div>
     );
