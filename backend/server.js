@@ -23,6 +23,7 @@ import anticiposRoutes from './routes/anticipos.js';
 import publicCatalogRoutes from './routes/publicCatalog.js';
 import couponsRoutes from './routes/coupons.js';
 import webOrdersRoutes from './routes/webOrders.js';
+import storeCreditsRoutes from './routes/storeCredits.js';
 
 
 import { runSchemaMigrations } from './migrations/startup.js';
@@ -127,6 +128,7 @@ app.use('/api/preventas', preventasRoutes);
 app.use('/api/anticipos', anticiposRoutes);
 app.use('/api/public/catalog', publicCatalogRoutes); // Public API (no auth) for external consumers
 app.use('/api/coupons', couponsRoutes);
+app.use('/api/store-credits', storeCreditsRoutes);
 app.use('/api/web-orders', webOrdersRoutes);
 console.log('✅ Routes loaded successfully');
 

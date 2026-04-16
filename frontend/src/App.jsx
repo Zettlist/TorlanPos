@@ -14,6 +14,7 @@ import CashManager from './pages/CashControl/CashManager';
 import SalesReports from './pages/Reports/SalesReports';
 import Suppliers from './pages/Suppliers';
 import CouponsManager from './pages/admin/CouponsManager';
+import StoreCreditsManager from './pages/admin/StoreCreditsManager';
 import WebOrders from './pages/WebOrders';
 
 import Preventas from './pages/Preventas';
@@ -113,6 +114,11 @@ function EmpresaRoutes() {
                 <Route path="/admin/coupons" element={
                     <RequireManager>
                         <CouponsManager />
+                    </RequireManager>
+                } />
+                <Route path="/admin/store-credits" element={
+                    <RequireManager>
+                        <StoreCreditsManager />
                     </RequireManager>
                 } />
                 <Route path="/onboarding" element={<ManagerOnboarding />} />

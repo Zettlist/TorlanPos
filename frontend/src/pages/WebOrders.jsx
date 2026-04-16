@@ -18,6 +18,29 @@ function StatusBadge({ status }) {
     );
 }
 
+function ProcessTypeBadge({ processType, status }) {
+    if (!processType || status === 'pendiente') return null;
+    const isAuto = processType === 'auto';
+    return (
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border ${
+            isAuto
+                ? 'bg-violet-500/15 text-violet-400 border-violet-500/30'
+                : 'bg-slate-500/15 text-slate-400 border-slate-500/30'
+        }`}>
+            {isAuto ? (
+                <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+            ) : (
+                <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+            )}
+            {isAuto ? 'Automático' : 'Manual'}
+        </span>
+    );
+}
+
 function OrderDetailModal({ order, onClose, onConfirm, onCancel }) {
     const [acting, setActing] = useState(false);
     const [resultado, setResultado] = useState(null); // { ok, mensaje }
@@ -47,9 +70,10 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel }) {
                 {/* Header */}
                 <div className="flex items-start justify-between p-6 border-b border-white/10">
                     <div>
-                        <div className="flex items-center gap-3 mb-1">
+                        <div className="flex items-center gap-3 mb-1 flex-wrap">
                             <h2 className="text-xl font-bold">Pedido #{order.id}</h2>
                             <StatusBadge status={order.web_status} />
+                            <ProcessTypeBadge processType={order.web_process_type} status={order.web_status} />
                         </div>
                         <p className="text-sm text-slate-400">
                             {new Date(order.created_at).toLocaleDateString('es-MX', {
@@ -68,27 +92,67 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel }) {
                 <div className="p-6 space-y-6">
                     {/* Resultado de confirmación */}
                     {resultado && (
-                        <div className={`rounded-xl p-4 border ${resultado.ok
-                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                            : 'bg-red-500/10 border-red-500/30 text-red-300'}`}
-                        >
-                            <p className="font-semibold">{resultado.ok ? '✅ Pedido confirmado' : '❌ Pedido cancelado por falta de stock'}</p>
-                            {resultado.motivo && <p className="text-sm mt-1 opacity-80">{resultado.motivo}</p>}
-                        </div>
+                        resultado.stockInsuficiente ? (
+                            <div className="rounded-xl p-4 border bg-amber-500/10 border-amber-500/30 text-amber-300">
+                                <p className="font-semibold">⚠️ Stock insuficiente — no se confirmó</p>
+                                <p className="text-sm mt-1 opacity-80">{resultado.motivo}</p>
+                                {resultado.advertencias?.length > 0 && (
+                                    <ul className="mt-2 space-y-1">
+                                        {resultado.advertencias.map((a, i) => (
+                                            <li key={i} className="text-xs opacity-70">• {a}</li>
+                                        ))}
+                                    </ul>
+                                )}
+                                <p className="text-xs mt-3 opacity-60">Cancela el pedido manualmente y contacta al cliente para avisar.</p>
+                            </div>
+                        ) : (
+                            <div className={`rounded-xl p-4 border ${resultado.ok
+                                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                                : 'bg-red-500/10 border-red-500/30 text-red-300'}`}
+                            >
+                                <p className="font-semibold">{resultado.ok ? '✅ Pedido confirmado' : '❌ Pedido cancelado automáticamente'}</p>
+                                {resultado.motivo && <p className="text-sm mt-1 opacity-80">{resultado.motivo}</p>}
+                            </div>
+                        )
                     )}
 
                     {/* Cliente */}
                     <div className="bg-white/5 rounded-xl p-4">
                         <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Cliente</p>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 mb-3">
                             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center font-semibold text-sm flex-shrink-0">
                                 {order.nombre?.charAt(0)?.toUpperCase() ?? '?'}
                             </div>
                             <div>
                                 <p className="font-medium">{order.nombre} {order.apellido}</p>
-                                <p className="text-sm text-slate-400">{order.email}</p>
                                 {order.client_code && <p className="text-xs text-slate-500 font-mono mt-0.5">{order.client_code}</p>}
                             </div>
+                        </div>
+                        {/* Contacto */}
+                        <div className="space-y-2 pt-3 border-t border-white/10">
+                            <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Contacto</p>
+                            <a href={`mailto:${order.email}`} className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 transition-colors group">
+                                <svg className="w-4 h-4 text-slate-500 group-hover:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                </svg>
+                                {order.email}
+                            </a>
+                            {order.telefono && (
+                                <a href={`tel:${order.telefono}`} className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 transition-colors group">
+                                    <svg className="w-4 h-4 text-slate-500 group-hover:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                    </svg>
+                                    {order.telefono}
+                                </a>
+                            )}
+                            {!order.telefono && (
+                                <p className="flex items-center gap-2 text-sm text-slate-500 italic">
+                                    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                    </svg>
+                                    Sin teléfono registrado
+                                </p>
+                            )}
                         </div>
                     </div>
 
@@ -116,7 +180,7 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel }) {
                         <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Productos</p>
                         <div className="space-y-2">
                             {order.items?.map((item) => {
-                                const stockInsuficiente = isPendiente && item.stock < item.quantity;
+                                const stockInsuficiente = isPendiente && item.alcanza === false;
                                 return (
                                     <div key={item.id} className={`flex items-center gap-3 rounded-xl p-3 ${stockInsuficiente ? 'bg-red-500/10 border border-red-500/20' : 'bg-white/5'}`}>
                                         {item.image_url ? (
@@ -130,12 +194,19 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel }) {
                                         )}
                                         <div className="flex-1 min-w-0">
                                             <p className="font-medium text-sm truncate">{item.name}</p>
-                                            <div className="flex items-center gap-2 mt-0.5">
+                                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                                                 <span className="text-xs text-slate-400">x{item.quantity}</span>
                                                 {isPendiente && (
-                                                    <span className={`text-xs px-1.5 py-0.5 rounded ${stockInsuficiente ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
-                                                        Stock: {item.stock}
-                                                    </span>
+                                                    <>
+                                                        <span className={`text-xs px-1.5 py-0.5 rounded ${!item.alcanza ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                                                            Disponible: {item.disponible ?? item.stock}
+                                                        </span>
+                                                        {item.reservado_anteriores > 0 && (
+                                                            <span className="text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400">
+                                                                {item.reservado_anteriores} reservado(s) por órdenes anteriores
+                                                            </span>
+                                                        )}
+                                                    </>
                                                 )}
                                             </div>
                                         </div>
@@ -264,11 +335,32 @@ export default function WebOrders() {
             headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
-        // Update local state
+
+        // 409 = stock insuficiente (sin conflicto FIFO) → no auto-cancelar, solo advertir
+        if (res.status === 409 && data.stockInsuficiente) {
+            return {
+                ok: false,
+                stockInsuficiente: true,
+                motivo: data.mensaje,
+                advertencias: data.advertencias,
+            };
+        }
+
+        // Remove confirmed/cancelled order from current list and refresh counts
         setOrders(prev => prev.filter(o => o.id !== id));
         setSelectedOrder(prev => prev ? { ...prev, web_status: data.confirmado ? 'confirmado' : 'cancelado' } : null);
+        // Also remove any auto-cancelled orders from the list
+        if (data.autoCancelados?.length) {
+            const cancelledIds = data.autoCancelados.map(o => o.id);
+            setOrders(prev => prev.filter(o => !cancelledIds.includes(o.id)));
+        }
         fetchCounts();
-        return { ok: data.confirmado, motivo: data.motivo };
+        return {
+            ok: data.confirmado,
+            motivo: data.motivo || (data.autoCancelados?.length
+                ? `Confirmado. ${data.autoCancelados.length} pedido(s) posterior(es) cancelado(s) automáticamente por falta de stock.`
+                : null),
+        };
     };
 
     const handleCancel = async (id) => {
@@ -392,10 +484,22 @@ export default function WebOrders() {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="text-xs font-mono text-slate-500 bg-white/5 px-1.5 py-0.5 rounded">
+                                            #{order.id}
+                                        </span>
                                         <p className="font-semibold text-sm">
                                             {order.nombre ? `${order.nombre} ${order.apellido}` : `Pedido #${order.id}`}
                                         </p>
                                         <StatusBadge status={order.web_status} />
+                                        <ProcessTypeBadge processType={order.web_process_type} status={order.web_status} />
+                                        {order.conflicto && (
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/20 text-red-400 border border-red-500/30">
+                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                                                </svg>
+                                                Sin stock suficiente
+                                            </span>
+                                        )}
                                     </div>
                                     <p className="text-xs text-slate-400 truncate mt-0.5">
                                         {order.email ?? 'Sin email'}
