@@ -167,7 +167,17 @@ export default function Products() {
         tags: [],
         is_adult: false,
         artist: '',
-        group_name: ''
+        group_name: '',
+        events: {
+            novedad: { active: false, type: 'until_stock', end_date: '' },
+            liquidacion: { active: false, type: 'until_stock', end_date: '' }
+        }
+    });
+
+    const DEFAULT_EVENTS = { novedad: { active: false, type: 'until_stock', end_date: '' }, liquidacion: { active: false, type: 'until_stock', end_date: '' } };
+    const updateEvent = (key, updates) => setFormData(prev => {
+        const evs = prev.events || DEFAULT_EVENTS;
+        return { ...prev, events: { ...evs, [key]: { ...(evs[key] || DEFAULT_EVENTS[key]), ...updates } } };
     });
 
     // Adult tab state
@@ -396,6 +406,7 @@ export default function Products() {
             formDataToSend.append('extras', JSON.stringify(formData.extras || []));
             formDataToSend.append('tags', JSON.stringify(formData.tags || []));
             formDataToSend.append('is_adult', formData.is_adult ? '1' : '0');
+            formDataToSend.append('events', JSON.stringify(formData.events || {}));
 
             if (imageFile) {
                 formDataToSend.append('image', imageFile);
@@ -444,7 +455,8 @@ export default function Products() {
             name: '', cost_price: '', sale_price: '', stock: '', category: 'Manga', sbin_code: '', isbn: '',
             extras: [], publication_date: '', publisher: '', page_count: '', dimensions: { length: '', width: '', height: '' }, weight: '',
             page_color: 'Blanco y Negro', language: 'Español', supplier_id: '', supplier_price: '', barcode: '', tags: [],
-            is_adult: false, artist: '', group_name: ''
+            is_adult: false, artist: '', group_name: '',
+            events: { novedad: { active: false, type: 'until_stock', end_date: '' }, liquidacion: { active: false, type: 'until_stock', end_date: '' } }
         });
         setSbinStatus({ checking: false, isDuplicate: false, existingProduct: null });
         setSelectedExtras([]);
@@ -600,7 +612,12 @@ export default function Products() {
             extras: parsedExtras,
             barcode: product.barcode || '',
             tags: product.tags || [],
-            is_adult: Boolean(product.is_adult)
+            is_adult: Boolean(product.is_adult),
+            artist: product.artist || '',
+            group_name: product.group_name || '',
+            events: (() => {
+                try { return product.events ? (typeof product.events === 'string' ? JSON.parse(product.events) : product.events) : { novedad: { active: false, type: 'until_stock', end_date: '' }, liquidacion: { active: false, type: 'until_stock', end_date: '' } }; } catch { return { novedad: { active: false, type: 'until_stock', end_date: '' }, liquidacion: { active: false, type: 'until_stock', end_date: '' } }; }
+            })()
         });
         setSelectedExtras(parsedExtras);
         setSbinStatus({ checking: false, isDuplicate: false, existingProduct: null });
@@ -897,509 +914,311 @@ export default function Products() {
 
             {/* Form Modal */}
             {showForm && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="glass-card p-6 w-full max-w-lg max-h-[85vh] overflow-y-auto animate-slide-up custom-scrollbar">
-                        <h2 className="text-xl font-semibold mb-6 sticky top-0 bg-[#1e293b] z-10 pb-4 border-b border-white/5 -mx-6 px-6 pt-2 -mt-2">
-                            {editingProduct ? 'Editar Producto' : 'Nuevo Producto'}
-                        </h2>
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            {/* Image Upload */}
-                            <div className="flex justify-center mb-6">
-                                <div className="relative group">
-                                    <div className={`w-32 h-32 rounded-xl border-2 border-dashed flex items-center justify-center overflow-hidden transition-colors ${imagePreview ? 'border-primary-500 bg-black/40' : 'border-slate-600 hover:border-primary-500/50 bg-white/5'
-                                        }`}>
-                                        {imagePreview ? (
-                                            <img
-                                                src={imagePreview}
-                                                alt="Preview"
-                                                className="w-full h-full object-cover"
-                                            />
-                                        ) : (
-                                            <div className="text-center p-4">
-                                                <svg className="w-8 h-8 text-slate-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                </svg>
-                                                <span className="text-xs text-slate-500">
-                                                    {editingProduct ? 'Cambiar imagen' : 'Subir foto *'}
-                                                </span>
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-slate-900 border border-white/10 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto animate-slide-up custom-scrollbar">
+
+                        {/* Header */}
+                        <div className="sticky top-0 z-10 bg-slate-900/95 backdrop-blur-sm border-b border-white/8 px-6 py-4 flex items-center justify-between">
+                            <h2 className="text-lg font-semibold text-white">
+                                {editingProduct ? 'Editar Producto' : 'Nuevo Producto'}
+                            </h2>
+                            <button type="button" onClick={closeForm} className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+
+                            {/* ── Imagen ── */}
+                            <div className="flex justify-center">
+                                <div className="relative">
+                                    <div className={`w-28 h-28 rounded-2xl border-2 border-dashed flex items-center justify-center overflow-hidden transition-all ${imagePreview ? 'border-primary-500 bg-black/40' : 'border-slate-700 hover:border-primary-500/50 bg-white/5'}`}>
+                                        {imagePreview
+                                            ? <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                                            : <div className="text-center p-3">
+                                                <svg className="w-7 h-7 text-slate-500 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                                <span className="text-xs text-slate-500">{editingProduct ? 'Cambiar' : 'Subir foto *'}</span>
                                             </div>
-                                        )}
-                                        <input
-                                            type="file"
-                                            accept="image/*"
-                                            onChange={(e) => {
-                                                const file = e.target.files[0];
-                                                if (file) {
-                                                    // Validate file size (50MB limit)
-                                                    if (file.size > 50 * 1024 * 1024) {
-                                                        alert('El archivo es demasiado grande. El límite máximo es de 50MB.');
-                                                        e.target.value = null; // Clear input
-                                                        return;
-                                                    }
-                                                    setImageFile(file);
-                                                    setImagePreview(URL.createObjectURL(file));
-                                                }
-                                            }}
-                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                            required={!editingProduct && !imageFile}
-                                        />
+                                        }
+                                        <input type="file" accept="image/*" onChange={(e) => { const file = e.target.files[0]; if (file) { if (file.size > 50 * 1024 * 1024) { alert('Máximo 50MB.'); e.target.value = null; return; } setImageFile(file); setImagePreview(URL.createObjectURL(file)); } }} className="absolute inset-0 opacity-0 cursor-pointer" required={!editingProduct && !imageFile} />
                                     </div>
-                                    {editingProduct && !imagePreview && (
-                                        <p className="text-xs text-center text-slate-500 mt-2">Sin imagen actual</p>
+                                    {imagePreview && (
+                                        <button type="button" onClick={() => { setImageFile(null); setImagePreview(null); }} className="absolute -top-2 -right-2 w-6 h-6 bg-slate-700 hover:bg-red-500/80 text-white rounded-full flex items-center justify-center transition-colors shadow">
+                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                                        </button>
                                     )}
                                 </div>
                             </div>
 
-                            <div>
-                                <label className="block text-sm text-slate-400 mb-1">Nombre</label>
-                                <input
-                                    type="text"
-                                    value={formData.name}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    className="input-glass"
-                                    placeholder="Nombre del producto"
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm text-slate-400 mb-1">ISBN / SKU Interno</label>
-                                <div className="flex gap-2">
-                                    <input
-                                        type="text"
-                                        value={formData.isbn}
-                                        onChange={(e) => {
-                                            const val = e.target.value.replace(/\D/g, '');
-                                            setFormData({ ...formData, isbn: val, sbin_code: val });
-                                        }}
-                                        className="input-glass flex-1 font-mono"
-                                        placeholder="ISBN-13 o SKU interno"
-                                        maxLength={13}
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={generateSku}
-                                        disabled={!formData.name || !formData.category}
-                                        className="px-3 py-2 bg-primary-500/20 text-primary-400 hover:bg-primary-500/30 rounded-lg text-sm font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-primary-500/20"
-                                        title={!formData.name || !formData.category ? 'Complete nombre y categoría para generar' : 'Generar código único'}
-                                    >
-                                        Generar
-                                    </button>
-                                </div>
-                                <p className="text-xs text-slate-500 mt-1">El código generado también se usará para escáner</p>
-                            </div>
-                            <div className="grid grid-cols-3 gap-4">
+                            {/* ── Información Básica ── */}
+                            <div className="space-y-3">
+                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Información básica</p>
                                 <div>
-                                    <label className="block text-sm text-slate-400 mb-1">Precio de Costo *</label>
-                                    <input
-                                        type="number"
-                                        value={formData.cost_price}
-                                        onChange={(e) => setFormData({ ...formData, cost_price: e.target.value })}
-                                        onKeyDown={(e) => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()}
-                                        className="input-glass"
-                                        step="0.01"
-                                        min="0"
-                                        placeholder="0.00"
-                                        required
-                                    />
+                                    <label className="block text-sm text-slate-400 mb-1">Nombre</label>
+                                    <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="input-glass" placeholder="Nombre del producto" required />
                                 </div>
                                 <div>
-                                    <label className="block text-sm text-slate-400 mb-1">Precio de Venta *</label>
-                                    <input
-                                        type="number"
-                                        value={formData.sale_price}
-                                        onChange={(e) => setFormData({ ...formData, sale_price: e.target.value })}
-                                        onKeyDown={(e) => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()}
-                                        className="input-glass"
-                                        step="0.01"
-                                        min="0"
-                                        placeholder="0.00"
-                                        required
-                                    />
+                                    <label className="block text-sm text-slate-400 mb-1">ISBN / SKU Interno</label>
+                                    <div className="flex gap-2">
+                                        <input type="text" value={formData.isbn} onChange={(e) => { const val = e.target.value.replace(/\D/g, ''); setFormData({ ...formData, isbn: val, sbin_code: val }); }} className="input-glass flex-1 font-mono" placeholder="ISBN-13 o SKU interno" maxLength={13} />
+                                        <button type="button" onClick={generateSku} disabled={!formData.name || !formData.category} className="px-3 py-2 bg-primary-500/20 text-primary-400 hover:bg-primary-500/30 rounded-lg text-sm font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed">Generar</button>
+                                    </div>
+                                    <p className="text-xs text-slate-600 mt-1">El código generado también se usará para escáner</p>
                                 </div>
-                                <div>
-                                    <label className="block text-sm text-slate-400 mb-1">Stock</label>
-                                    <input
-                                        type="number"
-                                        value={formData.stock}
-                                        onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                                        className="input-glass"
-                                        min="0"
-                                        placeholder="0"
-                                    />
+                                <div className="grid grid-cols-3 gap-3">
+                                    <div>
+                                        <label className="block text-xs text-slate-500 mb-1">Costo *</label>
+                                        <input type="number" value={formData.cost_price} onChange={(e) => setFormData({ ...formData, cost_price: e.target.value })} onKeyDown={(e) => ["e","E","+","-"].includes(e.key) && e.preventDefault()} className="input-glass" step="0.01" min="0" placeholder="0.00" required />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-slate-500 mb-1">Venta *</label>
+                                        <input type="number" value={formData.sale_price} onChange={(e) => setFormData({ ...formData, sale_price: e.target.value })} onKeyDown={(e) => ["e","E","+","-"].includes(e.key) && e.preventDefault()} className="input-glass" step="0.01" min="0" placeholder="0.00" required />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-slate-500 mb-1">Stock</label>
+                                        <input type="number" value={formData.stock} onChange={(e) => setFormData({ ...formData, stock: e.target.value })} className="input-glass" min="0" placeholder="0" />
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* Adult Content Checkbox */}
-                            <div className="mb-4">
+                            {/* ── Clasificación ── */}
+                            <div className="space-y-3">
+                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Clasificación</p>
+
+                                {/* Adult toggle */}
                                 <label className="flex items-center gap-3 cursor-pointer group w-fit">
-                                    <div className={`w-5 h-5 rounded flex items-center justify-center transition-colors ${formData.is_adult ? 'bg-rose-500 border-rose-500' : 'border-2 border-slate-500 group-hover:border-slate-400'}`}>
-                                        {formData.is_adult && (
-                                            <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                            </svg>
-                                        )}
+                                    <div className={`w-5 h-5 rounded flex items-center justify-center transition-colors ${formData.is_adult ? 'bg-rose-500' : 'border-2 border-slate-600 group-hover:border-slate-400'}`}>
+                                        {formData.is_adult && <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                                     </div>
-                                    <input
-                                        type="checkbox"
-                                        checked={formData.is_adult}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, is_adult: e.target.checked }))}
-                                        className="hidden"
-                                    />
-                                    <span className={`text-sm font-medium transition-colors ${formData.is_adult ? 'text-rose-400' : 'text-slate-300'}`}>
-                                        Producto para adultos (18+)
-                                    </span>
+                                    <input type="checkbox" checked={formData.is_adult} onChange={(e) => setFormData(prev => ({ ...prev, is_adult: e.target.checked }))} className="hidden" />
+                                    <span className={`text-sm font-medium transition-colors ${formData.is_adult ? 'text-rose-400' : 'text-slate-400'}`}>Producto para adultos (18+)</span>
                                 </label>
-                            </div>
 
-                            {/* Adult Content Specific Fields */}
-                            {formData.is_adult && (
-                                <div className="grid grid-cols-2 gap-4 mt-4 p-4 border rounded-xl bg-red-500/5 inset-0 border-red-500/20 mb-4">
-                                    <div>
-                                        <label className="block text-sm text-red-200 mb-1">Artista</label>
-                                        <input
-                                            type="text"
-                                            value={formData.artist || ''}
-                                            onChange={(e) => setFormData({ ...formData, artist: e.target.value })}
-                                            className="input-glass border-red-500/30 focus:border-red-400 placeholder:text-red-900/40"
-                                            placeholder="Nombre del artista"
-                                        />
+                                {formData.is_adult && (
+                                    <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-rose-500/5 border border-rose-500/15">
+                                        <div>
+                                            <label className="block text-xs text-rose-300/70 mb-1">Artista</label>
+                                            <input type="text" value={formData.artist || ''} onChange={(e) => setFormData({ ...formData, artist: e.target.value })} className="input-glass border-rose-500/20" placeholder="Nombre del artista" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs text-rose-300/70 mb-1">Grupo / Círculo</label>
+                                            <input type="text" value={formData.group_name || ''} onChange={(e) => setFormData({ ...formData, group_name: e.target.value })} className="input-glass border-rose-500/20" placeholder="Círculo doujin" />
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label className="block text-sm text-red-200 mb-1">Grupo / Círculo</label>
-                                        <input
-                                            type="text"
-                                            value={formData.group_name || ''}
-                                            onChange={(e) => setFormData({ ...formData, group_name: e.target.value })}
-                                            className="input-glass border-red-500/30 focus:border-red-400 placeholder:text-red-900/40"
-                                            placeholder="Nombre del círculo doujin"
-                                        />
+                                )}
+
+                                {/* Category chips */}
+                                <div>
+                                    <label className="block text-xs text-slate-500 mb-2">Categoría</label>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {['Manga', 'Revista', 'Figuras', 'Boxset', 'Calendario', 'Edición Especial', 'Extra', 'Fanbook', 'Libro de Arte'].map(type => (
+                                            <button key={type} type="button"
+                                                onClick={() => { const noPages = ['Figuras','Boxset','Calendario','Extra'].includes(type); setFormData({ ...formData, category: type, ...(noPages ? { page_count: '', page_color: '' } : {}) }); }}
+                                                className={`px-2 py-2 rounded-lg text-xs font-medium text-center transition-all border ${formData.category === type ? 'bg-primary-500/20 border-primary-500/60 text-primary-300' : 'bg-white/3 border-white/8 text-slate-400 hover:border-slate-500 hover:text-slate-300'}`}
+                                            >{type}</button>
+                                        ))}
                                     </div>
                                 </div>
-                            )}
+                            </div>
 
-                            {/* E-commerce & Technical Details */}
-                            <div className="mb-4">
-                                <h3 className="text-sm font-semibold text-white mb-4">Categoría y Detalles Técnicos</h3>
-                                <div className="flex flex-wrap gap-4">
-                                    {['Manga', 'Revista', 'Figuras', 'Boxset', 'Calendario', 'Edición Especial', 'Extra', 'Fanbook', 'Libro de Arte'].map(type => (
-                                        <label key={type} className="flex items-center gap-2 cursor-pointer group">
-                                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${formData.category === type ? 'border-primary-500' : 'border-slate-500 group-hover:border-slate-400'}`}>
-                                                {formData.category === type && <div className="w-2.5 h-2.5 rounded-full bg-primary-500" />}
+                            {/* ── Detalles Técnicos ── */}
+                            <div className="space-y-3">
+                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Detalles técnicos</p>
+                                <CreatableSelect label="Editorial" value={formData.publisher} onChange={(val) => setFormData(prev => ({ ...prev, publisher: val }))} options={uniquePublishers} placeholder="Casa editora" required />
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-xs text-slate-500 mb-1">Fecha publicación</label>
+                                        <input type="date" value={formData.publication_date} onChange={(e) => setFormData({ ...formData, publication_date: e.target.value })} className="input-glass" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-slate-500 mb-1">Idioma</label>
+                                        <select value={formData.language} onChange={(e) => setFormData({ ...formData, language: e.target.value })} className="input-glass" required>
+                                            <option value="">Seleccionar...</option>
+                                            <option value="Español">Español</option>
+                                            <option value="Inglés">Inglés</option>
+                                            <option value="Japonés">Japonés</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-3 gap-3">
+                                    <div>
+                                        <label className={`block text-xs mb-1 ${['Figuras','Boxset','Calendario','Extra'].includes(formData.category) ? 'text-slate-700' : 'text-slate-500'}`}>Páginas</label>
+                                        <input type="number" value={formData.page_count} onChange={(e) => setFormData({ ...formData, page_count: e.target.value.replace(/^0+/,'').replace(/\D/g,'') })} className={`input-glass ${['Figuras','Boxset','Calendario','Extra'].includes(formData.category) ? 'opacity-40 cursor-not-allowed' : ''}`} placeholder="Núm" min="1" disabled={['Figuras','Boxset','Calendario','Extra'].includes(formData.category)} required={['Manga','Revista','Edición Especial','Fanbook','Libro de Arte'].includes(formData.category)} />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-slate-500 mb-1">Peso (g)</label>
+                                        <input type="number" value={formData.weight} onChange={(e) => setFormData({ ...formData, weight: e.target.value.replace(/^0+/,'') })} className="input-glass" placeholder="Gramos" min="1" step="0.1" required />
+                                    </div>
+                                    <div>
+                                        <label className={`block text-xs mb-1 ${['Figuras','Boxset','Calendario','Extra'].includes(formData.category) ? 'text-slate-700' : 'text-slate-500'}`}>Color págs.</label>
+                                        <select value={formData.page_color} onChange={(e) => setFormData({ ...formData, page_color: e.target.value })} className={`input-glass ${['Figuras','Boxset','Calendario','Extra'].includes(formData.category) ? 'opacity-40 cursor-not-allowed' : ''}`} required={['Manga','Revista','Edición Especial','Fanbook','Libro de Arte'].includes(formData.category)} disabled={['Figuras','Boxset','Calendario','Extra'].includes(formData.category)}>
+                                            <option value="Blanco y Negro">B/N</option>
+                                            <option value="Color">Color</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-slate-500 mb-1">Dimensiones (cm) — Largo / Ancho / Alto</label>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <input type="number" value={formData.dimensions.length} onChange={(e) => setFormData({ ...formData, dimensions: { ...formData.dimensions, length: e.target.value.replace(/^0+/,'') } })} className="input-glass" placeholder="Largo" min="0.1" step="0.1" required />
+                                        <input type="number" value={formData.dimensions.width} onChange={(e) => setFormData({ ...formData, dimensions: { ...formData.dimensions, width: e.target.value.replace(/^0+/,'') } })} className="input-glass" placeholder="Ancho" min="0.1" step="0.1" required />
+                                        <input type="number" value={formData.dimensions.height} onChange={(e) => setFormData({ ...formData, dimensions: { ...formData.dimensions, height: e.target.value.replace(/^0+/,'') } })} className="input-glass" placeholder="Alto" min="0.1" step="0.1" required />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* ── Eventos ── */}
+                            <div className="space-y-3">
+                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Eventos</p>
+                                <div className="space-y-3">
+                                    {[
+                                        { key: 'novedad', label: 'Novedad', color: 'emerald', icon: '✦' },
+                                        { key: 'liquidacion', label: 'Liquidación', color: 'amber', icon: '⬇' }
+                                    ].map(({ key, label, color, icon }) => {
+                                        const ev = formData.events?.[key] || { active: false, type: 'until_stock', end_date: '' };
+                                        const colorMap = {
+                                            emerald: { badge: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30', panel: 'bg-emerald-500/5 border-emerald-500/15', track: 'bg-emerald-500', radio: 'text-emerald-400' },
+                                            amber: { badge: 'bg-amber-500/15 text-amber-300 border-amber-500/30', panel: 'bg-amber-500/5 border-amber-500/15', track: 'bg-amber-500', radio: 'text-amber-400' }
+                                        };
+                                        const c = colorMap[color];
+                                        return (
+                                            <div key={key} className={`rounded-xl border transition-all ${ev.active ? `${c.panel} border` : 'bg-white/3 border-white/8'}`}>
+                                                <div className="flex items-center justify-between p-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${c.badge}`}>
+                                                            <span className="text-[10px]">{icon}</span>{label}
+                                                        </span>
+                                                    </div>
+                                                    {/* Toggle switch */}
+                                                    <button type="button" onClick={() => updateEvent(key, { active: !ev.active })}
+                                                        className={`relative w-10 h-5 rounded-full transition-colors ${ev.active ? c.track : 'bg-slate-700'}`}>
+                                                        <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${ev.active ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                                                    </button>
+                                                </div>
+                                                {ev.active && (
+                                                    <div className="px-3 pb-3 space-y-2.5">
+                                                        <div className="flex gap-4">
+                                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${ev.type === 'until_stock' ? `border-${color}-500 bg-${color}-500` : 'border-slate-500'}`}>
+                                                                    {ev.type === 'until_stock' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                                                                </div>
+                                                                <input type="radio" checked={ev.type === 'until_stock'} onChange={() => updateEvent(key, { type: 'until_stock', end_date: '' })} className="hidden" />
+                                                                <span className="text-xs text-slate-300">Hasta agotar stock</span>
+                                                            </label>
+                                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${ev.type === 'duration' ? `border-${color}-500 bg-${color}-500` : 'border-slate-500'}`}>
+                                                                    {ev.type === 'duration' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                                                                </div>
+                                                                <input type="radio" checked={ev.type === 'duration'} onChange={() => updateEvent(key, { type: 'duration' })} className="hidden" />
+                                                                <span className="text-xs text-slate-300">Por fecha</span>
+                                                            </label>
+                                                        </div>
+                                                        {ev.type === 'duration' && (
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="flex-1">
+                                                                    <label className="block text-xs text-slate-500 mb-1">Fecha fin</label>
+                                                                    <input type="date" value={ev.end_date || ''} onChange={(e) => updateEvent(key, { end_date: e.target.value })} className="input-glass" min={new Date().toISOString().split('T')[0]} />
+                                                                </div>
+                                                                {ev.end_date && (
+                                                                    <div className="flex-1">
+                                                                        <label className="block text-xs text-slate-500 mb-1">Vigencia</label>
+                                                                        <p className="text-xs text-slate-300 pt-2">
+                                                                            {Math.ceil((new Date(ev.end_date) - new Date()) / (1000*60*60*24))} días restantes
+                                                                        </p>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </div>
-                                            <input
-                                                type="radio"
-                                                name="category"
-                                                value={type}
-                                                checked={formData.category === type}
-                                                onChange={(e) => {
-                                                    const val = e.target.value;
-                                                    const noPages = ['Figuras', 'Boxset', 'Calendario', 'Extra'].includes(val);
-                                                    setFormData({
-                                                        ...formData,
-                                                        category: val,
-                                                        ...(noPages ? { page_count: '', page_color: '' } : {})
-                                                    });
-                                                }}
-                                                className="hidden"
-                                            />
-                                            <span className={`text-sm ${formData.category === type ? 'text-white' : 'text-slate-400 group-hover:text-slate-300'}`}>{type}</span>
-                                        </label>
-                                    ))}
-                                </div>
-
-                                <div className="space-y-4">
-                                    <div>
-                                        <CreatableSelect
-                                            label="Editorial"
-                                            value={formData.publisher}
-                                            onChange={(val) => setFormData(prev => ({ ...prev, publisher: val }))}
-                                            options={uniquePublishers}
-                                            placeholder="Casa editora"
-                                            required
-                                        />
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm text-slate-400 mb-1">Fecha Publicación</label>
-                                            <input
-                                                type="date"
-                                                value={formData.publication_date}
-                                                onChange={(e) => setFormData({ ...formData, publication_date: e.target.value })}
-                                                className="input-glass"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm text-slate-400 mb-1">Idioma</label>
-                                            <select
-                                                value={formData.language}
-                                                onChange={(e) => setFormData({ ...formData, language: e.target.value })}
-                                                className="input-glass"
-                                                required
-                                            >
-                                                <option value="">Seleccionar idioma...</option>
-                                                <option value="Español">Español</option>
-                                                <option value="Inglés">Inglés</option>
-                                                <option value="Japonés">Japonés</option>
-                                            </select>
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-3 gap-4">
-                                        <div>
-                                            <label className={`block text-sm mb-1 ${['Figuras', 'Boxset', 'Calendario', 'Extra'].includes(formData.category) ? 'text-slate-600' : 'text-slate-400'}`}>Páginas</label>
-                                            <input
-                                                type="number"
-                                                value={formData.page_count}
-                                                onChange={(e) => setFormData({ ...formData, page_count: e.target.value.replace(/^0+/, '').replace(/\D/g, '') })}
-                                                className={`input-glass ${['Figuras', 'Boxset', 'Calendario', 'Extra'].includes(formData.category) ? 'opacity-50 cursor-not-allowed bg-slate-800/50' : ''}`}
-                                                placeholder="Num"
-                                                min="1"
-                                                disabled={['Figuras', 'Boxset', 'Calendario', 'Extra'].includes(formData.category)}
-                                                required={['Manga', 'Revista', 'Edición Especial', 'Fanbook', 'Libro de Arte'].includes(formData.category)}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm text-slate-400 mb-1">Peso (g)</label>
-                                            <input
-                                                type="number"
-                                                value={formData.weight}
-                                                onChange={(e) => setFormData({ ...formData, weight: e.target.value.replace(/^0+/, '') })}
-                                                className="input-glass"
-                                                placeholder="Gramos"
-                                                min="1"
-                                                step="0.1"
-                                                required
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className={`block text-sm mb-1 ${['Figuras', 'Boxset', 'Calendario', 'Extra'].includes(formData.category) ? 'text-slate-600' : 'text-slate-400'}`}>Color Páginas</label>
-                                            <select
-                                                value={formData.page_color}
-                                                onChange={(e) => setFormData({ ...formData, page_color: e.target.value })}
-                                                className={`input-glass ${['Figuras', 'Boxset', 'Calendario', 'Extra'].includes(formData.category) ? 'opacity-50 cursor-not-allowed bg-slate-800/50' : ''}`}
-                                                required={['Manga', 'Revista', 'Edición Especial', 'Fanbook', 'Libro de Arte'].includes(formData.category)}
-                                                disabled={['Figuras', 'Boxset', 'Calendario', 'Extra'].includes(formData.category)}
-                                            >
-                                                <option value="Blanco y Negro">B/N</option>
-                                                <option value="Color">Color</option>
-                                            </select>
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm text-slate-400 mb-1">Dimensiones (cm)</label>
-                                        <div className="grid grid-cols-3 gap-2">
-                                            <input
-                                                type="number"
-                                                value={formData.dimensions.length}
-                                                onChange={(e) => setFormData({ ...formData, dimensions: { ...formData.dimensions, length: e.target.value.replace(/^0+/, '') } })}
-                                                className="input-glass"
-                                                placeholder="Largo"
-                                                min="0.1"
-                                                step="0.1"
-                                                required
-                                            />
-                                            <input
-                                                type="number"
-                                                value={formData.dimensions.width}
-                                                onChange={(e) => setFormData({ ...formData, dimensions: { ...formData.dimensions, width: e.target.value.replace(/^0+/, '') } })}
-                                                className="input-glass"
-                                                placeholder="Ancho"
-                                                min="0.1"
-                                                step="0.1"
-                                                required
-                                            />
-                                            <input
-                                                type="number"
-                                                value={formData.dimensions.height}
-                                                onChange={(e) => setFormData({ ...formData, dimensions: { ...formData.dimensions, height: e.target.value.replace(/^0+/, '') } })}
-                                                className="input-glass"
-                                                placeholder="Alto"
-                                                min="0.1"
-                                                step="0.1"
-                                                required
-                                            />
-                                        </div>
-                                    </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
-                            {/* Extras Section */}
-                            <div>
-                                <label className="block text-sm text-slate-400 mb-1">Extras</label>
-                                <button
-                                    type="button"
-                                    onClick={openExtrasModal}
-                                    className="input-glass w-full text-left flex items-center justify-between hover:border-primary-500/50 transition-colors"
-                                >
-                                    <span className={formData.extras.length > 0 ? 'text-white' : 'text-slate-400'}>
-                                        {formData.extras.length > 0
-                                            ? `${formData.extras.length} extra${formData.extras.length > 1 ? 's' : ''} seleccionado${formData.extras.length > 1 ? 's' : ''}`
-                                            : 'Seleccionar extras...'}
+
+                            {/* ── Extras ── */}
+                            <div className="space-y-2">
+                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Extras</p>
+                                <button type="button" onClick={openExtrasModal} className="input-glass w-full text-left flex items-center justify-between hover:border-primary-500/50 transition-colors">
+                                    <span className={formData.extras.length > 0 ? 'text-white text-sm' : 'text-slate-500 text-sm'}>
+                                        {formData.extras.length > 0 ? `${formData.extras.length} extra${formData.extras.length > 1 ? 's' : ''} seleccionado${formData.extras.length > 1 ? 's' : ''}` : 'Seleccionar extras...'}
                                     </span>
-                                    <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                    </svg>
+                                    <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                                 </button>
                                 {formData.extras.length > 0 && (
-                                    <div className="flex flex-wrap gap-2 mt-2">
+                                    <div className="flex flex-wrap gap-1.5">
                                         {formData.extras.map((extra, i) => (
-                                            <span
-                                                key={i}
-                                                className="inline-flex items-center gap-1 px-2 py-1 bg-primary-500/20 text-primary-300 rounded-full text-sm"
-                                            >
+                                            <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary-500/20 text-primary-300 rounded-full text-xs">
                                                 {extra}
-                                                <button
-                                                    type="button"
-                                                    onClick={() => removeExtraFromForm(extra)}
-                                                    className="hover:text-white transition-colors"
-                                                >
-                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                                    </svg>
-                                                </button>
+                                                <button type="button" onClick={() => removeExtraFromForm(extra)} className="hover:text-white"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
                                             </span>
                                         ))}
                                     </div>
                                 )}
                             </div>
-                            {/* Tags Section */}
-                            <div>
-                                <label className="block text-sm text-slate-400 mb-1">Etiquetas</label>
+
+                            {/* ── Etiquetas ── */}
+                            <div className="space-y-2">
+                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Etiquetas</p>
                                 <div className="relative">
                                     <div className="input-glass flex flex-wrap items-center gap-1 min-h-[42px] p-2 focus-within:border-primary-500/50">
                                         {(formData.tags || []).map((tag, i) => (
-                                            <span
-                                                key={i}
-                                                className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-500/20 text-emerald-300 rounded-full text-xs"
-                                            >
+                                            <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-500/20 text-emerald-300 rounded-full text-xs">
                                                 {tag}
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setFormData(prev => ({ ...prev, tags: (prev.tags || []).filter((_, idx) => idx !== i) }))}
-                                                    className="hover:text-white transition-colors"
-                                                >
-                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                                    </svg>
+                                                <button type="button" onClick={() => setFormData(prev => ({ ...prev, tags: (prev.tags || []).filter((_,idx) => idx !== i) }))} className="hover:text-white">
+                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                                                 </button>
                                             </span>
                                         ))}
-                                        <input
-                                            type="text"
-                                            value={tagInput}
-                                            onChange={(e) => {
-                                                setTagInput(e.target.value);
-                                                setShowTagDropdown(true);
-                                            }}
-                                            onFocus={() => setShowTagDropdown(true)}
-                                            onBlur={() => setTimeout(() => setShowTagDropdown(false), 200)}
-                                            onKeyDown={(e) => {
-                                                if (e.key === 'Enter' && tagInput.trim()) {
-                                                    e.preventDefault();
-                                                    const newTag = tagInput.trim();
-                                                    if (!(formData.tags || []).includes(newTag)) {
-                                                        setFormData(prev => ({ ...prev, tags: [...(prev.tags || []), newTag] }));
-                                                    }
-                                                    setTagInput('');
-                                                    setShowTagDropdown(false);
-                                                }
-                                            }}
-                                            className="flex-1 min-w-[120px] bg-transparent border-none outline-none text-white text-sm placeholder-slate-500"
-                                            placeholder={(formData.tags || []).length === 0 ? 'Escribir etiqueta...' : '+'}
-                                        />
+                                        <input type="text" value={tagInput} onChange={(e) => { setTagInput(e.target.value); setShowTagDropdown(true); }} onFocus={() => setShowTagDropdown(true)} onBlur={() => setTimeout(() => setShowTagDropdown(false), 200)}
+                                            onKeyDown={(e) => { if (e.key === 'Enter' && tagInput.trim()) { e.preventDefault(); const t = tagInput.trim(); if (!(formData.tags||[]).includes(t)) setFormData(prev=>({...prev,tags:[...(prev.tags||[]),t]})); setTagInput(''); setShowTagDropdown(false); } }}
+                                            className="flex-1 min-w-[100px] bg-transparent border-none outline-none text-white text-sm placeholder-slate-600"
+                                            placeholder={(formData.tags||[]).length === 0 ? 'Escribir etiqueta...' : '+'} />
                                     </div>
-                                    {showTagDropdown && (() => {
-                                        const filtered = tagSuggestions.filter(
-                                            t => t.toLowerCase().includes(tagInput.toLowerCase()) && !(formData.tags || []).includes(t)
-                                        );
-                                        return filtered.length > 0 ? (
-                                            <div className="absolute z-50 w-full mt-1 bg-[#1e293b] border border-white/10 rounded-lg shadow-xl max-h-40 overflow-y-auto custom-scrollbar">
-                                                {filtered.map((tag, i) => (
-                                                    <button
-                                                        key={i}
-                                                        type="button"
-                                                        onMouseDown={(e) => {
-                                                            e.preventDefault();
-                                                            if (!(formData.tags || []).includes(tag)) {
-                                                                setFormData(prev => ({ ...prev, tags: [...(prev.tags || []), tag] }));
-                                                            }
-                                                            setTagInput('');
-                                                            setShowTagDropdown(false);
-                                                        }}
-                                                        className="w-full text-left px-3 py-2 text-sm text-slate-300 hover:bg-primary-500/20 hover:text-white transition-colors"
-                                                    >
-                                                        {tag}
-                                                    </button>
-                                                ))}
+                                    {showTagDropdown && (() => { const filtered = tagSuggestions.filter(t => t.toLowerCase().includes(tagInput.toLowerCase()) && !(formData.tags||[]).includes(t)); return filtered.length > 0 ? (
+                                        <div className="absolute z-50 w-full mt-1 bg-slate-900 border border-white/10 rounded-lg shadow-xl max-h-36 overflow-y-auto custom-scrollbar">
+                                            {filtered.map((tag,i) => <button key={i} type="button" onMouseDown={(e)=>{ e.preventDefault(); if(!(formData.tags||[]).includes(tag)) setFormData(prev=>({...prev,tags:[...(prev.tags||[]),tag]})); setTagInput(''); setShowTagDropdown(false); }} className="w-full text-left px-3 py-2 text-sm text-slate-300 hover:bg-primary-500/20 hover:text-white transition-colors">{tag}</button>)}
+                                        </div>) : null; })()}
+                                </div>
+                                <p className="text-xs text-slate-600">Presiona Enter para crear nueva etiqueta</p>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {Array.from(new Set([...(formData.is_adult ? ADULT_PRESET_TAGS : PRESET_TAGS), ...tagSuggestions])).filter(tag => !(formData.tags||[]).includes(tag)).map((tag,i) => (
+                                        <button key={`p-${i}`} type="button" onClick={() => setFormData(prev=>({...prev,tags:[...(prev.tags||[]),tag]}))}
+                                            className="px-2 py-1 text-xs bg-slate-800 hover:bg-emerald-500/20 text-slate-500 hover:text-emerald-300 border border-slate-700/60 hover:border-emerald-500/30 rounded-full transition-all">
+                                            + {tag}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* ── Proveedor ── */}
+                            <div className="space-y-2">
+                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Proveedor</p>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-xs text-slate-500 mb-1">Proveedor (opcional)</label>
+                                        <select value={formData.supplier_id} onChange={(e) => setFormData({ ...formData, supplier_id: e.target.value })} className="input-glass">
+                                            <option value="">Sin proveedor</option>
+                                            {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                        </select>
+                                    </div>
+                                    {formData.supplier_id && (
+                                        <div className="animate-fade-in">
+                                            <label className="block text-xs text-slate-500 mb-1">Precio proveedor</label>
+                                            <div className="relative">
+                                                <span className="absolute left-3 top-2.5 text-slate-500 text-sm">$</span>
+                                                <input type="number" step="0.01" value={formData.supplier_price} onChange={(e) => setFormData({ ...formData, supplier_price: e.target.value })} className="input-glass pl-7" placeholder="0.00" />
                                             </div>
-                                        ) : null;
-                                    })()}
-                                </div>
-                                <p className="text-xs text-slate-500 mt-1 mb-2">Presiona Enter para crear una nueva etiqueta</p>
-
-                                {/* Quick select preset tags and database tags */}
-                                <div className="flex flex-wrap gap-1 mt-2">
-                                    {Array.from(new Set([...(formData.is_adult ? ADULT_PRESET_TAGS : PRESET_TAGS), ...tagSuggestions]))
-                                        .filter(tag => !(formData.tags || []).includes(tag))
-                                        .map((tag, i) => (
-                                            <button
-                                                key={`preset-${i}`}
-                                                type="button"
-                                                onClick={() => setFormData(prev => ({ ...prev, tags: [...(prev.tags || []), tag] }))}
-                                                className="px-2 py-1 text-xs bg-slate-800 hover:bg-emerald-500/20 text-slate-400 hover:text-emerald-300 border border-slate-700 hover:border-emerald-500/30 rounded-full transition-all"
-                                            >
-                                                + {tag}
-                                            </button>
-                                        ))}
-                                </div>
-                            </div>
-                            {/* Supplier Section */}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm text-slate-400 mb-1">Proveedor (Opcional)</label>
-                                    <select
-                                        value={formData.supplier_id}
-                                        onChange={(e) => setFormData({ ...formData, supplier_id: e.target.value })}
-                                        className="input-glass"
-                                    >
-                                        <option value="">Sin proveedor</option>
-                                        {suppliers.map(s => (
-                                            <option key={s.id} value={s.id}>{s.name}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                {formData.supplier_id && (
-                                    <div className="animate-fade-in">
-                                        <label className="block text-sm text-slate-400 mb-1">Precio de Proveedor</label>
-                                        <div className="relative">
-                                            <span className="absolute left-3 top-2.5 text-slate-500">$</span>
-                                            <input
-                                                type="number"
-                                                step="0.01"
-                                                value={formData.supplier_price}
-                                                onChange={(e) => setFormData({ ...formData, supplier_price: e.target.value })}
-                                                className="input-glass pl-7"
-                                                placeholder="0.00"
-                                            />
                                         </div>
-                                    </div>
-                                )}
+                                    )}
+                                </div>
                             </div>
 
-                            <div className="flex gap-3 pt-4">
-                                <button
-                                    type="button"
-                                    onClick={closeForm}
-                                    className="flex-1 btn-secondary"
-                                >
-                                    Cancelar
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                                    disabled={sbinStatus.isDuplicate || sbinStatus.checking || isSubmitting}
-                                >
+                            {/* ── Botones ── */}
+                            <div className="flex gap-3 pt-2 border-t border-white/8">
+                                <button type="button" onClick={closeForm} className="flex-1 btn-secondary">Cancelar</button>
+                                <button type="submit" className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2" disabled={sbinStatus.isDuplicate || sbinStatus.checking || isSubmitting}>
                                     {isSubmitting && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                                     {editingProduct ? 'Guardar Cambios' : 'Crear Producto'}
                                 </button>
