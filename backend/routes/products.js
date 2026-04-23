@@ -65,6 +65,7 @@ router.get('/migrate-schema-secure', async (req, res) => {
             addColIfMissing('artist', 'VARCHAR(255) NULL'),
             addColIfMissing('group_name', 'VARCHAR(255) NULL'),
             addColIfMissing('sbin_code', 'VARCHAR(100) NULL'),
+            addColIfMissing('events', 'JSON NULL'),
         ]);
         res.json({ message: 'Products schema migrated', results });
     } catch (error) {
@@ -309,7 +310,7 @@ router.post('/', requireInventoryWrite, upload.single('image'), async (req, res)
         const empresaId = getEmpresaId(req);
         const { name, cost_price, sale_price, stock, category, gender, barcode, sbin_code, isbn,
             extras, publication_date, publisher, page_count, dimensions, weight, page_color,
-            language, supplier_id, supplier_price, is_adult, artist, group_name } = req.body;
+            language, supplier_id, supplier_price, is_adult, artist, group_name, events } = req.body;
 
         if (!empresaId) {
             return res.status(403).json({ error: 'Acceso denegado. Usuario sin empresa asignada.' });
@@ -404,16 +405,16 @@ router.post('/', requireInventoryWrite, upload.single('image'), async (req, res)
 
         const [result] = await pool.query(`
             INSERT INTO products (
-                empresa_id, name, price, cost_price, sale_price, stock, category, category_id, barcode, sbin_code, isbn, 
-                extras, publication_date, publisher, publisher_id, page_count, dimensions, 
-                weight, page_color, language, supplier_id, supplier_price, image_url, gender, is_adult, artist, group_name
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                empresa_id, name, price, cost_price, sale_price, stock, category, category_id, barcode, sbin_code, isbn,
+                extras, publication_date, publisher, publisher_id, page_count, dimensions,
+                weight, page_color, language, supplier_id, supplier_price, image_url, gender, is_adult, artist, group_name, events
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
             empresaId, name, sale_price, cost_price, sale_price, stock || 0, category || null, categoryId,
             finalBarcode || null, sbin_code || null, isbn || null, extras || null,
             publication_date || null, publisher || null, publisherId, page_count || null, dimensions || null,
             weight || null, page_color || null, language || null, supplier_id || null, supplier_price || null, imageUrl, null,
-            (is_adult === '1' || is_adult === true) ? 1 : 0, artist || null, group_name || null
+            (is_adult === '1' || is_adult === true) ? 1 : 0, artist || null, group_name || null, events || null
         ]);
 
         res.json({
@@ -442,7 +443,7 @@ router.post('/', requireInventoryWrite, upload.single('image'), async (req, res)
 router.put('/:id', requireInventoryWrite, upload.single('image'), async (req, res) => {
     try {
         const empresaId = getEmpresaId(req);
-        const { name, cost_price, sale_price, stock, category, gender, barcode, sbin_code, isbn, extras, publication_date, publisher, page_count, dimensions, weight, page_color, language, supplier_id, supplier_price, is_adult, artist, group_name } = req.body;
+        const { name, cost_price, sale_price, stock, category, gender, barcode, sbin_code, isbn, extras, publication_date, publisher, page_count, dimensions, weight, page_color, language, supplier_id, supplier_price, is_adult, artist, group_name, events } = req.body;
         const { id } = req.params;
 
         if (!empresaId) {
@@ -485,18 +486,18 @@ router.put('/:id', requireInventoryWrite, upload.single('image'), async (req, re
         // ...
 
         await pool.query(`
-            UPDATE products SET 
-                name = ?, cost_price = ?, sale_price = ?, stock = ?, category = ?, gender = ?, barcode = ?, 
-                sbin_code = ?, isbn = ?, extras = ?, publication_date = ?, 
+            UPDATE products SET
+                name = ?, cost_price = ?, sale_price = ?, stock = ?, category = ?, gender = ?, barcode = ?,
+                sbin_code = ?, isbn = ?, extras = ?, publication_date = ?,
                 publisher = ?, page_count = ?, dimensions = ?, weight = ?, page_color = ?, language = ?,
-                supplier_id = ?, supplier_price = ?, image_url = ?, is_adult = ?, artist = ?, group_name = ?
+                supplier_id = ?, supplier_price = ?, image_url = ?, is_adult = ?, artist = ?, group_name = ?, events = ?
             WHERE id = ? AND empresa_id = ?
         `, [
             name, cost_price, sale_price, stock || 0, category || null, null, barcode || null,
             sbin_code || null, isbn || null, extras || null,
             publication_date || null, publisher || null, page_count || null, dimensions || null,
             weight || null, page_color || null, language || null,
-            supplier_id || null, supplier_price || null, imageUrl, (is_adult === '1' || is_adult === true) ? 1 : 0, artist || null, group_name || null, id, empresaId
+            supplier_id || null, supplier_price || null, imageUrl, (is_adult === '1' || is_adult === true) ? 1 : 0, artist || null, group_name || null, events || null, id, empresaId
         ]);
 
         // Save tags
