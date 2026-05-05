@@ -5,7 +5,20 @@ import { API_URL } from '../config';
 const STATUS_CONFIG = {
     pendiente:  { label: 'Pendiente',  bg: 'bg-amber-500/20',   text: 'text-amber-400',   border: 'border-amber-500/30',   dot: 'bg-amber-400'   },
     confirmado: { label: 'Confirmado', bg: 'bg-emerald-500/20', text: 'text-emerald-400', border: 'border-emerald-500/30', dot: 'bg-emerald-400' },
+    envio:      { label: 'En Envío',   bg: 'bg-blue-500/20',    text: 'text-blue-400',    border: 'border-blue-500/30',    dot: 'bg-blue-400'    },
+    entregado:  { label: 'Entregado',  bg: 'bg-teal-500/20',    text: 'text-teal-400',    border: 'border-teal-500/30',    dot: 'bg-teal-400'    },
+    reclamo:    { label: 'Reclamo',    bg: 'bg-orange-500/20',  text: 'text-orange-400',  border: 'border-orange-500/30',  dot: 'bg-orange-400'  },
     cancelado:  { label: 'Cancelado',  bg: 'bg-red-500/20',     text: 'text-red-400',     border: 'border-red-500/30',     dot: 'bg-red-400'     },
+};
+
+const SHIPPING_CONFIG = {
+    en_espera:  { label: 'En espera de despacho', icon: '📦', bg: 'bg-blue-500/15',    text: 'text-blue-300',    border: 'border-blue-500/20'    },
+    despachado: { label: 'Despachado',             icon: '🚚', bg: 'bg-violet-500/15', text: 'text-violet-300', border: 'border-violet-500/20' },
+};
+
+const CLAIM_CONFIG = {
+    disputa:    { label: 'En disputa',  icon: '⚠️', bg: 'bg-orange-500/15', text: 'text-orange-300', border: 'border-orange-500/20' },
+    resolucion: { label: 'Resuelto',    icon: '✅', bg: 'bg-emerald-500/15', text: 'text-emerald-300', border: 'border-emerald-500/20' },
 };
 
 function StatusBadge({ status }) {
@@ -16,6 +29,26 @@ function StatusBadge({ status }) {
             {cfg.label}
         </span>
     );
+}
+
+function SubStatusBadge({ shippingStatus, claimStatus }) {
+    if (shippingStatus && SHIPPING_CONFIG[shippingStatus]) {
+        const cfg = SHIPPING_CONFIG[shippingStatus];
+        return (
+            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border ${cfg.bg} ${cfg.text} ${cfg.border}`}>
+                {cfg.icon} {cfg.label}
+            </span>
+        );
+    }
+    if (claimStatus && CLAIM_CONFIG[claimStatus]) {
+        const cfg = CLAIM_CONFIG[claimStatus];
+        return (
+            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border ${cfg.bg} ${cfg.text} ${cfg.border}`}>
+                {cfg.icon} {cfg.label}
+            </span>
+        );
+    }
+    return null;
 }
 
 function ProcessTypeBadge({ processType, status }) {
@@ -41,17 +74,36 @@ function ProcessTypeBadge({ processType, status }) {
     );
 }
 
-function OrderDetailModal({ order, onClose, onConfirm, onCancel }) {
+function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder }) {
+    const { token } = useAuth();
     const [acting, setActing] = useState(false);
-    const [resultado, setResultado] = useState(null); // { ok, mensaje }
+    const [resultado, setResultado] = useState(null);
 
+    // Ship form
+    const [showShipForm, setShowShipForm] = useState(false);
+    const [shipData, setShipData] = useState({ shipping_status: 'en_espera', tracking_number: '' });
+
+    // Claim form
+    const [showClaimForm, setShowClaimForm] = useState(false);
+    const [claimData, setClaimData] = useState({ claim_status: 'disputa', claim_notes: '' });
+
+    const status = order.web_status;
+    const isPendiente  = status === 'pendiente';
+    const isConfirmado = status === 'confirmado';
+    const isEnvio      = status === 'envio';
+    const isEntregado  = status === 'entregado';
+    const isReclamo    = status === 'reclamo';
+
+    // ── Confirm ──────────────────────────────────────────────────────
     const handleConfirm = async () => {
         setActing(true);
         const result = await onConfirm(order.id);
         setResultado(result);
         setActing(false);
+        if (result?.ok) onRefreshOrder(order.id);
     };
 
+    // ── Cancel ───────────────────────────────────────────────────────
     const handleCancel = async () => {
         setActing(true);
         await onCancel(order.id);
@@ -59,10 +111,90 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel }) {
         onClose();
     };
 
-    const isPendiente = order.web_status === 'pendiente';
+    // ── Ship ─────────────────────────────────────────────────────────
+    const handleShip = async () => {
+        setActing(true);
+        try {
+            const res = await fetch(`${API_URL}/web-orders/${order.id}/ship`, {
+                method: 'PUT',
+                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify(shipData),
+            });
+            if (res.ok) {
+                setShowShipForm(false);
+                await onRefreshOrder(order.id);
+            }
+        } catch { /* ignore */ }
+        setActing(false);
+    };
+
+    // ── Update shipping to despachado (when already en_espera) ───────
+    const handleMarkDespachado = async () => {
+        setActing(true);
+        try {
+            const res = await fetch(`${API_URL}/web-orders/${order.id}/ship`, {
+                method: 'PUT',
+                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ shipping_status: 'despachado', tracking_number: shipData.tracking_number }),
+            });
+            if (res.ok) {
+                setShowShipForm(false);
+                await onRefreshOrder(order.id);
+            }
+        } catch { /* ignore */ }
+        setActing(false);
+    };
+
+    // ── Deliver ──────────────────────────────────────────────────────
+    const handleDeliver = async () => {
+        setActing(true);
+        try {
+            const res = await fetch(`${API_URL}/web-orders/${order.id}/deliver`, {
+                method: 'PUT',
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.ok) await onRefreshOrder(order.id);
+        } catch { /* ignore */ }
+        setActing(false);
+    };
+
+    // ── Claim / Resolve ───────────────────────────────────────────────
+    const handleClaim = async () => {
+        setActing(true);
+        try {
+            const res = await fetch(`${API_URL}/web-orders/${order.id}/claim`, {
+                method: 'PUT',
+                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify(claimData),
+            });
+            if (res.ok) {
+                setShowClaimForm(false);
+                await onRefreshOrder(order.id);
+            }
+        } catch { /* ignore */ }
+        setActing(false);
+    };
+
+    const handleResolve = async () => {
+        setActing(true);
+        try {
+            const res = await fetch(`${API_URL}/web-orders/${order.id}/claim`, {
+                method: 'PUT',
+                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ claim_status: 'resolucion', claim_notes: order.claim_notes || '' }),
+            });
+            if (res.ok) await onRefreshOrder(order.id);
+        } catch { /* ignore */ }
+        setActing(false);
+    };
+
+    const Spinner = () => <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />;
 
     return (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={!acting ? onClose : undefined}>
+        <div
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={!acting ? onClose : undefined}
+        >
             <div
                 className="bg-slate-800 border border-white/10 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
@@ -73,6 +205,8 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel }) {
                         <div className="flex items-center gap-3 mb-1 flex-wrap">
                             <h2 className="text-xl font-bold">Pedido #{order.id}</h2>
                             <StatusBadge status={order.web_status} />
+                            {isEnvio && <SubStatusBadge shippingStatus={order.shipping_status} />}
+                            {isReclamo && <SubStatusBadge claimStatus={order.claim_status} />}
                             <ProcessTypeBadge processType={order.web_process_type} status={order.web_status} />
                         </div>
                         <p className="text-sm text-slate-400">
@@ -90,7 +224,8 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel }) {
                 </div>
 
                 <div className="p-6 space-y-6">
-                    {/* Resultado de confirmación */}
+
+                    {/* Confirm result banner */}
                     {resultado && (
                         resultado.stockInsuficiente ? (
                             <div className="rounded-xl p-4 border bg-amber-500/10 border-amber-500/30 text-amber-300">
@@ -103,7 +238,7 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel }) {
                                         ))}
                                     </ul>
                                 )}
-                                <p className="text-xs mt-3 opacity-60">Cancela el pedido manualmente y contacta al cliente para avisar.</p>
+                                <p className="text-xs mt-3 opacity-60">Cancela el pedido manualmente y contacta al cliente.</p>
                             </div>
                         ) : (
                             <div className={`rounded-xl p-4 border ${resultado.ok
@@ -114,6 +249,45 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel }) {
                                 {resultado.motivo && <p className="text-sm mt-1 opacity-80">{resultado.motivo}</p>}
                             </div>
                         )
+                    )}
+
+                    {/* Tracking number (when in envio) */}
+                    {isEnvio && order.tracking_number && (
+                        <div className="bg-violet-500/10 border border-violet-500/20 rounded-xl p-4">
+                            <p className="text-xs text-violet-400 uppercase tracking-wider mb-1">Número de Guía</p>
+                            <p className="font-mono text-lg font-bold text-white">{order.tracking_number}</p>
+                        </div>
+                    )}
+
+                    {/* Claim info (when in reclamo) */}
+                    {isReclamo && (
+                        <div className={`rounded-xl p-4 border ${
+                            order.claim_status === 'resolucion'
+                                ? 'bg-emerald-500/10 border-emerald-500/20'
+                                : 'bg-orange-500/10 border-orange-500/20'
+                        }`}>
+                            <p className="text-xs uppercase tracking-wider mb-2 text-slate-400">Reclamo</p>
+                            <SubStatusBadge claimStatus={order.claim_status} />
+                            {order.claim_notes && (
+                                <p className="text-sm text-slate-300 mt-2 leading-relaxed">{order.claim_notes}</p>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Delivered date */}
+                    {isEntregado && order.delivered_at && (
+                        <div className="bg-teal-500/10 border border-teal-500/20 rounded-xl p-4 flex items-center gap-3">
+                            <span className="text-2xl">🎉</span>
+                            <div>
+                                <p className="text-xs text-teal-400 uppercase tracking-wider">Entregado</p>
+                                <p className="text-sm text-slate-300">
+                                    {new Date(order.delivered_at).toLocaleDateString('es-MX', {
+                                        day: '2-digit', month: 'long', year: 'numeric',
+                                        hour: '2-digit', minute: '2-digit'
+                                    })}
+                                </p>
+                            </div>
+                        </div>
                     )}
 
                     {/* Cliente */}
@@ -128,7 +302,6 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel }) {
                                 {order.client_code && <p className="text-xs text-slate-500 font-mono mt-0.5">{order.client_code}</p>}
                             </div>
                         </div>
-                        {/* Contacto */}
                         <div className="space-y-2 pt-3 border-t border-white/10">
                             <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Contacto</p>
                             <a href={`mailto:${order.email}`} className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 transition-colors group">
@@ -137,15 +310,14 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel }) {
                                 </svg>
                                 {order.email}
                             </a>
-                            {order.telefono && (
+                            {order.telefono ? (
                                 <a href={`tel:${order.telefono}`} className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 transition-colors group">
                                     <svg className="w-4 h-4 text-slate-500 group-hover:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                                     </svg>
                                     {order.telefono}
                                 </a>
-                            )}
-                            {!order.telefono && (
+                            ) : (
                                 <p className="flex items-center gap-2 text-sm text-slate-500 italic">
                                     <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
@@ -240,7 +412,9 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel }) {
                         </div>
                     </div>
 
-                    {/* Acciones (solo para pendientes y sin resultado aún) */}
+                    {/* ── ACCIONES ──────────────────────────────────────────────── */}
+
+                    {/* PENDIENTE */}
                     {isPendiente && !resultado && (
                         <div className="flex gap-3">
                             <button
@@ -248,9 +422,7 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel }) {
                                 disabled={acting}
                                 className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
                             >
-                                {acting ? (
-                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                ) : (
+                                {acting ? <Spinner /> : (
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                     </svg>
@@ -266,11 +438,319 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel }) {
                             </button>
                         </div>
                     )}
+
+                    {/* CONFIRMADO → Enviar / Cancelar */}
+                    {isConfirmado && (
+                        <div className="space-y-3">
+                            {!showShipForm ? (
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => setShowShipForm(true)}
+                                        disabled={acting}
+                                        className="flex-1 py-3 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                                        </svg>
+                                        Preparar Envío
+                                    </button>
+                                    <button
+                                        onClick={handleCancel}
+                                        disabled={acting}
+                                        className="px-5 py-3 bg-white/5 hover:bg-red-500/20 disabled:opacity-50 text-red-400 hover:text-red-300 border border-white/10 rounded-xl font-semibold transition-colors"
+                                    >
+                                        Cancelar
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 space-y-4">
+                                    <p className="text-sm font-semibold text-blue-300">Preparar Envío</p>
+                                    {/* Sub-status */}
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {[
+                                            { value: 'en_espera',  label: '📦 En espera',  desc: 'Listo para despachar' },
+                                            { value: 'despachado', label: '🚚 Despachado',  desc: 'Ya fue enviado' },
+                                        ].map(({ value, label, desc }) => (
+                                            <button
+                                                key={value}
+                                                onClick={() => setShipData(prev => ({ ...prev, shipping_status: value }))}
+                                                className={`p-3 rounded-xl border text-left transition-all ${
+                                                    shipData.shipping_status === value
+                                                        ? 'border-blue-500 bg-blue-500/20'
+                                                        : 'border-white/10 bg-white/5 hover:border-white/20'
+                                                }`}
+                                            >
+                                                <p className="text-sm font-medium">{label}</p>
+                                                <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
+                                            </button>
+                                        ))}
+                                    </div>
+                                    {/* Tracking */}
+                                    <div>
+                                        <label className="text-xs text-slate-400 mb-1 block">
+                                            Número de Guía {shipData.shipping_status === 'en_espera' ? '(opcional)' : ''}
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={shipData.tracking_number}
+                                            onChange={(e) => setShipData(prev => ({ ...prev, tracking_number: e.target.value }))}
+                                            placeholder="Ej. 1Z999AA10123456784"
+                                            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm font-mono focus:outline-none focus:border-blue-500/50"
+                                        />
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={handleShip}
+                                            disabled={acting}
+                                            className="flex-1 py-2.5 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white rounded-xl font-semibold text-sm transition-colors flex items-center justify-center gap-2"
+                                        >
+                                            {acting ? <Spinner /> : null}
+                                            Confirmar Envío
+                                        </button>
+                                        <button
+                                            onClick={() => setShowShipForm(false)}
+                                            disabled={acting}
+                                            className="px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm transition-colors"
+                                        >
+                                            Cancelar
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* ENVÍO → Marcar despachado / Entregar / Reclamo */}
+                    {isEnvio && (
+                        <div className="space-y-3">
+                            {order.shipping_status === 'en_espera' && !showShipForm && (
+                                <button
+                                    onClick={() => { setShowShipForm(true); setShipData(prev => ({ ...prev, shipping_status: 'despachado' })); }}
+                                    disabled={acting}
+                                    className="w-full py-3 bg-violet-500 hover:bg-violet-600 disabled:opacity-50 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <span>🚚</span> Marcar como Despachado
+                                </button>
+                            )}
+
+                            {order.shipping_status === 'en_espera' && showShipForm && (
+                                <div className="bg-violet-500/10 border border-violet-500/20 rounded-xl p-4 space-y-3">
+                                    <p className="text-sm font-semibold text-violet-300">🚚 Marcar como Despachado</p>
+                                    <div>
+                                        <label className="text-xs text-slate-400 mb-1 block">Número de Guía (opcional)</label>
+                                        <input
+                                            type="text"
+                                            value={shipData.tracking_number}
+                                            onChange={(e) => setShipData(prev => ({ ...prev, tracking_number: e.target.value }))}
+                                            placeholder="Ej. 1Z999AA10123456784"
+                                            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm font-mono focus:outline-none focus:border-violet-500/50"
+                                        />
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={handleMarkDespachado}
+                                            disabled={acting}
+                                            className="flex-1 py-2.5 bg-violet-500 hover:bg-violet-600 disabled:opacity-50 text-white rounded-xl font-semibold text-sm transition-colors flex items-center justify-center gap-2"
+                                        >
+                                            {acting ? <Spinner /> : null}
+                                            Confirmar Despacho
+                                        </button>
+                                        <button
+                                            onClick={() => setShowShipForm(false)}
+                                            disabled={acting}
+                                            className="px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm transition-colors"
+                                        >
+                                            Cancelar
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {!showShipForm && !showClaimForm && (
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={handleDeliver}
+                                        disabled={acting}
+                                        className="flex-1 py-3 bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
+                                    >
+                                        {acting ? <Spinner /> : <span>🎉</span>}
+                                        Marcar Entregado
+                                    </button>
+                                    <button
+                                        onClick={() => { setShowClaimForm(true); setClaimData({ claim_status: 'disputa', claim_notes: '' }); }}
+                                        disabled={acting}
+                                        className="px-5 py-3 bg-orange-500/20 hover:bg-orange-500/30 disabled:opacity-50 text-orange-400 border border-orange-500/30 rounded-xl font-semibold transition-colors"
+                                    >
+                                        Reclamo
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* ENTREGADO → Reclamo */}
+                    {isEntregado && !showClaimForm && (
+                        <button
+                            onClick={() => { setShowClaimForm(true); setClaimData({ claim_status: 'disputa', claim_notes: '' }); }}
+                            disabled={acting}
+                            className="w-full py-3 bg-orange-500/20 hover:bg-orange-500/30 disabled:opacity-50 text-orange-400 border border-orange-500/30 rounded-xl font-semibold transition-colors"
+                        >
+                            ⚠️ Abrir Reclamo
+                        </button>
+                    )}
+
+                    {/* Claim form (shared for envio + entregado) */}
+                    {(isEnvio || isEntregado) && showClaimForm && (
+                        <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-4 space-y-4">
+                            <p className="text-sm font-semibold text-orange-300">⚠️ Abrir Reclamo</p>
+                            <div className="grid grid-cols-2 gap-2">
+                                {[
+                                    { value: 'disputa',    label: '⚠️ Disputa',   desc: 'En proceso de resolución' },
+                                    { value: 'resolucion', label: '✅ Resolución', desc: 'Caso ya resuelto' },
+                                ].map(({ value, label, desc }) => (
+                                    <button
+                                        key={value}
+                                        onClick={() => setClaimData(prev => ({ ...prev, claim_status: value }))}
+                                        className={`p-3 rounded-xl border text-left transition-all ${
+                                            claimData.claim_status === value
+                                                ? 'border-orange-500 bg-orange-500/20'
+                                                : 'border-white/10 bg-white/5 hover:border-white/20'
+                                        }`}
+                                    >
+                                        <p className="text-sm font-medium">{label}</p>
+                                        <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
+                                    </button>
+                                ))}
+                            </div>
+                            <div>
+                                <label className="text-xs text-slate-400 mb-1 block">Notas del reclamo (opcional)</label>
+                                <textarea
+                                    value={claimData.claim_notes}
+                                    onChange={(e) => setClaimData(prev => ({ ...prev, claim_notes: e.target.value }))}
+                                    placeholder="Describe el problema o la resolución..."
+                                    rows={3}
+                                    className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-orange-500/50 resize-none"
+                                />
+                            </div>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={handleClaim}
+                                    disabled={acting}
+                                    className="flex-1 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl font-semibold text-sm transition-colors flex items-center justify-center gap-2"
+                                >
+                                    {acting ? <Spinner /> : null}
+                                    Registrar Reclamo
+                                </button>
+                                <button
+                                    onClick={() => setShowClaimForm(false)}
+                                    disabled={acting}
+                                    className="px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* RECLAMO → Resolver disputa */}
+                    {isReclamo && order.claim_status === 'disputa' && !showClaimForm && (
+                        <div className="space-y-3">
+                            <button
+                                onClick={handleResolve}
+                                disabled={acting}
+                                className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
+                            >
+                                {acting ? <Spinner /> : <span>✅</span>}
+                                Marcar como Resuelto
+                            </button>
+                            <button
+                                onClick={() => { setShowClaimForm(true); setClaimData({ claim_status: order.claim_status, claim_notes: order.claim_notes || '' }); }}
+                                disabled={acting}
+                                className="w-full py-2 text-xs text-slate-500 hover:text-slate-300 transition-colors"
+                            >
+                                Editar notas del reclamo
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Reclamo edit form */}
+                    {isReclamo && showClaimForm && (
+                        <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-4 space-y-4">
+                            <p className="text-sm font-semibold text-orange-300">Editar Reclamo</p>
+                            <div className="grid grid-cols-2 gap-2">
+                                {[
+                                    { value: 'disputa',    label: '⚠️ Disputa',   desc: 'En proceso' },
+                                    { value: 'resolucion', label: '✅ Resolución', desc: 'Resuelto' },
+                                ].map(({ value, label, desc }) => (
+                                    <button
+                                        key={value}
+                                        onClick={() => setClaimData(prev => ({ ...prev, claim_status: value }))}
+                                        className={`p-3 rounded-xl border text-left transition-all ${
+                                            claimData.claim_status === value
+                                                ? 'border-orange-500 bg-orange-500/20'
+                                                : 'border-white/10 bg-white/5 hover:border-white/20'
+                                        }`}
+                                    >
+                                        <p className="text-sm font-medium">{label}</p>
+                                        <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
+                                    </button>
+                                ))}
+                            </div>
+                            <div>
+                                <label className="text-xs text-slate-400 mb-1 block">Notas</label>
+                                <textarea
+                                    value={claimData.claim_notes}
+                                    onChange={(e) => setClaimData(prev => ({ ...prev, claim_notes: e.target.value }))}
+                                    rows={3}
+                                    className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-orange-500/50 resize-none"
+                                />
+                            </div>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={handleClaim}
+                                    disabled={acting}
+                                    className="flex-1 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl font-semibold text-sm transition-colors flex items-center justify-center gap-2"
+                                >
+                                    {acting ? <Spinner /> : null}
+                                    Guardar
+                                </button>
+                                <button
+                                    onClick={() => setShowClaimForm(false)}
+                                    disabled={acting}
+                                    className="px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                 </div>
             </div>
         </div>
     );
 }
+
+// ────────────────────────────────────────────────────────────────────────────────
+
+const STAT_ITEMS = [
+    { key: 'pendiente',  label: 'Pendientes',  color: 'from-amber-400 to-orange-400'   },
+    { key: 'confirmado', label: 'Confirmados', color: 'from-emerald-400 to-teal-400'   },
+    { key: 'envio',      label: 'En Envío',    color: 'from-blue-400 to-indigo-400'    },
+    { key: 'entregado',  label: 'Entregados',  color: 'from-teal-400 to-cyan-400'      },
+    { key: 'reclamo',    label: 'Reclamos',    color: 'from-orange-400 to-amber-400'   },
+    { key: 'cancelado',  label: 'Cancelados',  color: 'from-red-400 to-pink-400'       },
+];
+
+const FILTERS = [
+    { value: 'pendiente',  label: 'Pendientes',  activeBg: 'bg-amber-500/20 border-amber-500/40'   },
+    { value: 'confirmado', label: 'Confirmados', activeBg: 'bg-emerald-500/20 border-emerald-500/40' },
+    { value: 'envio',      label: 'Envío',        activeBg: 'bg-blue-500/20 border-blue-500/40'     },
+    { value: 'entregado',  label: 'Entregados',  activeBg: 'bg-teal-500/20 border-teal-500/40'     },
+    { value: 'reclamo',    label: 'Reclamos',     activeBg: 'bg-orange-500/20 border-orange-500/40' },
+    { value: 'cancelado',  label: 'Cancelados',  activeBg: 'bg-red-500/20 border-red-500/40'       },
+    { value: '',           label: 'Todos',        activeBg: 'bg-primary-500/20 border-primary-500/40' },
+];
 
 export default function WebOrders() {
     const { token } = useAuth();
@@ -279,7 +759,7 @@ export default function WebOrders() {
     const [filter, setFilter] = useState('pendiente');
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [detailLoading, setDetailLoading] = useState(false);
-    const [counts, setCounts] = useState({ pendiente: 0, confirmado: 0, cancelado: 0, total: 0 });
+    const [counts, setCounts] = useState({});
 
     const fetchOrders = useCallback(async (status = filter) => {
         setLoading(true);
@@ -297,18 +777,18 @@ export default function WebOrders() {
         }
     }, [token, filter]);
 
-    // Fetch counts for all statuses
     const fetchCounts = useCallback(async () => {
         try {
-            const all = await Promise.all(
-                ['', 'pendiente', 'confirmado', 'cancelado'].map(s =>
+            const statuses = ['', 'pendiente', 'confirmado', 'envio', 'entregado', 'reclamo', 'cancelado'];
+            const results = await Promise.all(
+                statuses.map(s =>
                     fetch(`${API_URL}/web-orders${s ? `?status=${s}` : ''}`, {
                         headers: { Authorization: `Bearer ${token}` },
-                    }).then(r => r.json()).then(d => ({ status: s || 'total', count: d.total || 0 }))
+                    }).then(r => r.json()).then(d => ({ key: s || 'total', count: d.total || 0 }))
                 )
             );
             const c = {};
-            all.forEach(({ status, count }) => { c[status] = count; });
+            results.forEach(({ key, count }) => { c[key] = count; });
             setCounts(c);
         } catch { /* ignore */ }
     }, [token]);
@@ -324,7 +804,8 @@ export default function WebOrders() {
             const res = await fetch(`${API_URL}/web-orders/${id}`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
-            setSelectedOrder(await res.json());
+            const data = await res.json();
+            setSelectedOrder(data);
         } catch { /* ignore */ }
         finally { setDetailLoading(false); }
     };
@@ -336,23 +817,14 @@ export default function WebOrders() {
         });
         const data = await res.json();
 
-        // 409 = stock insuficiente (sin conflicto FIFO) → no auto-cancelar, solo advertir
         if (res.status === 409 && data.stockInsuficiente) {
-            return {
-                ok: false,
-                stockInsuficiente: true,
-                motivo: data.mensaje,
-                advertencias: data.advertencias,
-            };
+            return { ok: false, stockInsuficiente: true, motivo: data.mensaje, advertencias: data.advertencias };
         }
 
-        // Remove confirmed/cancelled order from current list and refresh counts
         setOrders(prev => prev.filter(o => o.id !== id));
-        setSelectedOrder(prev => prev ? { ...prev, web_status: data.confirmado ? 'confirmado' : 'cancelado' } : null);
-        // Also remove any auto-cancelled orders from the list
         if (data.autoCancelados?.length) {
-            const cancelledIds = data.autoCancelados.map(o => o.id);
-            setOrders(prev => prev.filter(o => !cancelledIds.includes(o.id)));
+            const ids = data.autoCancelados.map(o => o.id);
+            setOrders(prev => prev.filter(o => !ids.includes(o.id)));
         }
         fetchCounts();
         return {
@@ -372,12 +844,14 @@ export default function WebOrders() {
         fetchCounts();
     };
 
-    const FILTERS = [
-        { value: 'pendiente',  label: 'Pendientes',  color: 'text-amber-400',   activeBg: 'bg-amber-500/20 border-amber-500/40' },
-        { value: 'confirmado', label: 'Confirmados', color: 'text-emerald-400', activeBg: 'bg-emerald-500/20 border-emerald-500/40' },
-        { value: 'cancelado',  label: 'Cancelados',  color: 'text-red-400',     activeBg: 'bg-red-500/20 border-red-500/40' },
-        { value: '',           label: 'Todos',        color: 'text-slate-300',   activeBg: 'bg-primary-500/20 border-primary-500/40' },
-    ];
+    const handleRefreshOrder = async (id) => {
+        await openDetail(id);
+        fetchOrders();
+        fetchCounts();
+    };
+
+    const pendienteCount = counts.pendiente ?? 0;
+    const reclamoCount   = counts.reclamo ?? 0;
 
     return (
         <div className="space-y-6 animate-fade-in">
@@ -391,13 +865,18 @@ export default function WebOrders() {
                             </svg>
                         </span>
                         Pedidos Página Web
-                        {counts.pendiente > 0 && (
+                        {pendienteCount > 0 && (
                             <span className="ml-1 px-2 py-0.5 rounded-full bg-amber-500 text-white text-xs font-bold">
-                                {counts.pendiente}
+                                {pendienteCount}
+                            </span>
+                        )}
+                        {reclamoCount > 0 && (
+                            <span className="ml-1 px-2 py-0.5 rounded-full bg-orange-500 text-white text-xs font-bold">
+                                {reclamoCount}
                             </span>
                         )}
                     </h1>
-                    <p className="text-sm text-slate-400 mt-1">Pedidos confirmados desde Bisonte Shop</p>
+                    <p className="text-sm text-slate-400 mt-1">Pedidos desde Bisonte Shop</p>
                 </div>
                 <button
                     onClick={() => { fetchOrders(); fetchCounts(); }}
@@ -410,22 +889,18 @@ export default function WebOrders() {
                 </button>
             </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-3">
-                {[
-                    { key: 'pendiente',  label: 'Pendientes',  color: 'from-amber-400 to-orange-400' },
-                    { key: 'confirmado', label: 'Confirmados', color: 'from-emerald-400 to-teal-400' },
-                    { key: 'cancelado',  label: 'Cancelados',  color: 'from-red-400 to-pink-400' },
-                ].map(({ key, label, color }) => (
+            {/* Stats grid */}
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                {STAT_ITEMS.map(({ key, label, color }) => (
                     <button
                         key={key}
                         onClick={() => setFilter(key)}
-                        className={`glass-card-dark rounded-xl p-4 text-center transition-all border ${filter === key ? 'border-white/20 bg-white/[0.07]' : 'border-transparent'}`}
+                        className={`glass-card-dark rounded-xl p-3 text-center transition-all border ${filter === key ? 'border-white/20 bg-white/[0.07]' : 'border-transparent hover:border-white/10'}`}
                     >
                         <p className={`text-2xl font-bold bg-gradient-to-r ${color} bg-clip-text text-transparent`}>
                             {counts[key] ?? 0}
                         </p>
-                        <p className="text-xs text-slate-400 mt-1">{label}</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">{label}</p>
                     </button>
                 ))}
             </div>
@@ -443,9 +918,14 @@ export default function WebOrders() {
                         }`}
                     >
                         {label}
-                        {value === 'pendiente' && counts.pendiente > 0 && (
+                        {value === 'pendiente' && pendienteCount > 0 && (
                             <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold">
-                                {counts.pendiente}
+                                {pendienteCount}
+                            </span>
+                        )}
+                        {value === 'reclamo' && reclamoCount > 0 && (
+                            <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-orange-500 text-white text-[10px] font-bold">
+                                {reclamoCount}
                             </span>
                         )}
                     </button>
@@ -491,6 +971,12 @@ export default function WebOrders() {
                                             {order.nombre ? `${order.nombre} ${order.apellido}` : `Pedido #${order.id}`}
                                         </p>
                                         <StatusBadge status={order.web_status} />
+                                        {order.web_status === 'envio' && (
+                                            <SubStatusBadge shippingStatus={order.shipping_status} />
+                                        )}
+                                        {order.web_status === 'reclamo' && (
+                                            <SubStatusBadge claimStatus={order.claim_status} />
+                                        )}
                                         <ProcessTypeBadge processType={order.web_process_type} status={order.web_status} />
                                         {order.conflicto && (
                                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/20 text-red-400 border border-red-500/30">
@@ -498,6 +984,11 @@ export default function WebOrders() {
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
                                                 </svg>
                                                 Sin stock suficiente
+                                            </span>
+                                        )}
+                                        {order.tracking_number && (
+                                            <span className="text-xs font-mono text-violet-400 bg-violet-500/10 px-1.5 py-0.5 rounded">
+                                                {order.tracking_number}
                                             </span>
                                         )}
                                     </div>
@@ -534,6 +1025,7 @@ export default function WebOrders() {
                     onClose={() => setSelectedOrder(null)}
                     onConfirm={handleConfirm}
                     onCancel={handleCancel}
+                    onRefreshOrder={handleRefreshOrder}
                 />
             )}
         </div>

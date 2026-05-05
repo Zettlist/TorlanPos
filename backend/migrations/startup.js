@@ -10,6 +10,7 @@ import { migrateTags } from './migrate_tags.js';
 import { migrateAdultContent } from './migrate_adult_content.js';
 import migrateAdultFields from './migrate_adult_fields.js';
 import { migrateCoupons } from './migrate_coupons.js';
+import { migrateWebOrders } from './migrate_web_orders.js';
 
 
 export async function runSchemaMigrations() {
@@ -109,6 +110,9 @@ export async function runSchemaMigrations() {
 
         // 13. Coupons Module Table
         await migrateCoupons(connection);
+
+        // 14. Web Orders extended columns (shipping, tracking, claims, stock_deducted)
+        await migrateWebOrders(connection);
 
 
     } catch (error) {
