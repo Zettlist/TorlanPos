@@ -78,6 +78,7 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
     const { token } = useAuth();
     const [acting, setActing] = useState(false);
     const [resultado, setResultado] = useState(null);
+    const [showRefundConfirm, setShowRefundConfirm] = useState(false);
 
     // Ship form
     const [showShipForm, setShowShipForm] = useState(false);
@@ -103,13 +104,36 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
         if (result?.ok) onRefreshOrder(order.id);
     };
 
-    // ── Cancel ───────────────────────────────────────────────────────
+    // ── Cancel / Refund ──────────────────────────────────────────────
     const handleCancel = async () => {
         setActing(true);
-        await onCancel(order.id);
+        const result = await onCancel(order.id);
         setActing(false);
-        onClose();
+        if (result?.ok) {
+            onClose();
+        } else {
+            setResultado({ ok: false, motivo: result?.error || 'No se pudo cancelar el pedido' });
+        }
     };
+
+    const handleRefund = async () => {
+        setActing(true);
+        setShowRefundConfirm(false);
+        const result = await onCancel(order.id);
+        setActing(false);
+        if (result?.ok) {
+            setResultado({
+                ok: true,
+                motivo: result.alreadyRefunded
+                    ? 'Reembolso ya existía en Stripe. Pedido marcado como cancelado.'
+                    : `Reembolso procesado. ${result.refund_id ? `ID: ${result.refund_id}` : ''}`,
+            });
+        } else {
+            setResultado({ ok: false, motivo: result?.error || 'Error al procesar el reembolso' });
+        }
+    };
+
+    const needsRefund = ['confirmado', 'envio', 'entregado', 'reclamo'].includes(status);
 
     // ── Ship ─────────────────────────────────────────────────────────
     const handleShip = async () => {
@@ -454,13 +478,6 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                                         </svg>
                                         Preparar Envío
                                     </button>
-                                    <button
-                                        onClick={handleCancel}
-                                        disabled={acting}
-                                        className="px-5 py-3 bg-white/5 hover:bg-red-500/20 disabled:opacity-50 text-red-400 hover:text-red-300 border border-white/10 rounded-xl font-semibold transition-colors"
-                                    >
-                                        Cancelar
-                                    </button>
                                 </div>
                             ) : (
                                 <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 space-y-4">
@@ -725,6 +742,53 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                         </div>
                     )}
 
+                    {/* ZONA DE PELIGRO — Cancelar y reembolsar (post-confirmado) */}
+                    {needsRefund && !showRefundConfirm && !resultado && !showShipForm && !showClaimForm && (
+                        <div className="pt-2 border-t border-white/5">
+                            <button
+                                onClick={() => setShowRefundConfirm(true)}
+                                disabled={acting}
+                                className="w-full py-2.5 text-xs text-red-500/70 hover:text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 rounded-xl transition-all disabled:opacity-30"
+                            >
+                                💳 Cancelar pedido y reembolsar al cliente
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Confirmación de reembolso */}
+                    {showRefundConfirm && (
+                        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 space-y-3">
+                            <div className="flex items-start gap-3">
+                                <span className="text-2xl flex-shrink-0">⚠️</span>
+                                <div>
+                                    <p className="font-semibold text-red-300">¿Cancelar y reembolsar?</p>
+                                    <p className="text-xs text-slate-400 mt-1">
+                                        Se procesará un reembolso completo de{' '}
+                                        <strong className="text-white">${Number(order.total).toFixed(2)}</strong>{' '}
+                                        vía Stripe. Esta acción no se puede deshacer.
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={handleRefund}
+                                    disabled={acting}
+                                    className="flex-1 py-2.5 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white rounded-xl font-semibold text-sm transition-colors flex items-center justify-center gap-2"
+                                >
+                                    {acting ? <Spinner /> : null}
+                                    Confirmar Reembolso
+                                </button>
+                                <button
+                                    onClick={() => setShowRefundConfirm(false)}
+                                    disabled={acting}
+                                    className="px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm transition-colors"
+                                >
+                                    No, volver
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                 </div>
             </div>
         </div>
@@ -836,12 +900,18 @@ export default function WebOrders() {
     };
 
     const handleCancel = async (id) => {
-        await fetch(`${API_URL}/web-orders/${id}/cancel`, {
+        const res = await fetch(`${API_URL}/web-orders/${id}/cancel`, {
             method: 'PUT',
             headers: { Authorization: `Bearer ${token}` },
         });
-        setOrders(prev => prev.filter(o => o.id !== id));
-        fetchCounts();
+        const data = await res.json();
+        if (res.ok) {
+            setOrders(prev => prev.filter(o => o.id !== id));
+            fetchCounts();
+            return { ok: true };
+        } else {
+            return { ok: false, error: data.error || 'Error al cancelar' };
+        }
     };
 
     const handleRefreshOrder = async (id) => {

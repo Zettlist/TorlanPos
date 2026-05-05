@@ -19,6 +19,15 @@ async function callBisonteCapture(saleId, action) {
     return res.json();
 }
 
+async function callBisonteRefund(saleId, reason) {
+    const res = await fetch(`${BISONTE_SHOP_URL}/api/orders/refund`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ saleId, reason: reason || 'requested_by_customer', apiKey: BISONTE_CAPTURE_KEY }),
+    });
+    return res.json();
+}
+
 /**
  * Deduct stock for all items in an order.
  * Uses stock_deducted flag to prevent double deduction.
@@ -541,18 +550,58 @@ router.put('/:id/claim', authenticateToken, validateEmpresaActive, async (req, r
 router.put('/:id/cancel', authenticateToken, validateEmpresaActive, async (req, res) => {
     const empresa_id = req.user.empresa_id;
     const { id } = req.params;
+    const { motivo } = req.body || {};
 
     try {
         const [[order]] = await pool.query(`
-            SELECT id, web_status FROM sales
+            SELECT id, web_status, stock_deducted FROM sales
             WHERE id = ? AND empresa_id = ? AND cash_session_id IS NULL AND cliente_id IS NOT NULL
         `, [id, empresa_id]);
 
         if (!order) return res.status(404).json({ error: 'Pedido no encontrado' });
-        if (order.web_status === 'confirmado') {
-            return res.status(400).json({ error: 'No se puede cancelar un pedido ya confirmado y cobrado' });
+
+        const needsRefund = ['confirmado', 'envio', 'entregado', 'reclamo'].includes(order.web_status);
+
+        if (needsRefund) {
+            // Payment was already captured — issue Stripe refund via Bisonte Shop
+            const refundRes = await callBisonteRefund(parseInt(id), motivo || 'requested_by_customer');
+
+            if (!refundRes.success && !refundRes.alreadyRefunded) {
+                return res.status(502).json({
+                    error: refundRes.error || 'Error al procesar el reembolso en Stripe',
+                    code: 'REFUND_FAILED',
+                });
+            }
+
+            // Restore stock if it was deducted by TorlanPos
+            if (order.stock_deducted) {
+                await pool.query(`
+                    UPDATE products p
+                    JOIN sale_items si ON si.product_id = p.id
+                    SET p.stock = p.stock + si.quantity
+                    WHERE si.sale_id = ?
+                `, [id]);
+                await pool.query(`UPDATE sales SET stock_deducted = 0 WHERE id = ?`, [id]);
+            }
+
+            await pool.query(
+                `UPDATE sales SET web_status = 'cancelado', web_process_type = 'manual' WHERE id = ?`, [id]
+            );
+
+            const conn = await pool.getConnection();
+            const orderData = await getOrderForEmail(id, conn);
+            conn.release();
+            if (orderData?.email) sendOrderEmail('cancelado', orderData.email, { ...orderData, motivo });
+
+            return res.json({
+                success: true,
+                refunded: true,
+                refund_id: refundRes.refund_id,
+                alreadyRefunded: refundRes.alreadyRefunded || false,
+            });
         }
 
+        // Pending order — just void the payment authorization
         const bisonteRes = await callBisonteCapture(parseInt(id), 'cancel');
 
         if (!bisonteRes.success
@@ -568,9 +617,9 @@ router.put('/:id/cancel', authenticateToken, validateEmpresaActive, async (req, 
         const conn = await pool.getConnection();
         const orderData = await getOrderForEmail(id, conn);
         conn.release();
-        if (orderData?.email) sendOrderEmail('cancelado', orderData.email, orderData);
+        if (orderData?.email) sendOrderEmail('cancelado', orderData.email, { ...orderData, motivo });
 
-        res.json({ success: true });
+        res.json({ success: true, refunded: false });
     } catch (err) {
         console.error('Error cancelling web order:', err);
         res.status(500).json({ error: 'Error al cancelar el pedido: ' + err.message });
