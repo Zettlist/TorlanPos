@@ -10,22 +10,135 @@ const BISONTE_CAPTURE_KEY = process.env.BISONTE_CAPTURE_KEY;
 
 const VALID_STATUSES = ['pendiente', 'confirmado', 'envio', 'entregado', 'reclamo', 'cancelado'];
 
-async function callBisonteCapture(saleId, action) {
-    const res = await fetch(`${BISONTE_SHOP_URL}/api/orders/capture`, {
+const ENVIA_URL_BASE = 'https://api-test.envia.com';
+const STATE_CODES_ENVIA = {
+    'Aguascalientes': 'AG', 'Baja California': 'BC', 'Baja California Sur': 'BS',
+    'Campeche': 'CM', 'Chiapas': 'CS', 'Chihuahua': 'CH', 'Ciudad de México': 'CX',
+    'Coahuila': 'CO', 'Colima': 'CL', 'Durango': 'DG', 'Guanajuato': 'GT',
+    'Guerrero': 'GR', 'Hidalgo': 'HG', 'Jalisco': 'JA', 'Estado de México': 'EM',
+    'Michoacán': 'MC', 'Morelos': 'MO', 'Nayarit': 'NA', 'Nuevo León': 'NL',
+    'Oaxaca': 'OA', 'Puebla': 'PU', 'Querétaro': 'QT', 'Quintana Roo': 'QR',
+    'San Luis Potosí': 'SL', 'Sinaloa': 'SI', 'Sonora': 'SO', 'Tabasco': 'TB',
+    'Tamaulipas': 'TM', 'Tlaxcala': 'TL', 'Veracruz': 'VE', 'Yucatán': 'YU',
+    'Zacatecas': 'ZA',
+};
+
+/**
+ * Generate an Envia.com label and save tracking to DB.
+ * @param {number} saleId
+ * @param {object} quote  — envia_quote_data (already parsed)
+ * @param {object} address — shipping_address_json (already parsed)
+ * @returns {{ trackingNumber, labelData }} or throws on error
+ */
+async function generateEnviaLabel(saleId, quote, address) {
+    const token = process.env.ENVIA_BEARER_TOKEN;
+    if (!token) throw new Error('ENVIA_BEARER_TOKEN no configurado');
+
+    const rawSt = (address.estado || '').trim().normalize('NFC').toLowerCase();
+    let stateCode = 'CX';
+    for (const [k, v] of Object.entries(STATE_CODES_ENVIA)) {
+        if (k.normalize('NFC').toLowerCase() === rawSt) { stateCode = v; break; }
+    }
+    if ((address.estado || '').length <= 3 && address.estado) stateCode = address.estado;
+
+    const pkg = quote.pkg || { length: 23, width: 32, height: 1, weight: 0.25 };
+    const branchCode = quote.raw?.branches?.[0]?.branch_code || 'MTY04';
+
+    const body = {
+        origin: {
+            name: 'Bisonte Manga',
+            phone: '8110000000',
+            street: 'Delta',
+            number: '172',
+            district: 'Viejo Roble',
+            city: 'San Nicolás de los Garza',
+            state: 'NL',
+            country: 'MX',
+            postalCode: '66418',
+            branchCode,
+        },
+        destination: {
+            name: address.nombre_recibe || 'Cliente',
+            phone: (address.telefono || '0000000000').replace(/\D/g, '').slice(0, 10),
+            street: address.calle || '',
+            number: address.numero_exterior || 'S/N',
+            district: address.colonia || '',
+            city: address.municipio || '',
+            state: stateCode,
+            country: 'MX',
+            postalCode: String(address.cp || '').trim(),
+        },
+        packages: [{
+            type: 'box',
+            content: 'Manga',
+            amount: 1,
+            declaredValue: 200,
+            lengthUnit: 'CM',
+            weightUnit: 'KG',
+            weight: pkg.weight,
+            dimensions: { length: pkg.length, width: pkg.width, height: pkg.height },
+        }],
+        shipment: {
+            type: 1,
+            carrier: quote.carrier || 'estafeta',
+            service: quote.service || quote.raw?.service,
+        },
+        settings: {
+            printFormat: 'PDF',
+            printSize: 'PAPER_7X4.75',
+        },
+    };
+
+    const res = await fetch(`${ENVIA_URL_BASE}/ship/generate/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(20000),
+    });
+
+    const text = await res.text();
+    let data;
+    try { data = JSON.parse(text); } catch { throw new Error(`Envia.com respuesta inválida: ${text.slice(0, 200)}`); }
+
+    if (!res.ok || data.error || !data.data) {
+        const errObj = data.error || data.message || `Envia.com error ${res.status}`;
+        throw new Error(typeof errObj === 'string' ? errObj : JSON.stringify(errObj));
+    }
+
+    const labelData = Array.isArray(data.data) ? data.data[0] : data.data;
+    const trackingNumber = labelData.trackingNumber || labelData.tracking_number || labelData.guia || '';
+
+    await pool.query(
+        `UPDATE sales SET envia_label_data = ?, tracking_number = ? WHERE id = ?`,
+        [JSON.stringify(labelData), trackingNumber, saleId]
+    );
+
+    console.log(`[Envia] Sale #${saleId} — guía generada. Tracking: ${trackingNumber}`);
+    return { trackingNumber, labelData };
+}
+
+async function callBisonte(url, body) {
+    const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ saleId, action, apiKey: BISONTE_CAPTURE_KEY }),
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(20000),
     });
-    return res.json();
+    const text = await res.text();
+    try {
+        return JSON.parse(text);
+    } catch {
+        console.error(`[Bisonte] Non-JSON response (${res.status}) from ${url}:`, text.slice(0, 300));
+        return { success: false, error: `Bisonte HTTP ${res.status}: respuesta inválida`, _rawStatus: res.status };
+    }
+}
+
+async function callBisonteCapture(saleId, action) {
+    return callBisonte(`${BISONTE_SHOP_URL}/api/orders/capture`, { saleId, action, apiKey: BISONTE_CAPTURE_KEY });
 }
 
 async function callBisonteRefund(saleId, reason) {
-    const res = await fetch(`${BISONTE_SHOP_URL}/api/orders/refund`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ saleId, reason: reason || 'requested_by_customer', apiKey: BISONTE_CAPTURE_KEY }),
-    });
-    return res.json();
+    return callBisonte(`${BISONTE_SHOP_URL}/api/orders/refund`, { saleId, reason: reason || 'requested_by_customer', apiKey: BISONTE_CAPTURE_KEY });
 }
 
 /**
@@ -153,6 +266,7 @@ async function cascadeCancelLaterOrders(confirmedSaleId, conn) {
 // GET /api/web-orders
 // ──────────────────────────────────────────────────────────────────────────────
 router.get('/', authenticateToken, validateEmpresaActive, async (req, res) => {
+    res.set('Cache-Control', 'no-store');
     try {
         const empresa_id = req.user.empresa_id;
         const { page = 1, limit = 30, status } = req.query;
@@ -231,6 +345,7 @@ router.get('/:id', authenticateToken, validateEmpresaActive, async (req, res) =>
                 s.payment_method, s.web_status, s.web_process_type, s.created_at,
                 s.shipping_status, s.tracking_number, s.claim_status, s.claim_notes,
                 s.shipped_at, s.delivered_at,
+                s.shipping_method, s.envia_quote_data, s.envia_label_data, s.shipping_address_json,
                 cl.id AS cliente_id, cl.nombre, cl.apellido, cl.email, cl.client_code, cl.telefono,
                 ua.nombre_recibe, ua.calle, ua.numero, ua.colonia,
                 ua.municipio, ua.estado AS estado_entrega, ua.cp
@@ -364,7 +479,8 @@ router.put('/:id/confirm', authenticateToken, validateEmpresaActive, async (req,
         await conn.beginTransaction();
 
         const [[order]] = await conn.query(`
-            SELECT id, web_status FROM sales
+            SELECT id, web_status, shipping_method, envia_quote_data, envia_label_data, shipping_address_json
+            FROM sales
             WHERE id = ? AND empresa_id = ?
               AND cash_session_id IS NULL AND cliente_id IS NOT NULL
             FOR UPDATE
@@ -389,6 +505,26 @@ router.put('/:id/confirm', authenticateToken, validateEmpresaActive, async (req,
             return res.status(409).json({ success: false, stockInsuficiente: true, advertencias: advertenciasStock, mensaje: 'Stock insuficiente. Cancela manualmente y contacta al cliente.' });
         }
 
+        // Stock OK — generate Envia.com label BEFORE capturing payment
+        let labelError = null;
+        if (order.shipping_method === 'envia' && !order.envia_label_data) {
+            await conn.rollback(); // release row lock during external API call
+            try {
+                const quote = typeof order.envia_quote_data === 'string'
+                    ? JSON.parse(order.envia_quote_data)
+                    : (order.envia_quote_data || {});
+                const address = typeof order.shipping_address_json === 'string'
+                    ? JSON.parse(order.shipping_address_json)
+                    : (order.shipping_address_json || {});
+                await generateEnviaLabel(parseInt(id), quote, address);
+            } catch (err) {
+                console.error(`[Envia] Error generando guía para pedido #${id}:`, err.message);
+                labelError = err.message; // log but don't block confirmation
+            }
+            // Re-acquire connection for the rest of the transaction
+            await conn.beginTransaction();
+        }
+
         const bisonteRes = await callBisonteCapture(parseInt(id), 'capture');
 
         if (!bisonteRes.success) {
@@ -406,7 +542,7 @@ router.put('/:id/confirm', authenticateToken, validateEmpresaActive, async (req,
         const orderData = await getOrderForEmail(id, conn);
         if (orderData?.email) sendOrderEmail('confirmado', orderData.email, orderData);
 
-        res.json({ success: true, confirmado: true, autoCancelados, stockErrors: bisonteRes.stockErrors ?? [] });
+        res.json({ success: true, confirmado: true, autoCancelados, stockErrors: bisonteRes.stockErrors ?? [], labelError });
     } catch (err) {
         await conn.rollback();
         console.error('Error confirming web order:', err);
@@ -604,6 +740,20 @@ router.put('/:id/cancel', authenticateToken, validateEmpresaActive, async (req, 
         // Pending order — just void the payment authorization
         const bisonteRes = await callBisonteCapture(parseInt(id), 'cancel');
 
+        // If Bisonte says it was already captured (race condition), switch to refund flow
+        if (!bisonteRes.success && bisonteRes.error?.includes('captured')) {
+            const refundRes = await callBisonteRefund(parseInt(id), motivo || 'requested_by_customer');
+            if (!refundRes.success && !refundRes.alreadyRefunded) {
+                return res.status(502).json({ error: refundRes.error || 'Error al reembolsar en Stripe', code: 'REFUND_FAILED' });
+            }
+            await pool.query(`UPDATE sales SET web_status = 'cancelado', web_process_type = 'manual' WHERE id = ?`, [id]);
+            const conn2 = await pool.getConnection();
+            const orderData2 = await getOrderForEmail(id, conn2);
+            conn2.release();
+            if (orderData2?.email) sendOrderEmail('cancelado', orderData2.email, { ...orderData2, motivo });
+            return res.json({ success: true, refunded: true, refund_id: refundRes.refund_id });
+        }
+
         if (!bisonteRes.success
             && !bisonteRes.error?.includes('cancelled')
             && !bisonteRes.error?.includes('No se encontró')) {
@@ -623,6 +773,69 @@ router.put('/:id/cancel', authenticateToken, validateEmpresaActive, async (req, 
     } catch (err) {
         console.error('Error cancelling web order:', err);
         res.status(500).json({ error: 'Error al cancelar el pedido: ' + err.message });
+    }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// POST /api/web-orders/:id/generate-label
+// Fallback: manually generate Envia.com label (if auto-gen at confirm failed)
+// Works for pendiente (label only), confirmado/envio (label + advance to envio)
+// ──────────────────────────────────────────────────────────────────────────────
+router.post('/:id/generate-label', authenticateToken, validateEmpresaActive, async (req, res) => {
+    const empresa_id = req.user.empresa_id;
+    const { id } = req.params;
+
+    try {
+        const [[order]] = await pool.query(`
+            SELECT id, web_status, shipping_method, envia_quote_data, envia_label_data, shipping_address_json
+            FROM sales WHERE id = ? AND empresa_id = ?
+              AND cash_session_id IS NULL AND cliente_id IS NOT NULL
+        `, [id, empresa_id]);
+
+        if (!order) return res.status(404).json({ error: 'Pedido no encontrado' });
+        if (order.shipping_method !== 'envia') return res.status(400).json({ error: 'Este pedido usa Envío Bisonte, no Envia.com' });
+        if (!['pendiente', 'confirmado', 'envio'].includes(order.web_status)) {
+            return res.status(400).json({ error: 'No se puede generar etiqueta para este pedido' });
+        }
+
+        // Already has label — return idempotently
+        if (order.envia_label_data) {
+            const label = typeof order.envia_label_data === 'string'
+                ? JSON.parse(order.envia_label_data)
+                : order.envia_label_data;
+            return res.json({ success: true, alreadyGenerated: true, label });
+        }
+
+        const quote = typeof order.envia_quote_data === 'string'
+            ? JSON.parse(order.envia_quote_data) : (order.envia_quote_data || {});
+        const address = typeof order.shipping_address_json === 'string'
+            ? JSON.parse(order.shipping_address_json) : (order.shipping_address_json || {});
+
+        const { trackingNumber, labelData } = await generateEnviaLabel(parseInt(id), quote, address);
+
+        // pendiente: label stored only (stock not confirmed yet, no status change)
+        // confirmado/envio: advance to envio
+        if (order.web_status !== 'pendiente') {
+            await pool.query(
+                `UPDATE sales SET web_status = 'envio',
+                 shipping_status = 'en_espera', shipped_at = COALESCE(shipped_at, NOW())
+                 WHERE id = ?`,
+                [id]
+            );
+        }
+
+        const conn = await pool.getConnection();
+        const orderData = await getOrderForEmail(id, conn);
+        conn.release();
+        if (orderData?.email) {
+            sendOrderEmail('envio_espera', orderData.email, { ...orderData, tracking_number: trackingNumber });
+        }
+
+        res.json({ success: true, label: labelData, trackingNumber });
+
+    } catch (err) {
+        console.error('[GenerateLabel] Error:', err.message);
+        res.status(500).json({ error: err.message });
     }
 });
 
