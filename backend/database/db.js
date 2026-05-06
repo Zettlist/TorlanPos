@@ -7,7 +7,8 @@ const dbConfig = {
   database: process.env.DB_NAME || 'torlan_pos',
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 0,
+  charset: 'utf8mb4',
 };
 
 // Determine if we're connecting via Unix socket (App Engine) or TCP (local/development)
