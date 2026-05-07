@@ -78,11 +78,17 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
     const { token } = useAuth();
     const [acting, setActing] = useState(false);
     const [resultado, setResultado] = useState(null);
+    const [cancelError, setCancelError] = useState(null);
     const [showRefundConfirm, setShowRefundConfirm] = useState(false);
 
     // Ship form
     const [showShipForm, setShowShipForm] = useState(false);
     const [shipData, setShipData] = useState({ shipping_status: 'en_espera', tracking_number: '' });
+
+    // Envia.com label generation
+    const [generatingLabel, setGeneratingLabel] = useState(false);
+    const [labelResult, setLabelResult] = useState(null);
+    const [labelError, setLabelError] = useState(null);
 
     // Claim form
     const [showClaimForm, setShowClaimForm] = useState(false);
@@ -107,12 +113,13 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
     // ── Cancel / Refund ──────────────────────────────────────────────
     const handleCancel = async () => {
         setActing(true);
+        setCancelError(null);
         const result = await onCancel(order.id);
         setActing(false);
         if (result?.ok) {
             onClose();
         } else {
-            setResultado({ ok: false, motivo: result?.error || 'No se pudo cancelar el pedido' });
+            setCancelError(result?.error || 'No se pudo cancelar el pedido');
         }
     };
 
@@ -136,19 +143,26 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
     const needsRefund = ['confirmado', 'envio', 'entregado', 'reclamo'].includes(status);
 
     // ── Ship ─────────────────────────────────────────────────────────
+    const [shipError, setShipError] = useState(null);
     const handleShip = async () => {
         setActing(true);
+        setShipError(null);
         try {
             const res = await fetch(`${API_URL}/web-orders/${order.id}/ship`, {
                 method: 'PUT',
                 headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify(shipData),
             });
+            const data = await res.json();
             if (res.ok) {
                 setShowShipForm(false);
                 await onRefreshOrder(order.id);
+            } else {
+                setShipError(data.error || 'Error al actualizar envío');
             }
-        } catch { /* ignore */ }
+        } catch (err) {
+            setShipError(err.message || 'Error de conexión');
+        }
         setActing(false);
     };
 
@@ -212,6 +226,29 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
         setActing(false);
     };
 
+    const isEnvia = order.shipping_method === 'envia';
+
+    const handleGenerateLabel = async () => {
+        setGeneratingLabel(true);
+        setLabelError(null);
+        try {
+            const res = await fetch(`${API_URL}/web-orders/${order.id}/generate-label`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                setLabelResult(data);
+                await onRefreshOrder(order.id);
+            } else {
+                setLabelError(data.error || 'Error al generar etiqueta');
+            }
+        } catch (err) {
+            setLabelError(err.message || 'Error de conexión');
+        }
+        setGeneratingLabel(false);
+    };
+
     const Spinner = () => <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />;
 
     return (
@@ -232,6 +269,15 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                             {isEnvio && <SubStatusBadge shippingStatus={order.shipping_status} />}
                             {isReclamo && <SubStatusBadge claimStatus={order.claim_status} />}
                             <ProcessTypeBadge processType={order.web_process_type} status={order.web_status} />
+                            {order.shipping_method && (
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border ${
+                                    order.shipping_method === 'envia'
+                                        ? 'bg-cyan-500/15 text-cyan-300 border-cyan-500/20'
+                                        : 'bg-amber-500/15 text-amber-300 border-amber-500/20'
+                                }`}>
+                                    {order.shipping_method === 'envia' ? '📦 Envia.com' : '🦬 Envío Bisonte'}
+                                </span>
+                            )}
                         </div>
                         <p className="text-sm text-slate-400">
                             {new Date(order.created_at).toLocaleDateString('es-MX', {
@@ -275,11 +321,24 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                         )
                     )}
 
-                    {/* Tracking number (when in envio) */}
-                    {isEnvio && order.tracking_number && (
+                    {/* Tracking number — shown for any status when available */}
+                    {order.tracking_number && (
                         <div className="bg-violet-500/10 border border-violet-500/20 rounded-xl p-4">
                             <p className="text-xs text-violet-400 uppercase tracking-wider mb-1">Número de Guía</p>
                             <p className="font-mono text-lg font-bold text-white">{order.tracking_number}</p>
+                            {order.envia_label_data && (
+                                (() => {
+                                    try {
+                                        const ld = typeof order.envia_label_data === 'string' ? JSON.parse(order.envia_label_data) : order.envia_label_data;
+                                        return ld?.label ? (
+                                            <a href={ld.label} target="_blank" rel="noreferrer"
+                                                className="text-xs text-cyan-400 hover:text-cyan-300 underline mt-1 block">
+                                                Ver / Descargar Etiqueta PDF
+                                            </a>
+                                        ) : null;
+                                    } catch { return null; }
+                                })()
+                            )}
                         </div>
                     )}
 
@@ -440,33 +499,90 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
 
                     {/* PENDIENTE */}
                     {isPendiente && !resultado && (
-                        <div className="flex gap-3">
-                            <button
-                                onClick={handleConfirm}
-                                disabled={acting}
-                                className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
-                            >
-                                {acting ? <Spinner /> : (
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                    </svg>
-                                )}
-                                Confirmar Existencia
-                            </button>
-                            <button
-                                onClick={handleCancel}
-                                disabled={acting}
-                                className="px-5 py-3 bg-white/5 hover:bg-red-500/20 disabled:opacity-50 text-red-400 hover:text-red-300 border border-white/10 rounded-xl font-semibold transition-colors"
-                            >
-                                Cancelar
-                            </button>
+                        <div className="space-y-3">
+                            {/* Envia.com: guía ya generada o fallback para regenerar */}
+                            {isEnvia && (
+                                order.tracking_number ? (
+                                    <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-xl p-4">
+                                        <p className="text-xs text-cyan-400 uppercase tracking-wider mb-1">📦 Guía Envia.com generada</p>
+                                        <p className="text-xs text-slate-400">La guía se generó automáticamente al confirmar el pago. Confirma existencias para capturar el cobro.</p>
+                                    </div>
+                                ) : (
+                                    <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 space-y-3">
+                                        <p className="text-xs text-amber-400 font-semibold">⚠️ Guía pendiente de generación</p>
+                                        <p className="text-xs text-slate-400">La guía no se generó automáticamente. Puedes generarla aquí.</p>
+                                        {labelError && (
+                                            <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+                                                {typeof labelError === 'string' ? labelError : JSON.stringify(labelError)}
+                                            </p>
+                                        )}
+                                        <button
+                                            onClick={handleGenerateLabel}
+                                            disabled={generatingLabel || acting}
+                                            className="w-full py-2.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white rounded-xl font-semibold text-sm transition-colors flex items-center justify-center gap-2"
+                                        >
+                                            {generatingLabel ? <Spinner /> : '🏷️'}
+                                            {generatingLabel ? 'Generando...' : 'Generar Guía Envia.com'}
+                                        </button>
+                                    </div>
+                                )
+                            )}
+                            {cancelError && (
+                                <div className="rounded-xl p-3 border bg-red-500/10 border-red-500/30 text-red-300 text-sm">
+                                    <p className="font-semibold">❌ Error al cancelar</p>
+                                    <p className="mt-1 opacity-80">{cancelError}</p>
+                                </div>
+                            )}
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={handleConfirm}
+                                    disabled={acting}
+                                    className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
+                                >
+                                    {acting ? <Spinner /> : (
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    )}
+                                    Confirmar Existencia
+                                </button>
+                                <button
+                                    onClick={handleCancel}
+                                    disabled={acting}
+                                    className="px-5 py-3 bg-white/5 hover:bg-red-500/20 disabled:opacity-50 text-red-400 hover:text-red-300 border border-white/10 rounded-xl font-semibold transition-colors"
+                                >
+                                    {cancelError ? 'Reintentar' : 'Cancelar'}
+                                </button>
+                            </div>
                         </div>
                     )}
 
                     {/* CONFIRMADO → Enviar / Cancelar */}
                     {isConfirmado && (
                         <div className="space-y-3">
-                            {!showShipForm ? (
+                            {/* Envia.com — guía ya generada, marcar despachado directo (sin formulario) */}
+                            {isEnvia && (
+                                <button
+                                    onClick={async () => {
+                                        setActing(true);
+                                        try {
+                                            const res = await fetch(`${API_URL}/web-orders/${order.id}/ship`, {
+                                                method: 'PUT',
+                                                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', cache: 'no-store' },
+                                                body: JSON.stringify({ shipping_status: 'despachado', tracking_number: order.tracking_number }),
+                                            });
+                                            if (res.ok) await onRefreshOrder(order.id);
+                                        } catch { /* ignore */ }
+                                        setActing(false);
+                                    }}
+                                    disabled={acting}
+                                    className="w-full py-3 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
+                                >
+                                    {acting ? <Spinner /> : null}
+                                    🚚 Marcar como Despachado
+                                </button>
+                            )}
+                            {!isEnvia && !showShipForm ? (
                                 <div className="flex gap-3">
                                     <button
                                         onClick={() => setShowShipForm(true)}
@@ -479,7 +595,7 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                                         Preparar Envío
                                     </button>
                                 </div>
-                            ) : (
+                            ) : !isEnvia && (
                                 <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 space-y-4">
                                     <p className="text-sm font-semibold text-blue-300">Preparar Envío</p>
                                     {/* Sub-status */}
@@ -515,6 +631,9 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                                             className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm font-mono focus:outline-none focus:border-blue-500/50"
                                         />
                                     </div>
+                                    {shipError && (
+                                        <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{shipError}</p>
+                                    )}
                                     <div className="flex gap-2">
                                         <button
                                             onClick={handleShip}
@@ -522,10 +641,10 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                                             className="flex-1 py-2.5 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white rounded-xl font-semibold text-sm transition-colors flex items-center justify-center gap-2"
                                         >
                                             {acting ? <Spinner /> : null}
-                                            Confirmar Envío
+                                            {shipData.shipping_status === 'despachado' ? '🚚 Confirmar Despacho' : '📦 Confirmar En Espera'}
                                         </button>
                                         <button
-                                            onClick={() => setShowShipForm(false)}
+                                            onClick={() => { setShowShipForm(false); setShipError(null); }}
                                             disabled={acting}
                                             className="px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm transition-colors"
                                         >
@@ -831,6 +950,7 @@ export default function WebOrders() {
             const params = status ? `?status=${status}` : '';
             const res = await fetch(`${API_URL}/web-orders${params}`, {
                 headers: { Authorization: `Bearer ${token}` },
+                cache: 'no-store',
             });
             const data = await res.json();
             setOrders(data.orders || []);
@@ -848,6 +968,7 @@ export default function WebOrders() {
                 statuses.map(s =>
                     fetch(`${API_URL}/web-orders${s ? `?status=${s}` : ''}`, {
                         headers: { Authorization: `Bearer ${token}` },
+                        cache: 'no-store',
                     }).then(r => r.json()).then(d => ({ key: s || 'total', count: d.total || 0 }))
                 )
             );
