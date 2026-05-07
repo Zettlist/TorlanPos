@@ -1147,75 +1147,98 @@ export default function WebOrders() {
                         No hay pedidos {filter ? `"${STATUS_CONFIG[filter]?.label?.toLowerCase()}"` : ''} en este momento
                     </p>
                 </div>
-            ) : (
-                <div className="space-y-3">
-                    {orders.map((order) => (
-                        <button
-                            key={order.id}
-                            onClick={() => openDetail(order.id)}
-                            disabled={detailLoading}
-                            className="w-full glass-card-dark rounded-xl p-4 hover:bg-white/[0.07] transition-colors text-left border border-white/5 hover:border-white/10"
-                        >
-                            <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center font-semibold text-sm flex-shrink-0">
-                                    {order.nombre?.charAt(0)?.toUpperCase() ?? '#'}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                        <span className="text-xs font-mono text-slate-500 bg-white/5 px-1.5 py-0.5 rounded">
-                                            #{order.id}
-                                        </span>
-                                        <p className="font-semibold text-sm">
-                                            {order.nombre ? `${order.nombre} ${order.apellido}` : `Pedido #${order.id}`}
-                                        </p>
-                                        <StatusBadge status={order.web_status} />
-                                        {order.web_status === 'envio' && (
-                                            <SubStatusBadge shippingStatus={order.shipping_status} />
-                                        )}
-                                        {order.web_status === 'reclamo' && (
-                                            <SubStatusBadge claimStatus={order.claim_status} />
-                                        )}
-                                        <ProcessTypeBadge processType={order.web_process_type} status={order.web_status} />
-                                        {order.conflicto && (
-                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/20 text-red-400 border border-red-500/30">
-                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-                                                </svg>
-                                                Sin stock suficiente
-                                            </span>
-                                        )}
-                                        {order.tracking_number && (
-                                            <span className="text-xs font-mono text-violet-400 bg-violet-500/10 px-1.5 py-0.5 rounded">
-                                                {order.tracking_number}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <p className="text-xs text-slate-400 truncate mt-0.5">
-                                        {order.email ?? 'Sin email'}
-                                    </p>
-                                </div>
-                                <div className="text-right flex-shrink-0 hidden sm:block">
-                                    <p className="font-bold">${Number(order.total).toFixed(2)}</p>
-                                    <p className="text-xs text-slate-500">
-                                        {order.total_items} {order.total_items === 1 ? 'producto' : 'productos'}
-                                    </p>
-                                </div>
-                                <div className="text-right flex-shrink-0 hidden md:block">
-                                    <p className="text-xs text-slate-400">
-                                        {new Date(order.created_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })}
-                                    </p>
-                                    <p className="text-xs text-slate-500">
-                                        {new Date(order.created_at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
-                                    </p>
-                                </div>
-                                <svg className="w-4 h-4 text-slate-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                </svg>
+            ) : (() => {
+                const bisonteOrders = orders.filter(o => o.shipping_method !== 'envia');
+                const enviaOrders   = orders.filter(o => o.shipping_method === 'envia');
+
+                const OrderCard = ({ order }) => (
+                    <button
+                        key={order.id}
+                        onClick={() => openDetail(order.id)}
+                        disabled={detailLoading}
+                        className="w-full glass-card-dark rounded-xl p-4 hover:bg-white/[0.07] transition-colors text-left border border-white/5 hover:border-white/10"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center font-semibold text-sm flex-shrink-0">
+                                {order.nombre?.charAt(0)?.toUpperCase() ?? '#'}
                             </div>
-                        </button>
-                    ))}
-                </div>
-            )}
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="text-xs font-mono text-slate-500 bg-white/5 px-1.5 py-0.5 rounded">#{order.id}</span>
+                                    <p className="font-semibold text-sm truncate">
+                                        {order.nombre ? `${order.nombre} ${order.apellido}` : `Pedido #${order.id}`}
+                                    </p>
+                                    <StatusBadge status={order.web_status} />
+                                    {order.web_status === 'envio' && <SubStatusBadge shippingStatus={order.shipping_status} />}
+                                    {order.web_status === 'reclamo' && <SubStatusBadge claimStatus={order.claim_status} />}
+                                    <ProcessTypeBadge processType={order.web_process_type} status={order.web_status} />
+                                    {order.conflicto && (
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/20 text-red-400 border border-red-500/30">
+                                            ⚠️ Sin stock
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                    <p className="text-xs text-slate-400 truncate">{order.email ?? 'Sin email'}</p>
+                                    {order.tracking_number && (
+                                        <span className="text-xs font-mono text-violet-400 bg-violet-500/10 px-1.5 py-0.5 rounded flex-shrink-0">
+                                            {order.tracking_number}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="text-right flex-shrink-0">
+                                <p className="font-bold text-sm">${Number(order.total).toFixed(2)}</p>
+                                <p className="text-xs text-slate-500">
+                                    {new Date(order.created_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })}
+                                </p>
+                            </div>
+                            <svg className="w-4 h-4 text-slate-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                        </div>
+                    </button>
+                );
+
+                const Column = ({ title, icon, accentClass, borderClass, orders: colOrders }) => (
+                    <div className="flex-1 min-w-0">
+                        <div className={`flex items-center gap-2 mb-3 pb-2 border-b ${borderClass}`}>
+                            <span className="text-lg">{icon}</span>
+                            <p className={`text-sm font-semibold ${accentClass}`}>{title}</p>
+                            <span className={`ml-auto text-xs px-2 py-0.5 rounded-full ${accentClass} bg-white/5`}>
+                                {colOrders.length}
+                            </span>
+                        </div>
+                        {colOrders.length === 0 ? (
+                            <p className="text-xs text-slate-500 text-center py-8">Sin pedidos</p>
+                        ) : (
+                            <div className="space-y-2">
+                                {colOrders.map(order => <OrderCard key={order.id} order={order} />)}
+                            </div>
+                        )}
+                    </div>
+                );
+
+                return (
+                    <div className="flex gap-4 items-start">
+                        <Column
+                            title="Envío Bisonte"
+                            icon="🦬"
+                            accentClass="text-amber-400"
+                            borderClass="border-amber-500/20"
+                            orders={bisonteOrders}
+                        />
+                        <div className="w-px bg-white/10 self-stretch flex-shrink-0" />
+                        <Column
+                            title="Envia.com"
+                            icon="📦"
+                            accentClass="text-cyan-400"
+                            borderClass="border-cyan-500/20"
+                            orders={enviaOrders}
+                        />
+                    </div>
+                );
+            })()}
 
             {selectedOrder && (
                 <OrderDetailModal
