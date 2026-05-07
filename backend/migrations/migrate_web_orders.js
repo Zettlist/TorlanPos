@@ -28,6 +28,21 @@ export async function migrateWebOrders(connection) {
             addCol('stock_deducted',   "TINYINT(1) NOT NULL DEFAULT 0"),
         ]);
 
+        // Ensure web_status ENUM includes all required values (envio, entregado, reclamo).
+        // Safe to run every boot — MODIFY only if the column type is incomplete.
+        const [colInfo] = await conn.query(
+            `SELECT COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sales' AND COLUMN_NAME = 'web_status'`
+        );
+        const colType = colInfo[0]?.COLUMN_TYPE || '';
+        if (!colType.includes("'envio'") || !colType.includes("'entregado'") || !colType.includes("'reclamo'")) {
+            await conn.query(`
+                ALTER TABLE sales
+                MODIFY COLUMN web_status ENUM('pendiente','confirmado','envio','entregado','reclamo','cancelado') NULL DEFAULT 'pendiente'
+            `);
+            console.log('✅ web_status ENUM expanded to include envio/entregado/reclamo.');
+        }
+
         console.log('✅ Web orders schema up to date.');
     } catch (err) {
         console.error('❌ migrate_web_orders error:', err.message);
