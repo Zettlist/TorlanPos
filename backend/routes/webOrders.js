@@ -263,6 +263,13 @@ async function cascadeCancelLaterOrders(confirmedSaleId, conn) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// GET /api/web-orders/envia-webhook  — Envia.com connectivity test (Probar)
+// ──────────────────────────────────────────────────────────────────────────────
+router.get('/envia-webhook', (req, res) => {
+    res.json({ ok: true });
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
 // POST /api/web-orders/envia-webhook
 // Envia.com onShipmentStatusUpdate — no auth required (external callback)
 // Marks sale as 'entregado' when carrier delivers the package.
