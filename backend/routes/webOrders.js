@@ -263,6 +263,80 @@ async function cascadeCancelLaterOrders(confirmedSaleId, conn) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// POST /api/web-orders/envia-webhook
+// Envia.com onShipmentStatusUpdate — no auth required (external callback)
+// Marks sale as 'entregado' when carrier delivers the package.
+// ──────────────────────────────────────────────────────────────────────────────
+router.post('/envia-webhook', async (req, res) => {
+    const body = req.body;
+    console.log('[EnviaWebhook] Received:', JSON.stringify(body));
+
+    // Respond 200 immediately so Envia.com doesn't retry
+    res.json({ received: true });
+
+    try {
+        // Envia.com field names vary — try all known variants
+        const trackingNumber =
+            body.trackingNumber || body.tracking_number || body.guia ||
+            body.data?.trackingNumber || body.data?.tracking_number || body.data?.guia;
+
+        const statusRaw = (
+            body.status || body.shipmentStatus || body.state ||
+            body.data?.status || body.data?.shipmentStatus || body.data?.state || ''
+        ).toLowerCase();
+
+        if (!trackingNumber) {
+            console.log('[EnviaWebhook] No tracking number found in payload — ignoring.');
+            return;
+        }
+
+        // Detect delivery: Envia.com may send "delivered", "entregado", "D", etc.
+        const isDelivered = ['delivered', 'entregado', 'delivery', 'entrega'].some(k => statusRaw.includes(k));
+
+        if (!isDelivered) {
+            console.log(`[EnviaWebhook] Tracking ${trackingNumber} status="${statusRaw}" — not a delivery event, ignoring.`);
+            return;
+        }
+
+        // Find the sale by tracking number
+        const [[sale]] = await pool.query(
+            `SELECT id, web_status FROM sales WHERE tracking_number = ? AND cash_session_id IS NULL LIMIT 1`,
+            [trackingNumber]
+        );
+
+        if (!sale) {
+            console.log(`[EnviaWebhook] No sale found for tracking ${trackingNumber}`);
+            return;
+        }
+
+        if (sale.web_status === 'entregado') {
+            console.log(`[EnviaWebhook] Sale #${sale.id} already entregado — skipping.`);
+            return;
+        }
+
+        if (sale.web_status !== 'envio') {
+            console.log(`[EnviaWebhook] Sale #${sale.id} status="${sale.web_status}" — unexpected, skipping auto-deliver.`);
+            return;
+        }
+
+        await pool.query(
+            `UPDATE sales SET web_status = 'entregado', delivered_at = NOW() WHERE id = ?`,
+            [sale.id]
+        );
+        console.log(`[EnviaWebhook] Sale #${sale.id} marcado como entregado. Tracking: ${trackingNumber}`);
+
+        // Send delivery email
+        const conn = await pool.getConnection();
+        const orderData = await getOrderForEmail(sale.id, conn);
+        conn.release();
+        if (orderData?.email) sendOrderEmail('entregado', orderData.email, orderData);
+
+    } catch (err) {
+        console.error('[EnviaWebhook] Error processing webhook:', err.message);
+    }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
 // GET /api/web-orders
 // ──────────────────────────────────────────────────────────────────────────────
 router.get('/', authenticateToken, validateEmpresaActive, async (req, res) => {
