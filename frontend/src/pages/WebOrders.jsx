@@ -317,6 +317,11 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                             >
                                 <p className="font-semibold">{resultado.ok ? '✅ Pedido confirmado' : '❌ Pedido cancelado automáticamente'}</p>
                                 {resultado.motivo && <p className="text-sm mt-1 opacity-80">{resultado.motivo}</p>}
+                                {resultado.labelError && (
+                                    <p className="text-xs mt-2 bg-amber-500/20 border border-amber-500/30 text-amber-300 rounded-lg px-3 py-2">
+                                        ⚠️ Guía Envia.com no pudo generarse: {typeof resultado.labelError === 'string' ? resultado.labelError : JSON.stringify(resultado.labelError)}. Puedes generarla desde el pedido confirmado.
+                                    </p>
+                                )}
                             </div>
                         )
                     )}
@@ -500,32 +505,15 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                     {/* PENDIENTE */}
                     {isPendiente && !resultado && (
                         <div className="space-y-3">
-                            {/* Envia.com: guía ya generada o fallback para regenerar */}
+                            {/* Envia.com: info — guía se genera automáticamente al confirmar existencia */}
                             {isEnvia && (
-                                order.tracking_number ? (
-                                    <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-xl p-4">
-                                        <p className="text-xs text-cyan-400 uppercase tracking-wider mb-1">📦 Guía Envia.com generada</p>
-                                        <p className="text-xs text-slate-400">La guía se generó automáticamente al confirmar el pago. Confirma existencias para capturar el cobro.</p>
+                                <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-xl p-4 flex items-start gap-3">
+                                    <span className="text-lg flex-shrink-0">📦</span>
+                                    <div>
+                                        <p className="text-xs text-cyan-400 font-semibold uppercase tracking-wider">Envío Envia.com</p>
+                                        <p className="text-xs text-slate-400 mt-0.5">La guía se genera automáticamente al confirmar existencia.</p>
                                     </div>
-                                ) : (
-                                    <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 space-y-3">
-                                        <p className="text-xs text-amber-400 font-semibold">⚠️ Guía pendiente de generación</p>
-                                        <p className="text-xs text-slate-400">La guía no se generó automáticamente. Puedes generarla aquí.</p>
-                                        {labelError && (
-                                            <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
-                                                {typeof labelError === 'string' ? labelError : JSON.stringify(labelError)}
-                                            </p>
-                                        )}
-                                        <button
-                                            onClick={handleGenerateLabel}
-                                            disabled={generatingLabel || acting}
-                                            className="w-full py-2.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white rounded-xl font-semibold text-sm transition-colors flex items-center justify-center gap-2"
-                                        >
-                                            {generatingLabel ? <Spinner /> : '🏷️'}
-                                            {generatingLabel ? 'Generando...' : 'Generar Guía Envia.com'}
-                                        </button>
-                                    </div>
-                                )
+                                </div>
                             )}
                             {cancelError && (
                                 <div className="rounded-xl p-3 border bg-red-500/10 border-red-500/30 text-red-300 text-sm">
@@ -560,8 +548,27 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                     {/* CONFIRMADO → Enviar / Cancelar */}
                     {isConfirmado && (
                         <div className="space-y-3">
-                            {/* Envia.com — guía ya generada, marcar despachado directo (sin formulario) */}
-                            {isEnvia && (
+                            {/* Envia.com — fallback si la guía no se generó al confirmar */}
+                            {isEnvia && !order.tracking_number && (
+                                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 space-y-3">
+                                    <p className="text-xs text-amber-400 font-semibold">⚠️ Guía no generada — hubo un error al confirmar</p>
+                                    {labelError && (
+                                        <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+                                            {typeof labelError === 'string' ? labelError : JSON.stringify(labelError)}
+                                        </p>
+                                    )}
+                                    <button
+                                        onClick={handleGenerateLabel}
+                                        disabled={generatingLabel || acting}
+                                        className="w-full py-2.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white rounded-xl font-semibold text-sm transition-colors flex items-center justify-center gap-2"
+                                    >
+                                        {generatingLabel ? <Spinner /> : '🏷️'}
+                                        {generatingLabel ? 'Generando...' : 'Generar Guía Envia.com'}
+                                    </button>
+                                </div>
+                            )}
+                            {/* Envia.com — guía lista, marcar despachado directo (sin formulario) */}
+                            {isEnvia && order.tracking_number && (
                                 <button
                                     onClick={async () => {
                                         setActing(true);
