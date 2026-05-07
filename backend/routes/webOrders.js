@@ -297,11 +297,29 @@ router.post('/envia-webhook', async (req, res) => {
             return;
         }
 
-        // Detect delivery: Envia.com may send "delivered", "entregado", "D", etc.
-        const isDelivered = ['delivered', 'entregado', 'delivery', 'entrega'].some(k => statusRaw.includes(k));
+        // Map Envia.com status → POS web_status
+        // ENVIADO      → envio
+        // ENTREGADO    → entregado
+        // DEVOLUCIÓN   → reclamo
+        // CON INCIDENTE→ reclamo
+        // CANCELADO    → cancelado
+        // CREADO       → ignored (label already stored)
+        let newStatus = null;
 
-        if (!isDelivered) {
-            console.log(`[EnviaWebhook] Tracking ${trackingNumber} status="${statusRaw}" — not a delivery event, ignoring.`);
+        if (['delivered', 'entregado', 'delivery', 'entrega'].some(k => statusRaw.includes(k))) {
+            newStatus = 'entregado';
+        } else if (['in_transit', 'shipped', 'enviado', 'picked_up', 'en_camino', 'transit'].some(k => statusRaw.includes(k))) {
+            newStatus = 'envio';
+        } else if (['devol', 'return'].some(k => statusRaw.includes(k))) {
+            newStatus = 'reclamo';
+        } else if (['incident', 'incidente', 'exception', 'con_incidente'].some(k => statusRaw.includes(k))) {
+            newStatus = 'reclamo';
+        } else if (['cancelled', 'canceled', 'cancelado'].some(k => statusRaw.includes(k))) {
+            newStatus = 'cancelado';
+        }
+
+        if (!newStatus) {
+            console.log(`[EnviaWebhook] Tracking ${trackingNumber} status="${statusRaw}" — no mapping, ignoring.`);
             return;
         }
 
@@ -316,27 +334,24 @@ router.post('/envia-webhook', async (req, res) => {
             return;
         }
 
-        if (sale.web_status === 'entregado') {
-            console.log(`[EnviaWebhook] Sale #${sale.id} already entregado — skipping.`);
+        if (sale.web_status === newStatus) {
+            console.log(`[EnviaWebhook] Sale #${sale.id} already ${newStatus} — skipping.`);
             return;
         }
 
-        if (sale.web_status !== 'envio') {
-            console.log(`[EnviaWebhook] Sale #${sale.id} status="${sale.web_status}" — unexpected, skipping auto-deliver.`);
-            return;
-        }
+        const updateFields = newStatus === 'entregado'
+            ? `web_status = 'entregado', delivered_at = NOW()`
+            : `web_status = '${newStatus}'`;
 
-        await pool.query(
-            `UPDATE sales SET web_status = 'entregado', delivered_at = NOW() WHERE id = ?`,
-            [sale.id]
-        );
-        console.log(`[EnviaWebhook] Sale #${sale.id} marcado como entregado. Tracking: ${trackingNumber}`);
+        await pool.query(`UPDATE sales SET ${updateFields} WHERE id = ?`, [sale.id]);
+        console.log(`[EnviaWebhook] Sale #${sale.id}: ${sale.web_status} → ${newStatus}. Tracking: ${trackingNumber}`);
 
-        // Send delivery email
+        // Email
         const conn = await pool.getConnection();
         const orderData = await getOrderForEmail(sale.id, conn);
         conn.release();
-        if (orderData?.email) sendOrderEmail('entregado', orderData.email, orderData);
+        const emailTemplate = { entregado: 'entregado', reclamo: 'reclamo', cancelado: 'cancelado', envio: 'envio_despachado' }[newStatus];
+        if (orderData?.email && emailTemplate) sendOrderEmail(emailTemplate, orderData.email, orderData);
 
     } catch (err) {
         console.error('[EnviaWebhook] Error processing webhook:', err.message);
