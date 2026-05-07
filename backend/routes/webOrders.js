@@ -339,6 +339,18 @@ router.post('/envia-webhook', async (req, res) => {
             return;
         }
 
+        // Valid transitions only
+        const validFrom = {
+            envio:      ['confirmado'],
+            entregado:  ['envio'],
+            reclamo:    ['envio', 'entregado'],
+            cancelado:  ['pendiente', 'confirmado', 'envio'],
+        };
+        if (!validFrom[newStatus]?.includes(sale.web_status)) {
+            console.log(`[EnviaWebhook] Sale #${sale.id}: invalid transition ${sale.web_status} → ${newStatus}, skipping.`);
+            return;
+        }
+
         const updateFields = newStatus === 'entregado'
             ? `web_status = 'entregado', delivered_at = NOW()`
             : `web_status = '${newStatus}'`;
