@@ -16,6 +16,7 @@ import Suppliers from './pages/Suppliers';
 import CouponsManager from './pages/admin/CouponsManager';
 import StoreCreditsManager from './pages/admin/StoreCreditsManager';
 import WebOrders from './pages/WebOrders';
+import EventoMundial from './pages/EventoMundial';
 
 import Preventas from './pages/Preventas';
 import Anticipos from './pages/Anticipos';
@@ -108,6 +109,11 @@ function EmpresaRoutes() {
                 <Route path="/preventas" element={<Preventas />} />
                 <Route path="/anticipos" element={<Anticipos />} />
                 <Route path="/web-orders" element={<WebOrders />} />
+                <Route path="/evento-mundial" element={
+                    <RequireManager>
+                        <EventoMundial />
+                    </RequireManager>
+                } />
 
 
                 <Route path="/admin/users" element={<UserManager />} />

@@ -22,6 +22,7 @@ export async function migrateWebOrders(connection) {
             addCol('shipping_status',  "ENUM('en_espera','despachado') NULL DEFAULT NULL"),
             addCol('tracking_number',  "VARCHAR(100) NULL DEFAULT NULL"),
             addCol('claim_status',     "ENUM('disputa','resolucion') NULL DEFAULT NULL"),
+            addCol('claim_type',       "ENUM('paqueteria','cliente') NULL DEFAULT NULL"),
             addCol('claim_notes',      "TEXT NULL DEFAULT NULL"),
             addCol('shipped_at',       "DATETIME NULL DEFAULT NULL"),
             addCol('delivered_at',     "DATETIME NULL DEFAULT NULL"),

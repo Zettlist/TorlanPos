@@ -24,6 +24,7 @@ import publicCatalogRoutes from './routes/publicCatalog.js';
 import couponsRoutes from './routes/coupons.js';
 import webOrdersRoutes from './routes/webOrders.js';
 import storeCreditsRoutes from './routes/storeCredits.js';
+import eventosRoutes from './routes/eventos.js';
 
 
 import { runSchemaMigrations } from './migrations/startup.js';
@@ -47,24 +48,32 @@ const allowedOrigins = [
 
 app.use(cors({
     origin: function (origin, callback) {
-        // Allow requests with no origin (like mobile apps or curl requests)
+        // Permitir requests sin origin (server-to-server, curl, integraciones con x-api-key).
         if (!origin) return callback(null, true);
-        if (allowedOrigins.indexOf(origin) === -1) {
-            // Temporarily allow all for debugging if needed, or strictly block
-            // return callback(new Error('The CORS policy for this site does not allow access from the specified Origin.'), false);
-            // For now, let's keep it somewhat open but logged, or strict.
-            // Let's implement strict but include logic:
-            return callback(null, true); // Fallback to allowing for now to ensure no breakage, or use strict logic below:
-        }
-        return callback(null, true);
+        // Solo orígenes en la whitelist (navegadores).
+        if (allowedOrigins.includes(origin)) return callback(null, true);
+        console.warn(`⚠️  CORS bloqueado para origin no permitido: ${origin}`);
+        return callback(new Error('Origin no permitido por CORS'), false);
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control', 'X-Requested-With', 'Accept'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control', 'X-Requested-With', 'Accept', 'x-api-key'],
     credentials: true
 }));
 
 // Handle preflight OPTIONS requests
 app.options('*', cors());
+
+// =============================================================================
+// Security headers (toda respuesta del API)
+// =============================================================================
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    next();
+});
 
 // =============================================================================
 // 3. JSON BODY PARSER (Before logging so req.body is available)
@@ -130,6 +139,7 @@ app.use('/api/public/catalog', publicCatalogRoutes); // Public API (no auth) for
 app.use('/api/coupons', couponsRoutes);
 app.use('/api/store-credits', storeCreditsRoutes);
 app.use('/api/web-orders', webOrdersRoutes);
+app.use('/api/eventos', eventosRoutes);
 console.log('✅ Routes loaded successfully');
 
 

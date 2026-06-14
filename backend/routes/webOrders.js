@@ -169,11 +169,22 @@ async function deductStock(saleId, conn) {
 async function getOrderForEmail(saleId, conn) {
     const [[order]] = await conn.query(`
         SELECT s.id, s.total, s.tracking_number, s.claim_notes,
+               s.shipping_method, s.envia_quote_data,
                cl.nombre, cl.apellido, cl.email
         FROM sales s
         LEFT JOIN clientes cl ON cl.id = s.cliente_id
         WHERE s.id = ?
     `, [saleId]);
+    if (!order) return order;
+    // Extract carrier from envia_quote_data
+    if (order.envia_quote_data) {
+        try {
+            const q = typeof order.envia_quote_data === 'string'
+                ? JSON.parse(order.envia_quote_data)
+                : order.envia_quote_data;
+            order.carrier = q.carrier || null;
+        } catch { order.carrier = null; }
+    }
     return order;
 }
 
@@ -351,9 +362,15 @@ router.post('/envia-webhook', async (req, res) => {
             return;
         }
 
-        const updateFields = newStatus === 'entregado'
-            ? `web_status = 'entregado', delivered_at = NOW()`
-            : `web_status = '${newStatus}'`;
+        let updateFields;
+        if (newStatus === 'entregado') {
+            updateFields = `web_status = 'entregado', delivered_at = NOW()`;
+        } else if (newStatus === 'reclamo') {
+            // carrier-triggered claims are always type 'paqueteria'
+            updateFields = `web_status = 'reclamo', claim_type = 'paqueteria', claim_status = 'disputa'`;
+        } else {
+            updateFields = `web_status = '${newStatus}'`;
+        }
 
         await pool.query(`UPDATE sales SET ${updateFields} WHERE id = ?`, [sale.id]);
         console.log(`[EnviaWebhook] Sale #${sale.id}: ${sale.web_status} → ${newStatus}. Tracking: ${trackingNumber}`);
@@ -362,7 +379,12 @@ router.post('/envia-webhook', async (req, res) => {
         const conn = await pool.getConnection();
         const orderData = await getOrderForEmail(sale.id, conn);
         conn.release();
-        const emailTemplate = { entregado: 'entregado', reclamo: 'reclamo', cancelado: 'cancelado', envio: 'envio_despachado' }[newStatus];
+        const emailTemplate = {
+            entregado: 'entregado',
+            reclamo:   'reclamo_paqueteria',
+            cancelado: 'cancelado',
+            envio:     'envio_despachado',
+        }[newStatus];
         if (orderData?.email && emailTemplate) sendOrderEmail(emailTemplate, orderData.email, orderData);
 
     } catch (err) {
@@ -377,7 +399,7 @@ router.get('/', authenticateToken, validateEmpresaActive, async (req, res) => {
     res.set('Cache-Control', 'no-store');
     try {
         const empresa_id = req.user.empresa_id;
-        const { page = 1, limit = 30, status } = req.query;
+        const { page = 1, limit = 30, status, claim_status } = req.query;
         const offset = (parseInt(page) - 1) * parseInt(limit);
 
         const params = [empresa_id];
@@ -386,12 +408,17 @@ router.get('/', authenticateToken, validateEmpresaActive, async (req, res) => {
             statusFilter = 'AND s.web_status = ?';
             params.push(status);
         }
+        if (claim_status && ['disputa', 'resolucion'].includes(claim_status)) {
+            statusFilter += ' AND s.claim_status = ?';
+            params.push(claim_status);
+        }
 
         const [orders] = await pool.query(`
             SELECT
                 s.id, s.total, s.subtotal, s.discount, s.surcharge,
                 s.payment_method, s.web_status, s.web_process_type, s.created_at,
-                s.shipping_status, s.tracking_number, s.claim_status,
+                s.shipping_status, s.tracking_number, s.claim_status, s.claim_type,
+                s.shipping_method,
                 cl.id AS cliente_id, cl.nombre, cl.apellido, cl.email, cl.client_code,
                 COUNT(si.id) AS total_items
             FROM sales s
@@ -451,15 +478,17 @@ router.get('/:id', authenticateToken, validateEmpresaActive, async (req, res) =>
             SELECT
                 s.id, s.total, s.subtotal, s.discount, s.surcharge,
                 s.payment_method, s.web_status, s.web_process_type, s.created_at,
-                s.shipping_status, s.tracking_number, s.claim_status, s.claim_notes,
+                s.shipping_status, s.tracking_number, s.claim_status, s.claim_type, s.claim_notes,
                 s.shipped_at, s.delivered_at,
                 s.shipping_method, s.envia_quote_data, s.envia_label_data, s.shipping_address_json,
                 cl.id AS cliente_id, cl.nombre, cl.apellido, cl.email, cl.client_code, cl.telefono,
                 ua.nombre_recibe, ua.calle, ua.numero, ua.colonia,
-                ua.municipio, ua.estado AS estado_entrega, ua.cp
+                ua.municipio, ua.estado AS estado_entrega, ua.cp,
+                bo.payment_intent_id
             FROM sales s
             LEFT JOIN clientes cl ON cl.id = s.cliente_id
             LEFT JOIN user_addresses ua ON ua.cliente_id = cl.id AND ua.is_default = 1
+            LEFT JOIN bisonte_orders bo ON bo.sale_id = s.id
             WHERE s.id = ? AND s.empresa_id = ?
               AND s.cash_session_id IS NULL AND s.cliente_id IS NOT NULL
         `, [id, empresa_id]);
@@ -751,10 +780,13 @@ router.put('/:id/deliver', authenticateToken, validateEmpresaActive, async (req,
 router.put('/:id/claim', authenticateToken, validateEmpresaActive, async (req, res) => {
     const empresa_id = req.user.empresa_id;
     const { id } = req.params;
-    const { claim_status, claim_notes } = req.body;
+    const { claim_status, claim_type, claim_notes } = req.body;
 
     if (!['disputa', 'resolucion'].includes(claim_status)) {
         return res.status(400).json({ error: 'claim_status debe ser disputa o resolucion' });
+    }
+    if (claim_type && !['paqueteria', 'cliente'].includes(claim_type)) {
+        return res.status(400).json({ error: 'claim_type debe ser paqueteria o cliente' });
     }
 
     try {
@@ -770,15 +802,18 @@ router.put('/:id/claim', authenticateToken, validateEmpresaActive, async (req, r
 
         await pool.query(`
             UPDATE sales
-            SET web_status = 'reclamo', claim_status = ?, claim_notes = ?
+            SET web_status = 'reclamo', claim_status = ?, claim_type = ?, claim_notes = ?
             WHERE id = ?
-        `, [claim_status, claim_notes || null, id]);
+        `, [claim_status, claim_type || 'cliente', claim_notes || null, id]);
 
         const conn = await pool.getConnection();
         const orderData = await getOrderForEmail(id, conn);
         conn.release();
 
-        const templateKey = claim_status === 'resolucion' ? 'reclamo_resolucion' : 'reclamo_disputa';
+        const resolvedClaimType = claim_type || 'cliente';
+        const templateKey = claim_status === 'resolucion'
+            ? 'reclamo_resolucion'
+            : resolvedClaimType === 'paqueteria' ? 'reclamo_paqueteria' : 'reclamo_cliente';
         if (orderData?.email) sendOrderEmail(templateKey, orderData.email, { ...orderData, claim_notes });
 
         res.json({ success: true, web_status: 'reclamo', claim_status });

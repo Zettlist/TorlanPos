@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { API_URL } from '../config';
 import { useAuth } from '../context/AuthContext';
 import { generateProductLabel } from '../utils/labelGenerator';
+import RotacionSemanal from './RotacionSemanal';
 
 const PRESET_TAGS = [
     'Manga', 'Revistas', 'BL', 'Shonen', 'Seinen', 'Fantasía', 'GL', 'Manhwa',
@@ -145,6 +147,7 @@ export default function Products() {
     const [suppliers, setSuppliers] = useState([]);
     const [sbinStatus, setSbinStatus] = useState({ checking: false, isDuplicate: false, existingProduct: null });
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+    const [showRotacion, setShowRotacion] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
         cost_price: '',
@@ -168,6 +171,7 @@ export default function Products() {
         is_adult: false,
         artist: '',
         group_name: '',
+        sinopsis: '',
         events: {
             novedad: { active: false, type: 'until_stock', end_date: '' },
             liquidacion: { active: false, type: 'until_stock', end_date: '' }
@@ -407,6 +411,7 @@ export default function Products() {
             formDataToSend.append('tags', JSON.stringify(formData.tags || []));
             formDataToSend.append('is_adult', formData.is_adult ? '1' : '0');
             formDataToSend.append('events', JSON.stringify(formData.events || {}));
+            formDataToSend.append('sinopsis', formData.sinopsis || '');
 
             if (imageFile) {
                 formDataToSend.append('image', imageFile);
@@ -455,7 +460,7 @@ export default function Products() {
             name: '', cost_price: '', sale_price: '', stock: '', category: 'Manga', sbin_code: '', isbn: '',
             extras: [], publication_date: '', publisher: '', page_count: '', dimensions: { length: '', width: '', height: '' }, weight: '',
             page_color: 'Blanco y Negro', language: 'Español', supplier_id: '', supplier_price: '', barcode: '', tags: [],
-            is_adult: false, artist: '', group_name: '',
+            is_adult: false, artist: '', group_name: '', sinopsis: '',
             events: { novedad: { active: false, type: 'until_stock', end_date: '' }, liquidacion: { active: false, type: 'until_stock', end_date: '' } }
         });
         setSbinStatus({ checking: false, isDuplicate: false, existingProduct: null });
@@ -615,6 +620,7 @@ export default function Products() {
             is_adult: Boolean(product.is_adult),
             artist: product.artist || '',
             group_name: product.group_name || '',
+            sinopsis: product.sinopsis || '',
             events: (() => {
                 try { return product.events ? (typeof product.events === 'string' ? JSON.parse(product.events) : product.events) : { novedad: { active: false, type: 'until_stock', end_date: '' }, liquidacion: { active: false, type: 'until_stock', end_date: '' } }; } catch { return { novedad: { active: false, type: 'until_stock', end_date: '' }, liquidacion: { active: false, type: 'until_stock', end_date: '' } }; }
             })()
@@ -692,6 +698,16 @@ export default function Products() {
                     <h1 className="text-2xl font-bold">Productos</h1>
                     <p className="text-slate-400">{products.length} productos en catálogo</p>
                 </div>
+                <div className="flex items-center gap-3">
+                <button
+                    onClick={() => setShowRotacion(true)}
+                    className="btn-secondary flex items-center gap-2"
+                >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Rotación Semanal
+                </button>
                 <button
                     onClick={() => {
                         setShowForm(true);
@@ -701,7 +717,9 @@ export default function Products() {
                             publication_date: '', publisher: '', page_count: '',
                             dimensions: { length: '', width: '', height: '' }, weight: '',
                             page_color: 'Blanco y Negro', language: '',
-                            supplier_id: '', supplier_price: '', extras: [], barcode: '', tags: [], is_adult: false
+                            supplier_id: '', supplier_price: '', extras: [], barcode: '', tags: [], is_adult: false,
+                            sinopsis: '',
+                            events: { novedad: { active: false, type: 'until_stock', end_date: '' }, liquidacion: { active: false, type: 'until_stock', end_date: '' } }
                         });
                         setSelectedExtras([]);
                         setImageFile(null);
@@ -714,7 +732,14 @@ export default function Products() {
                     </svg>
                     Nuevo Producto
                 </button>
+                </div>
             </div>
+
+            {/* Rotación Semanal overlay — portal to body to escape stacking context */}
+            {showRotacion && createPortal(
+                <RotacionSemanal onClose={() => setShowRotacion(false)} />,
+                document.body
+            )}
 
             {/* Tabs for General / Adult */}
             {!showForm && (
@@ -990,7 +1015,7 @@ export default function Products() {
                                     <div className={`w-5 h-5 rounded flex items-center justify-center transition-colors ${formData.is_adult ? 'bg-rose-500' : 'border-2 border-slate-600 group-hover:border-slate-400'}`}>
                                         {formData.is_adult && <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                                     </div>
-                                    <input type="checkbox" checked={formData.is_adult} onChange={(e) => setFormData(prev => ({ ...prev, is_adult: e.target.checked }))} className="hidden" />
+                                    <input type="checkbox" checked={formData.is_adult} onChange={(e) => setFormData(prev => ({ ...prev, is_adult: e.target.checked, category: e.target.checked ? 'Manga Hentai' : 'Manga' }))} className="hidden" />
                                     <span className={`text-sm font-medium transition-colors ${formData.is_adult ? 'text-rose-400' : 'text-slate-400'}`}>Producto para adultos (18+)</span>
                                 </label>
 
@@ -1011,12 +1036,18 @@ export default function Products() {
                                 <div>
                                     <label className="block text-xs text-slate-500 mb-2">Categoría</label>
                                     <div className="grid grid-cols-3 gap-2">
-                                        {['Manga', 'Revista', 'Figuras', 'Boxset', 'Calendario', 'Edición Especial', 'Extra', 'Fanbook', 'Libro de Arte'].map(type => (
-                                            <button key={type} type="button"
-                                                onClick={() => { const noPages = ['Figuras','Boxset','Calendario','Extra'].includes(type); setFormData({ ...formData, category: type, ...(noPages ? { page_count: '', page_color: '' } : {}) }); }}
-                                                className={`px-2 py-2 rounded-lg text-xs font-medium text-center transition-all border ${formData.category === type ? 'bg-primary-500/20 border-primary-500/60 text-primary-300' : 'bg-white/3 border-white/8 text-slate-400 hover:border-slate-500 hover:text-slate-300'}`}
-                                            >{type}</button>
-                                        ))}
+                                        {(formData.is_adult
+                                            ? ['Manga Hentai', 'Doujinshi', 'Revista Hentai', 'Figura Hentai', 'Accesorio Adulto', 'Libro de Arte Adulto']
+                                            : ['Manga', 'Revista', 'Figuras', 'Accesorio', 'Boxset', 'Calendario', 'Edición Especial', 'Extra', 'Fanbook', 'Libro de Arte']
+                                        ).map(type => {
+                                            const noPages = ['Figuras','Accesorio','Boxset','Calendario','Extra','Figura Hentai','Accesorio Adulto'].includes(type);
+                                            return (
+                                                <button key={type} type="button"
+                                                    onClick={() => setFormData({ ...formData, category: type, ...(noPages ? { page_count: '', page_color: '' } : {}) })}
+                                                    className={`px-2 py-2 rounded-lg text-xs font-medium text-center transition-all border ${formData.category === type ? (formData.is_adult ? 'bg-rose-500/20 border-rose-500/60 text-rose-300' : 'bg-primary-500/20 border-primary-500/60 text-primary-300') : 'bg-white/3 border-white/8 text-slate-400 hover:border-slate-500 hover:text-slate-300'}`}
+                                                >{type}</button>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             </div>
@@ -1042,16 +1073,16 @@ export default function Products() {
                                 </div>
                                 <div className="grid grid-cols-3 gap-3">
                                     <div>
-                                        <label className={`block text-xs mb-1 ${['Figuras','Boxset','Calendario','Extra'].includes(formData.category) ? 'text-slate-700' : 'text-slate-500'}`}>Páginas</label>
-                                        <input type="number" value={formData.page_count} onChange={(e) => setFormData({ ...formData, page_count: e.target.value.replace(/^0+/,'').replace(/\D/g,'') })} className={`input-glass ${['Figuras','Boxset','Calendario','Extra'].includes(formData.category) ? 'opacity-40 cursor-not-allowed' : ''}`} placeholder="Núm" min="1" disabled={['Figuras','Boxset','Calendario','Extra'].includes(formData.category)} required={['Manga','Revista','Edición Especial','Fanbook','Libro de Arte'].includes(formData.category)} />
+                                        <label className={`block text-xs mb-1 ${['Figuras','Accesorio','Boxset','Calendario','Extra'].includes(formData.category) ? 'text-slate-700' : 'text-slate-500'}`}>Páginas</label>
+                                        <input type="number" value={formData.page_count} onChange={(e) => setFormData({ ...formData, page_count: e.target.value.replace(/^0+/,'').replace(/\D/g,'') })} className={`input-glass ${['Figuras','Accesorio','Boxset','Calendario','Extra'].includes(formData.category) ? 'opacity-40 cursor-not-allowed' : ''}`} placeholder="Núm" min="1" disabled={['Figuras','Accesorio','Boxset','Calendario','Extra'].includes(formData.category)} required={['Manga','Revista','Edición Especial','Fanbook','Libro de Arte'].includes(formData.category)} />
                                     </div>
                                     <div>
                                         <label className="block text-xs text-slate-500 mb-1">Peso (g)</label>
                                         <input type="number" value={formData.weight} onChange={(e) => setFormData({ ...formData, weight: e.target.value.replace(/^0+/,'') })} className="input-glass" placeholder="Gramos" min="1" step="0.1" required />
                                     </div>
                                     <div>
-                                        <label className={`block text-xs mb-1 ${['Figuras','Boxset','Calendario','Extra'].includes(formData.category) ? 'text-slate-700' : 'text-slate-500'}`}>Color págs.</label>
-                                        <select value={formData.page_color} onChange={(e) => setFormData({ ...formData, page_color: e.target.value })} className={`input-glass ${['Figuras','Boxset','Calendario','Extra'].includes(formData.category) ? 'opacity-40 cursor-not-allowed' : ''}`} required={['Manga','Revista','Edición Especial','Fanbook','Libro de Arte'].includes(formData.category)} disabled={['Figuras','Boxset','Calendario','Extra'].includes(formData.category)}>
+                                        <label className={`block text-xs mb-1 ${['Figuras','Accesorio','Boxset','Calendario','Extra'].includes(formData.category) ? 'text-slate-700' : 'text-slate-500'}`}>Color págs.</label>
+                                        <select value={formData.page_color} onChange={(e) => setFormData({ ...formData, page_color: e.target.value })} className={`input-glass ${['Figuras','Accesorio','Boxset','Calendario','Extra'].includes(formData.category) ? 'opacity-40 cursor-not-allowed' : ''}`} required={['Manga','Revista','Edición Especial','Fanbook','Libro de Arte'].includes(formData.category)} disabled={['Figuras','Accesorio','Boxset','Calendario','Extra'].includes(formData.category)}>
                                             <option value="Blanco y Negro">B/N</option>
                                             <option value="Color">Color</option>
                                         </select>
@@ -1091,8 +1122,8 @@ export default function Products() {
                                                     </div>
                                                     {/* Toggle switch */}
                                                     <button type="button" onClick={() => updateEvent(key, { active: !ev.active })}
-                                                        className={`relative w-10 h-5 rounded-full transition-colors ${ev.active ? c.track : 'bg-slate-700'}`}>
-                                                        <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${ev.active ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                                                        className={`relative w-11 h-6 rounded-full transition-colors duration-200 flex-shrink-0 ${ev.active ? c.track : 'bg-slate-700'}`}>
+                                                        <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${ev.active ? 'translate-x-5' : 'translate-x-0'}`} />
                                                     </button>
                                                 </div>
                                                 {ev.active && (
@@ -1213,6 +1244,19 @@ export default function Products() {
                                         </div>
                                     )}
                                 </div>
+                            </div>
+
+                            {/* ── Sinopsis ── */}
+                            <div className="space-y-2">
+                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Sinopsis</p>
+                                <textarea
+                                    value={formData.sinopsis}
+                                    onChange={(e) => setFormData({ ...formData, sinopsis: e.target.value })}
+                                    className="input-glass w-full resize-none"
+                                    rows={4}
+                                    placeholder="Descripción o sinopsis del producto..."
+                                    required
+                                />
                             </div>
 
                             {/* ── Botones ── */}

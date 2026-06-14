@@ -66,6 +66,7 @@ router.get('/migrate-schema-secure', async (req, res) => {
             addColIfMissing('group_name', 'VARCHAR(255) NULL'),
             addColIfMissing('sbin_code', 'VARCHAR(100) NULL'),
             addColIfMissing('events', 'JSON NULL'),
+            addColIfMissing('sinopsis', 'TEXT NULL'),
         ]);
         res.json({ message: 'Products schema migrated', results });
     } catch (error) {
@@ -310,7 +311,7 @@ router.post('/', requireInventoryWrite, upload.single('image'), async (req, res)
         const empresaId = getEmpresaId(req);
         const { name, cost_price, sale_price, stock, category, gender, barcode, sbin_code, isbn,
             extras, publication_date, publisher, page_count, dimensions, weight, page_color,
-            language, supplier_id, supplier_price, is_adult, artist, group_name, events } = req.body;
+            language, supplier_id, supplier_price, is_adult, artist, group_name, events, sinopsis } = req.body;
 
         if (!empresaId) {
             return res.status(403).json({ error: 'Acceso denegado. Usuario sin empresa asignada.' });
@@ -319,6 +320,9 @@ router.post('/', requireInventoryWrite, upload.single('image'), async (req, res)
         // Validate required fields
         if (!name || cost_price === undefined || sale_price === undefined) {
             return res.status(400).json({ error: 'Nombre, precio de costo y precio de venta son requeridos' });
+        }
+        if (!sinopsis || !sinopsis.trim()) {
+            return res.status(400).json({ error: 'La sinopsis es obligatoria' });
         }
 
         // Validate Image (Required)
@@ -407,14 +411,14 @@ router.post('/', requireInventoryWrite, upload.single('image'), async (req, res)
             INSERT INTO products (
                 empresa_id, name, price, cost_price, sale_price, stock, category, category_id, barcode, sbin_code, isbn,
                 extras, publication_date, publisher, publisher_id, page_count, dimensions,
-                weight, page_color, language, supplier_id, supplier_price, image_url, gender, is_adult, artist, group_name, events
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                weight, page_color, language, supplier_id, supplier_price, image_url, gender, is_adult, artist, group_name, events, sinopsis
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
             empresaId, name, sale_price, cost_price, sale_price, stock || 0, category || null, categoryId,
             finalBarcode || null, sbin_code || null, isbn || null, extras || null,
             publication_date || null, publisher || null, publisherId, page_count || null, dimensions || null,
             weight || null, page_color || null, language || null, supplier_id || null, supplier_price || null, imageUrl, null,
-            (is_adult === '1' || is_adult === true) ? 1 : 0, artist || null, group_name || null, events || null
+            (is_adult === '1' || is_adult === true) ? 1 : 0, artist || null, group_name || null, events || null, sinopsis || null
         ]);
 
         res.json({
@@ -443,7 +447,7 @@ router.post('/', requireInventoryWrite, upload.single('image'), async (req, res)
 router.put('/:id', requireInventoryWrite, upload.single('image'), async (req, res) => {
     try {
         const empresaId = getEmpresaId(req);
-        const { name, cost_price, sale_price, stock, category, gender, barcode, sbin_code, isbn, extras, publication_date, publisher, page_count, dimensions, weight, page_color, language, supplier_id, supplier_price, is_adult, artist, group_name, events } = req.body;
+        const { name, cost_price, sale_price, stock, category, gender, barcode, sbin_code, isbn, extras, publication_date, publisher, page_count, dimensions, weight, page_color, language, supplier_id, supplier_price, is_adult, artist, group_name, events, sinopsis } = req.body;
         const { id } = req.params;
 
         if (!empresaId) {
@@ -454,6 +458,10 @@ router.put('/:id', requireInventoryWrite, upload.single('image'), async (req, re
         const [productRows] = await pool.query('SELECT id, image_url FROM products WHERE id = ? AND empresa_id = ?', [id, empresaId]);
         if (productRows.length === 0) {
             return res.status(404).json({ error: 'Producto no encontrado' });
+        }
+
+        if (!sinopsis || !sinopsis.trim()) {
+            return res.status(400).json({ error: 'La sinopsis es obligatoria' });
         }
 
         let imageUrl = productRows[0].image_url;
@@ -490,14 +498,14 @@ router.put('/:id', requireInventoryWrite, upload.single('image'), async (req, re
                 name = ?, cost_price = ?, sale_price = ?, stock = ?, category = ?, gender = ?, barcode = ?,
                 sbin_code = ?, isbn = ?, extras = ?, publication_date = ?,
                 publisher = ?, page_count = ?, dimensions = ?, weight = ?, page_color = ?, language = ?,
-                supplier_id = ?, supplier_price = ?, image_url = ?, is_adult = ?, artist = ?, group_name = ?, events = ?
+                supplier_id = ?, supplier_price = ?, image_url = ?, is_adult = ?, artist = ?, group_name = ?, events = ?, sinopsis = ?
             WHERE id = ? AND empresa_id = ?
         `, [
             name, cost_price, sale_price, stock || 0, category || null, null, barcode || null,
             sbin_code || null, isbn || null, extras || null,
             publication_date || null, publisher || null, page_count || null, dimensions || null,
             weight || null, page_color || null, language || null,
-            supplier_id || null, supplier_price || null, imageUrl, (is_adult === '1' || is_adult === true) ? 1 : 0, artist || null, group_name || null, events || null, id, empresaId
+            supplier_id || null, supplier_price || null, imageUrl, (is_adult === '1' || is_adult === true) ? 1 : 0, artist || null, group_name || null, events || null, sinopsis || null, id, empresaId
         ]);
 
         // Save tags
@@ -514,6 +522,41 @@ router.put('/:id', requireInventoryWrite, upload.single('image'), async (req, re
     } catch (error) {
         console.error('Update product error:', error);
         res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+// Bulk update events (rotation) - PATCH /rotation
+router.patch('/rotation', requireInventoryWrite, async (req, res) => {
+    try {
+        const empresaId = getEmpresaId(req);
+        if (!empresaId) return res.status(403).json({ error: 'Acceso denegado.' });
+
+        const { updates } = req.body; // [{ id, events }]
+        if (!Array.isArray(updates) || updates.length === 0) {
+            return res.status(400).json({ error: 'updates array requerido' });
+        }
+
+        // Merge events instead of replace — preserves general/adult keys independently
+        await Promise.all(updates.map(async ({ id, events }) => {
+            const [rows] = await pool.query(
+                'SELECT events FROM products WHERE id = ? AND empresa_id = ?',
+                [id, empresaId]
+            );
+            let current = {};
+            if (rows[0]?.events) {
+                try { current = typeof rows[0].events === 'string' ? JSON.parse(rows[0].events) : rows[0].events; } catch {}
+            }
+            const merged = { ...current, ...events };
+            return pool.query(
+                'UPDATE products SET events = ? WHERE id = ? AND empresa_id = ?',
+                [JSON.stringify(merged), id, empresaId]
+            );
+        }));
+
+        res.json({ success: true, updated: updates.length });
+    } catch (err) {
+        console.error('Rotation update error:', err);
+        res.status(500).json({ error: err.message });
     }
 });
 

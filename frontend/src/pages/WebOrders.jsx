@@ -92,7 +92,7 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
 
     // Claim form
     const [showClaimForm, setShowClaimForm] = useState(false);
-    const [claimData, setClaimData] = useState({ claim_status: 'disputa', claim_notes: '' });
+    const [claimData, setClaimData] = useState({ claim_status: 'disputa', claim_type: 'cliente', claim_notes: '' });
 
     const status = order.web_status;
     const isPendiente  = status === 'pendiente';
@@ -265,6 +265,11 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                     <div>
                         <div className="flex items-center gap-3 mb-1 flex-wrap">
                             <h2 className="text-xl font-bold">Pedido #{order.id}</h2>
+                            {order.payment_intent_id && (
+                                <span className="text-xs font-mono text-slate-400 bg-white/5 px-2 py-0.5 rounded">
+                                    Orden BS-{order.payment_intent_id.slice(-8).toUpperCase()}
+                                </span>
+                            )}
                             <StatusBadge status={order.web_status} />
                             {isEnvio && <SubStatusBadge shippingStatus={order.shipping_status} />}
                             {isReclamo && <SubStatusBadge claimStatus={order.claim_status} />}
@@ -567,27 +572,12 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                                     </button>
                                 </div>
                             )}
-                            {/* Envia.com — guía lista, marcar despachado directo (sin formulario) */}
+                            {/* Envia.com — guía lista, esperar webhook de paquetería */}
                             {isEnvia && order.tracking_number && (
-                                <button
-                                    onClick={async () => {
-                                        setActing(true);
-                                        try {
-                                            const res = await fetch(`${API_URL}/web-orders/${order.id}/ship`, {
-                                                method: 'PUT',
-                                                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', cache: 'no-store' },
-                                                body: JSON.stringify({ shipping_status: 'despachado', tracking_number: order.tracking_number }),
-                                            });
-                                            if (res.ok) await onRefreshOrder(order.id);
-                                        } catch { /* ignore */ }
-                                        setActing(false);
-                                    }}
-                                    disabled={acting}
-                                    className="w-full py-3 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
-                                >
-                                    {acting ? <Spinner /> : null}
-                                    🚚 Marcar como Despachado
-                                </button>
+                                <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-xl p-4">
+                                    <p className="text-xs text-cyan-300 font-semibold mb-1">📦 Guía generada — en espera de recolección</p>
+                                    <p className="text-xs text-slate-400">El estado avanzará automáticamente cuando la paquetería registre el movimiento.</p>
+                                </div>
                             )}
                             {!isEnvia && !showShipForm ? (
                                 <div className="flex gap-3">
@@ -720,7 +710,7 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                                         Marcar Entregado
                                     </button>
                                     <button
-                                        onClick={() => { setShowClaimForm(true); setClaimData({ claim_status: 'disputa', claim_notes: '' }); }}
+                                        onClick={() => { setShowClaimForm(true); setClaimData({ claim_status: 'disputa', claim_type: 'cliente', claim_notes: '' }); }}
                                         disabled={acting}
                                         className="px-5 py-3 bg-orange-500/20 hover:bg-orange-500/30 disabled:opacity-50 text-orange-400 border border-orange-500/30 rounded-xl font-semibold transition-colors"
                                     >
@@ -734,7 +724,7 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                     {/* ENTREGADO → Reclamo */}
                     {isEntregado && !showClaimForm && (
                         <button
-                            onClick={() => { setShowClaimForm(true); setClaimData({ claim_status: 'disputa', claim_notes: '' }); }}
+                            onClick={() => { setShowClaimForm(true); setClaimData({ claim_status: 'disputa', claim_type: 'cliente', claim_notes: '' }); }}
                             disabled={acting}
                             className="w-full py-3 bg-orange-500/20 hover:bg-orange-500/30 disabled:opacity-50 text-orange-400 border border-orange-500/30 rounded-xl font-semibold transition-colors"
                         >
@@ -746,25 +736,55 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                     {(isEnvio || isEntregado) && showClaimForm && (
                         <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-4 space-y-4">
                             <p className="text-sm font-semibold text-orange-300">⚠️ Abrir Reclamo</p>
-                            <div className="grid grid-cols-2 gap-2">
-                                {[
-                                    { value: 'disputa',    label: '⚠️ Disputa',   desc: 'En proceso de resolución' },
-                                    { value: 'resolucion', label: '✅ Resolución', desc: 'Caso ya resuelto' },
-                                ].map(({ value, label, desc }) => (
-                                    <button
-                                        key={value}
-                                        onClick={() => setClaimData(prev => ({ ...prev, claim_status: value }))}
-                                        className={`p-3 rounded-xl border text-left transition-all ${
-                                            claimData.claim_status === value
-                                                ? 'border-orange-500 bg-orange-500/20'
-                                                : 'border-white/10 bg-white/5 hover:border-white/20'
-                                        }`}
-                                    >
-                                        <p className="text-sm font-medium">{label}</p>
-                                        <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
-                                    </button>
-                                ))}
+
+                            {/* Tipo de reclamo */}
+                            <div>
+                                <label className="text-xs text-slate-400 mb-2 block uppercase tracking-wider">Tipo</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {[
+                                        { value: 'cliente',    label: '👤 Reclamo Cliente',       desc: 'Devolución, daño al recibir, error de staff' },
+                                        { value: 'paqueteria', label: '🚚 Incidente Paquetería',   desc: 'Pérdida, accidente, devolución del carrier' },
+                                    ].map(({ value, label, desc }) => (
+                                        <button
+                                            key={value}
+                                            onClick={() => setClaimData(prev => ({ ...prev, claim_type: value }))}
+                                            className={`p-3 rounded-xl border text-left transition-all ${
+                                                claimData.claim_type === value
+                                                    ? 'border-orange-500 bg-orange-500/20'
+                                                    : 'border-white/10 bg-white/5 hover:border-white/20'
+                                            }`}
+                                        >
+                                            <p className="text-sm font-medium">{label}</p>
+                                            <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
+
+                            {/* Estado */}
+                            <div>
+                                <label className="text-xs text-slate-400 mb-2 block uppercase tracking-wider">Estado</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {[
+                                        { value: 'disputa',    label: '⚠️ En disputa',   desc: 'En proceso de resolución' },
+                                        { value: 'resolucion', label: '✅ Resolución', desc: 'Caso ya resuelto' },
+                                    ].map(({ value, label, desc }) => (
+                                        <button
+                                            key={value}
+                                            onClick={() => setClaimData(prev => ({ ...prev, claim_status: value }))}
+                                            className={`p-3 rounded-xl border text-left transition-all ${
+                                                claimData.claim_status === value
+                                                    ? 'border-orange-500 bg-orange-500/20'
+                                                    : 'border-white/10 bg-white/5 hover:border-white/20'
+                                            }`}
+                                        >
+                                            <p className="text-sm font-medium">{label}</p>
+                                            <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
                             <div>
                                 <label className="text-xs text-slate-400 mb-1 block">Notas del reclamo (opcional)</label>
                                 <textarea
@@ -973,7 +993,7 @@ export default function WebOrders() {
             const statuses = ['', 'pendiente', 'confirmado', 'envio', 'entregado', 'reclamo', 'cancelado'];
             const results = await Promise.all(
                 statuses.map(s =>
-                    fetch(`${API_URL}/web-orders${s ? `?status=${s}` : ''}`, {
+                    fetch(`${API_URL}/web-orders${s ? `?status=${s}` : ''}${s === 'reclamo' ? '&claim_status=disputa' : ''}`, {
                         headers: { Authorization: `Bearer ${token}` },
                         cache: 'no-store',
                     }).then(r => r.json()).then(d => ({ key: s || 'total', count: d.total || 0 }))
@@ -1148,8 +1168,10 @@ export default function WebOrders() {
                     </p>
                 </div>
             ) : (() => {
-                const bisonteOrders = orders.filter(o => o.shipping_method !== 'envia');
-                const enviaOrders   = orders.filter(o => o.shipping_method === 'envia');
+                const reclamoActivos     = orders.filter(o => o.claim_status !== 'resolucion');
+                const reclamoResueltos   = orders.filter(o => o.claim_status === 'resolucion');
+                const reclamoPaqueteria  = reclamoActivos.filter(o => o.claim_type === 'paqueteria');
+                const reclamoCliente     = reclamoActivos.filter(o => o.claim_type !== 'paqueteria');
 
                 const OrderCard = ({ order }) => (
                     <button
@@ -1219,23 +1241,44 @@ export default function WebOrders() {
                     </div>
                 );
 
+                if (filter === 'reclamo') {
+                    return (
+                        <div className="space-y-6">
+                            <div className="flex gap-4 items-start">
+                                <Column
+                                    title="Incidente Paquetería"
+                                    icon="🚚"
+                                    accentClass="text-amber-400"
+                                    borderClass="border-amber-500/20"
+                                    orders={reclamoPaqueteria}
+                                />
+                                <div className="w-px bg-white/10 self-stretch flex-shrink-0" />
+                                <Column
+                                    title="Reclamo Cliente"
+                                    icon="👤"
+                                    accentClass="text-orange-400"
+                                    borderClass="border-orange-500/20"
+                                    orders={reclamoCliente}
+                                />
+                            </div>
+                            {reclamoResueltos.length > 0 && (
+                                <details className="group">
+                                    <summary className="cursor-pointer text-sm text-slate-500 hover:text-slate-300 transition-colors select-none flex items-center gap-2">
+                                        <span className="group-open:rotate-90 transition-transform inline-block">▶</span>
+                                        Resueltos ({reclamoResueltos.length})
+                                    </summary>
+                                    <div className="mt-3 space-y-2">
+                                        {reclamoResueltos.map(order => <OrderCard key={order.id} order={order} />)}
+                                    </div>
+                                </details>
+                            )}
+                        </div>
+                    );
+                }
+
                 return (
-                    <div className="flex gap-4 items-start">
-                        <Column
-                            title="Envío Bisonte"
-                            icon="🦬"
-                            accentClass="text-amber-400"
-                            borderClass="border-amber-500/20"
-                            orders={bisonteOrders}
-                        />
-                        <div className="w-px bg-white/10 self-stretch flex-shrink-0" />
-                        <Column
-                            title="Envia.com"
-                            icon="📦"
-                            accentClass="text-cyan-400"
-                            borderClass="border-cyan-500/20"
-                            orders={enviaOrders}
-                        />
+                    <div className="space-y-2">
+                        {orders.map(order => <OrderCard key={order.id} order={order} />)}
                     </div>
                 );
             })()}
