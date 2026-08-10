@@ -273,7 +273,7 @@ router.get('/:id', async (req, res) => {
         const sale = saleRows[0];
 
         const [items] = await pool.query(`
-            SELECT si.quantity, si.price, p.name, p.sbin_code
+            SELECT si.quantity, si.price, p.name, p.isbn, p.barcode
             FROM sale_items si
             JOIN products p ON si.product_id = p.id
             WHERE si.sale_id = ?

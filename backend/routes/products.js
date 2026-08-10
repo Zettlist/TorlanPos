@@ -11,6 +11,7 @@ import { uploadFileToGCS } from '../utils/storage.js';
 // import ptp from 'pdf-to-printer'; // Removed for client-side printing support
 import { fileURLToPath } from 'url';
 import { generarCodigoParaEmpresa } from '../utils/barcodeGenerator.js';
+import { buscarSinopsis } from '../services/sinopsisFinder.js';
 
 // Configure Multer (Memory Storage)
 const upload = multer({
@@ -24,107 +25,115 @@ const upload = multer({
 
 const router = express.Router();
 
-// ─── Migration endpoint (MySQL 5.7 compatible) ──────────────────────────────
-router.get('/migrate-schema-secure', async (req, res) => {
-    if (req.query.secret !== 'secure-setup-123') {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
-    try {
-        // Ensure auxiliary tables exist
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS categories (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                name VARCHAR(255) NOT NULL UNIQUE,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        `);
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS publishers (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                name VARCHAR(255) NOT NULL UNIQUE,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        `);
-
-        const addColIfMissing = async (col, def) => {
-            const [rows] = await pool.query(`SHOW COLUMNS FROM products LIKE ?`, [col]);
-            if (rows.length === 0) {
-                await pool.query(`ALTER TABLE products ADD COLUMN ${col} ${def}`);
-                return `added ${col}`;
-            }
-            return `${col} already exists`;
-        };
-        const results = await Promise.all([
-            addColIfMissing('category_id', 'INT NULL'),
-            addColIfMissing('publisher_id', 'INT NULL'),
-            addColIfMissing('image_url', 'VARCHAR(500) NULL'),
-            addColIfMissing('supplier_id', 'INT NULL'),
-            addColIfMissing('supplier_price', 'DECIMAL(10,2) NULL'),
-            addColIfMissing('gender', 'VARCHAR(50) NULL'),
-            addColIfMissing('is_adult', 'TINYINT(1) DEFAULT 0'),
-            addColIfMissing('artist', 'VARCHAR(255) NULL'),
-            addColIfMissing('group_name', 'VARCHAR(255) NULL'),
-            addColIfMissing('sbin_code', 'VARCHAR(100) NULL'),
-            addColIfMissing('events', 'JSON NULL'),
-            addColIfMissing('sinopsis', 'TEXT NULL'),
-        ]);
-        res.json({ message: 'Products schema migrated', results });
-    } catch (error) {
-        console.error('Products migration error:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-// ─────────────────────────────────────────────────────────────────────────────
+// El endpoint GET /migrate-schema-secure vivia aqui: creaba `categories` y
+// `publishers` y anadia doce columnas a `products` con ALTER en caliente,
+// protegido por el secreto 'secure-setup-123' escrito en el propio archivo.
+// El esquema completo esta ahora en db/schema.sql y se carga antes de arrancar,
+// asi que no hay nada que migrar en runtime — ni un secreto en el repositorio.
 
 // All routes require authentication and active empresa
 router.use(authenticateToken);
 router.use(validateEmpresaActive);
 
-// Generate unique internal SKU/ISBN
-router.get('/generate-sku', async (req, res) => {
-    try {
-        const empresaId = getEmpresaId(req);
+// ─── Ayudas de normalizacion ────────────────────────────────────────────────
+//
+// El formulario manda multipart/form-data, asi que todo llega como cadena: un
+// campo vacio es '' y un numero es '12'. Sin convertir, '' entraba en columnas
+// numericas como 0 y en las de texto como cadena vacia, que no es lo mismo que
+// "sin dato" — un ISBN '' choca con el UNIQUE del siguiente producto sin ISBN.
 
-        if (!empresaId) {
-            return res.status(403).json({ error: 'Acceso denegado. Usuario sin empresa asignada.' });
+/**
+ * '' y undefined pasan a NULL; el resto se queda igual.
+ *
+ * Tambien las cadenas 'null' y 'undefined': en multipart todo se serializa, y
+ * un campo que vale null en el formulario llega literalmente como el texto
+ * "null". Asi es como un producto acababa con language = 'null' en la base —
+ * un valor que no es nulo, no es un idioma, y la tienda muestra tal cual.
+ */
+const nulo = (v) => {
+    if (v === undefined || v === null) return null;
+    const s = String(v).trim();
+    return (s === '' || s === 'null' || s === 'undefined') ? null : v;
+};
+
+/** Entero o NULL. Nunca 0 por accidente. */
+const aEntero = (v) => {
+    const s = nulo(v);
+    if (s === null) return null;
+    const n = Number.parseInt(s, 10);
+    return Number.isNaN(n) ? null : n;
+};
+
+/** La rama del catalogo. Llega como '1'/'0', 'true'/'false' o booleano. */
+const esAdulto = (v) => (v === '1' || v === 1 || v === true || v === 'true') ? 1 : 0;
+
+/**
+ * Devuelve el id de la categoria, creandola si hace falta.
+ *
+ * La rama forma parte de la identidad de la categoria: la base exige que
+ * (category_id, is_adult) exista tal cual en `categories`. Si la categoria ya
+ * existe en la otra rama, la insercion fallaria con ER_NO_REFERENCED_ROW_2 y
+ * el mensaje no diria nada util; se atrapa aqui para explicar el choque.
+ */
+async function resolverCategoria(nombre, rama) {
+    const limpio = nulo(nombre);
+    if (limpio === null) return null;
+
+    const [existentes] = await pool.query(
+        'SELECT id, is_adult FROM categories WHERE name = ?', [limpio]);
+
+    if (existentes.length > 0) {
+        if (Number(existentes[0].is_adult) !== Number(rama)) {
+            const suya = existentes[0].is_adult ? 'Contenido de Adultos' : 'Contenido Regular';
+            throw new Error(
+                `La categoria "${limpio}" pertenece a ${suya}. Elige otra categoria o cambia la ` +
+                `clasificacion del producto — una categoria no puede estar en las dos ramas.`);
         }
-
-        // Generate unique 13-digit numeric code
-        let sku = '';
-        let isUnique = false;
-        let attempts = 0;
-
-        while (!isUnique && attempts < 5) {
-            let randomDigits = '';
-            for (let i = 0; i < 12; i++) {
-                randomDigits += Math.floor(Math.random() * 10).toString();
-            }
-            sku = '2' + randomDigits; // Mock EAN-13 starting with 2 (In-store use)
-
-            // Check existence
-            const [existing] = await pool.query(
-                'SELECT id FROM products WHERE empresa_id = ? AND (isbn = ? OR sbin_code = ?)',
-                [empresaId, sku, sku]
-            );
-
-            if (existing.length === 0) {
-                isUnique = true;
-            }
-            attempts++;
-        }
-
-        if (!isUnique) {
-            return res.status(409).json({ error: 'No se pudo generar un código único. Intente de nuevo.' });
-        }
-
-        res.json({ sku });
-    } catch (error) {
-        console.error('Generate SKU error:', error);
-        res.status(500).json({ error: 'Error interno del servidor' });
+        return existentes[0].id;
     }
-});
 
-// Get distinct categories and publishers for autocomplete
+    const [r] = await pool.query(
+        'INSERT INTO categories (name, is_adult) VALUES (?, ?)', [limpio, rama]);
+    return r.insertId;
+}
+
+/** Igual, pero la editorial no tiene rama. */
+async function resolverEditorial(nombre) {
+    const limpio = nulo(nombre);
+    if (limpio === null) return null;
+    const [r] = await pool.execute(
+        'INSERT INTO publishers (name) VALUES (?) ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id)',
+        [limpio]);
+    return r.insertId;
+}
+
+/** Traduce los fallos de integridad a algo que se pueda leer en el mostrador. */
+function traducirErrorDeBase(error) {
+    if (error.code === 'ER_DUP_ENTRY') {
+        const campo = /barcode/.test(error.message) ? 'código de barras'
+            : /isbn/.test(error.message) ? 'ISBN'
+                : 'código';
+        return { status: 409, error: `Ese ${campo} ya está en uso por otro producto de la empresa.` };
+    }
+    if (error.code === 'ER_NO_REFERENCED_ROW_2' && /fk_products_category/.test(error.message)) {
+        return {
+            status: 400,
+            error: 'La categoría no corresponde a la clasificación elegida (Regular / Adultos).',
+        };
+    }
+    if (error.code === 'ER_NO_REFERENCED_ROW_2' && /fk_products_format/.test(error.message)) {
+        return { status: 400, error: 'El formato de envío seleccionado ya no existe.' };
+    }
+    return null;
+}
+
+// Categorias y editoriales para el formulario.
+//
+// Las categorias salen del catalogo `categories`, no de un DISTINCT sobre
+// products: ahi cada falta de ortografia era una categoria nueva ('Shonen',
+// 'shonen', 'Shounen') y la lista crecia sola. Ademas vienen partidas por rama
+// — el formulario solo puede ofrecer las de la rama elegida, porque la base
+// rechaza un producto cuya rama no coincida con la de su categoria.
 router.get('/suggestions', async (req, res) => {
     try {
         const empresaId = getEmpresaId(req);
@@ -133,20 +142,23 @@ router.get('/suggestions', async (req, res) => {
             return res.status(403).json({ error: 'Acceso denegado. Usuario sin empresa asignada.' });
         }
 
-        // Run both queries in parallel
-        const [[categories], [publishers]] = await Promise.all([
+        const [[categorias], [publishers]] = await Promise.all([
+            pool.query('SELECT id, name, is_adult FROM categories ORDER BY is_adult, name'),
             pool.query(
-                'SELECT DISTINCT category FROM products WHERE empresa_id = ? AND category IS NOT NULL AND category != "" ORDER BY category',
-                [empresaId]
-            ),
-            pool.query(
-                'SELECT DISTINCT publisher FROM products WHERE empresa_id = ? AND publisher IS NOT NULL AND publisher != "" ORDER BY publisher',
+                `SELECT DISTINCT publisher FROM products
+                  WHERE empresa_id = ? AND publisher IS NOT NULL AND publisher != ''
+                  ORDER BY publisher`,
                 [empresaId]
             )
         ]);
 
         res.json({
-            categories: categories.map(c => c.category),
+            categorias: {
+                regular: categorias.filter(c => !c.is_adult).map(({ id, name }) => ({ id, name })),
+                adultos: categorias.filter(c => c.is_adult).map(({ id, name }) => ({ id, name })),
+            },
+            // Se conserva la forma vieja para las pantallas que aun la leen.
+            categories: categorias.map(c => c.name),
             publishers: publishers.map(p => p.publisher)
         });
     } catch (error) {
@@ -239,8 +251,8 @@ router.get('/search', async (req, res) => {
         // Exact match mode for barcode scanner (Enter key pressed)
         if (exact === 'true') {
             const [productRows] = await pool.query(
-                'SELECT * FROM products WHERE empresa_id = ? AND (name = ? OR sbin_code = ? OR barcode = ? OR isbn = ?) LIMIT 1',
-                [empresaId, q, q, q, q]
+                'SELECT * FROM products WHERE empresa_id = ? AND (name = ? OR barcode = ? OR isbn = ?) LIMIT 1',
+                [empresaId, q, q, q]
             );
 
             if (productRows.length > 0) {
@@ -251,13 +263,13 @@ router.get('/search', async (req, res) => {
 
         const searchTerm = `%${q}%`;
         const [products] = await pool.query(`
-            SELECT * FROM products 
-            WHERE empresa_id = ? AND (name LIKE ? OR sbin_code LIKE ? OR barcode LIKE ? OR isbn LIKE ?)
-            ORDER BY 
-                CASE 
-                    WHEN sbin_code = ? THEN 1
+            SELECT * FROM products
+            WHERE empresa_id = ? AND (name LIKE ? OR barcode LIKE ? OR isbn LIKE ? OR series LIKE ?)
+            ORDER BY
+                CASE
+                    WHEN isbn = ? THEN 1
                     WHEN barcode = ? THEN 2
-                    WHEN sbin_code LIKE ? THEN 3
+                    WHEN isbn LIKE ? THEN 3
                     ELSE 4
                 END,
                 name
@@ -271,27 +283,38 @@ router.get('/search', async (req, res) => {
     }
 });
 
-// Check if SBIN code is duplicate (within same empresa)
-router.get('/check-sbin', async (req, res) => {
+// Aviso de codigo repetido al escanear.
+//
+// Se dispara mientras se teclea, antes de guardar. No sustituye a la unicidad
+// —esa la impone la base con UNIQUE (empresa_id, isbn)— pero convierte un
+// error al final del formulario en un aviso al principio, y sobre todo dice
+// *cual* es el producto que ya lo tiene: casi siempre es el mismo tomo que se
+// esta reingresando por error, y lo que se queria era sumar existencias.
+router.get('/check-isbn', async (req, res) => {
     try {
         const empresaId = getEmpresaId(req);
-        const { sbin_code, exclude_id } = req.query;
+        const { isbn, exclude_id } = req.query;
 
         if (!empresaId) {
             return res.status(403).json({ error: 'Acceso denegado. Usuario sin empresa asignada.' });
         }
 
-        if (!sbin_code || sbin_code.trim() === '') {
-            return res.json({ isDuplicate: false });
-        }
+        const codigo = String(isbn || '').trim();
+        if (!codigo) return res.json({ isDuplicate: false });
 
-        let query = 'SELECT id, name FROM products WHERE empresa_id = ? AND sbin_code = ?';
-        let params = [empresaId, sbin_code];
+        // Se busca tambien contra barcode: el lector no distingue entre el ISBN
+        // impreso por el editor y la etiqueta interna, y el operador tampoco.
+        let query = `SELECT id, name, series, volume, stock, sale_price, image_url,
+                            CASE WHEN isbn = ? THEN 'isbn' ELSE 'barcode' END AS campo
+                       FROM products
+                      WHERE empresa_id = ? AND (isbn = ? OR barcode = ?)`;
+        const params = [codigo, empresaId, codigo, codigo];
 
         if (exclude_id) {
             query += ' AND id != ?';
             params.push(exclude_id);
         }
+        query += ' LIMIT 1';
 
         const [existing] = await pool.query(query, params);
 
@@ -300,7 +323,137 @@ router.get('/check-sbin', async (req, res) => {
             existingProduct: existing[0] || null
         });
     } catch (error) {
-        console.error('Check SBIN error:', error);
+        console.error('Check ISBN error:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+// ─── Continuar serie ────────────────────────────────────────────────────────
+//
+// En una tienda de manga casi todo lo que entra es un tomo nuevo de algo que ya
+// se vende. Entre un tomo y el siguiente cambian tres cosas — numero, precio y
+// existencias — y las otras quince se vuelven a capturar a mano cada vez.
+// Estas dos rutas son el atajo: buscar la serie y heredar el resto.
+
+// Series del catalogo que coinciden con la busqueda, con su ultimo tomo.
+router.get('/series', async (req, res) => {
+    try {
+        const empresaId = getEmpresaId(req);
+        if (!empresaId) return res.status(403).json({ error: 'Usuario sin empresa asignada' });
+
+        const q = String(req.query.q || '').trim();
+        if (q.length < 2) return res.json([]);
+
+        // GROUP BY series: la ficha que se muestra es la serie, no cada tomo.
+        // La portada y el precio salen del tomo mas alto, que es el que se va a
+        // continuar. MAX(volume) da el numero a proponer.
+        const [rows] = await pool.query(`
+            SELECT p.series,
+                   COUNT(*)                              AS tomos,
+                   MAX(p.volume)                         AS ultimo_volumen,
+                   SUBSTRING_INDEX(GROUP_CONCAT(p.image_url  ORDER BY p.volume DESC), ',', 1) AS image_url,
+                   SUBSTRING_INDEX(GROUP_CONCAT(p.publisher  ORDER BY p.volume DESC), ',', 1) AS publisher,
+                   SUBSTRING_INDEX(GROUP_CONCAT(p.category   ORDER BY p.volume DESC), ',', 1) AS category,
+                   SUBSTRING_INDEX(GROUP_CONCAT(p.sale_price ORDER BY p.volume DESC), ',', 1) AS sale_price
+              FROM products p
+             WHERE p.empresa_id = ? AND p.series IS NOT NULL AND p.series LIKE ?
+             GROUP BY p.series
+             ORDER BY tomos DESC, p.series
+             LIMIT 8
+        `, [empresaId, `%${q}%`]);
+
+        res.json(rows);
+    } catch (error) {
+        console.error('Buscar series:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+// Plantilla para el siguiente tomo de una serie.
+router.get('/series/plantilla', async (req, res) => {
+    try {
+        const empresaId = getEmpresaId(req);
+        if (!empresaId) return res.status(403).json({ error: 'Usuario sin empresa asignada' });
+
+        const serie = String(req.query.serie || '').trim();
+        if (!serie) return res.status(400).json({ error: 'Falta el nombre de la serie' });
+
+        // El tomo mas alto, no el primero: es el que refleja el precio y el
+        // proveedor actuales. Una serie que cambio de editorial a mitad se
+        // continua con la editorial nueva, que es lo que se quiere.
+        const [rows] = await pool.query(`
+            SELECT id, name, series, volume, cost_price, sale_price, category, category_id,
+                   is_adult, publisher, publisher_id, language, page_color, format_id,
+                   supplier_id, supplier_price, artist, group_name, image_url
+              FROM products
+             WHERE empresa_id = ? AND series = ?
+             ORDER BY volume DESC, id DESC
+             LIMIT 1
+        `, [empresaId, serie]);
+
+        if (rows.length === 0) return res.status(404).json({ error: 'Serie no encontrada' });
+
+        const base = rows[0];
+        const siguiente = base.volume == null ? null : Number(base.volume) + 1;
+
+        res.json({
+            // Lo que se hereda tal cual.
+            plantilla: {
+                series: base.series,
+                volume: siguiente,
+                name: siguiente ? `${base.series}, Vol. ${siguiente}` : base.series,
+                cost_price: base.cost_price,
+                sale_price: base.sale_price,
+                category: base.category,
+                category_id: base.category_id,
+                is_adult: base.is_adult,
+                publisher: base.publisher,
+                publisher_id: base.publisher_id,
+                language: base.language,
+                page_color: base.page_color,
+                format_id: base.format_id,
+                supplier_id: base.supplier_id,
+                supplier_price: base.supplier_price,
+                artist: base.artist,
+                group_name: base.group_name,
+            },
+            // Lo que NO se hereda, y por que — para que el formulario lo diga.
+            noHeredado: {
+                stock: 'Las existencias son de este tomo',
+                isbn: 'Cada tomo tiene su propio ISBN',
+                image_url: 'La portada cambia en cada tomo',
+                sinopsis: 'La sinopsis es de este tomo',
+            },
+            tomoBase: { id: base.id, name: base.name, volume: base.volume, image_url: base.image_url },
+        });
+    } catch (error) {
+        console.error('Plantilla de serie:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+// ─── Sinopsis ───────────────────────────────────────────────────────────────
+//
+// Copia texto de catalogos publicos. No lo redacta: ver services/sinopsisFinder.js.
+router.get('/sinopsis', async (req, res) => {
+    try {
+        const { isbn, titulo, serie } = req.query;
+        if (!isbn && !titulo && !serie) {
+            return res.status(400).json({ error: 'Hace falta al menos ISBN, titulo o serie' });
+        }
+
+        const resultados = await buscarSinopsis({ isbn, titulo, serie });
+
+        res.json({
+            resultados,
+            // Sin resultados no se rellena nada. Un campo vacio es mejor que un
+            // texto que no corresponde al libro.
+            mensaje: resultados.length === 0
+                ? 'Ninguna fuente reconocio el titulo. Escribe la sinopsis a mano.'
+                : null,
+        });
+    } catch (error) {
+        console.error('Buscar sinopsis:', error);
         res.status(500).json({ error: 'Error interno del servidor' });
     }
 });
@@ -309,9 +462,10 @@ router.get('/check-sbin', async (req, res) => {
 router.post('/', requireInventoryWrite, upload.single('image'), async (req, res) => {
     try {
         const empresaId = getEmpresaId(req);
-        const { name, cost_price, sale_price, stock, category, gender, barcode, sbin_code, isbn,
+        const { name, series, volume, cost_price, sale_price, stock, category, gender, barcode, isbn,
             extras, publication_date, publisher, page_count, dimensions, weight, page_color,
-            language, supplier_id, supplier_price, is_adult, artist, group_name, events, sinopsis } = req.body;
+            language, format_id, supplier_id, supplier_price, is_adult, artist, group_name,
+            events, sinopsis, sinopsis_fuente } = req.body;
 
         if (!empresaId) {
             return res.status(403).json({ error: 'Acceso denegado. Usuario sin empresa asignada.' });
@@ -347,20 +501,14 @@ router.post('/', requireInventoryWrite, upload.single('image'), async (req, res)
             });
         }
 
-        // Check for duplicate SBIN code (within same empresa)
-        // Check for duplicate codes (sbin, isbn, barcode)
-        if (sbin_code) {
-            const [existing] = await pool.query('SELECT id FROM products WHERE empresa_id = ? AND sbin_code = ?', [empresaId, sbin_code]);
-            if (existing.length > 0) return res.status(400).json({ error: 'El código SBIN ya existe en otro producto' });
-        }
-        if (isbn) {
-            const [existing] = await pool.query('SELECT id FROM products WHERE empresa_id = ? AND isbn = ?', [empresaId, isbn]);
-            if (existing.length > 0) return res.status(400).json({ error: 'El ISBN ya existe en otro producto' });
-        }
-        if (barcode) {
-            const [existing] = await pool.query('SELECT id FROM products WHERE empresa_id = ? AND barcode = ?', [empresaId, barcode]);
-            if (existing.length > 0) return res.status(400).json({ error: 'El código de barras ya existe en otro producto' });
-        }
+        // Los tres SELECT-antes-de-INSERT que comprobaban sbin, isbn y barcode
+        // ya no estan. No protegian de nada: entre la consulta y la insercion
+        // cabe otra peticion con el mismo codigo. La unicidad la impone la base
+        // con UNIQUE (empresa_id, isbn) y (empresa_id, barcode), y el manejador
+        // de ER_DUP_ENTRY del final traduce el fallo. El aviso temprano vive en
+        // GET /check-isbn, que es donde sirve: mientras se teclea.
+
+        const rama = esAdulto(is_adult);
 
         // Upload Image to GCS
         let imageUrl = null;
@@ -372,25 +520,13 @@ router.post('/', requireInventoryWrite, upload.single('image'), async (req, res)
             }
         }
 
-        // Get or create category_id
-        let categoryId = null;
-        if (category) {
-            const [catRows] = await pool.execute(
-                'INSERT INTO categories (name) VALUES (?) ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id)',
-                [category]
-            );
-            categoryId = catRows.insertId;
+        let categoryId;
+        try {
+            categoryId = await resolverCategoria(category, rama);
+        } catch (e) {
+            return res.status(400).json({ error: e.message });
         }
-
-        // Get or create publisher_id
-        let publisherId = null;
-        if (publisher) {
-            const [pubRows] = await pool.execute(
-                'INSERT INTO publishers (name) VALUES (?) ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id)',
-                [publisher]
-            );
-            publisherId = pubRows.insertId;
-        }
+        const publisherId = await resolverEditorial(publisher);
 
         // Codigo de barras automatico si no se captura uno.
         //
@@ -403,20 +539,20 @@ router.post('/', requireInventoryWrite, upload.single('image'), async (req, res)
             finalBarcode = await generarCodigoParaEmpresa(pool, empresaId);
         }
 
-        // ... validation ...
-
         const [result] = await pool.query(`
             INSERT INTO products (
-                empresa_id, name, cost_price, sale_price, stock, category, category_id, barcode, sbin_code, isbn,
-                extras, publication_date, publisher, publisher_id, page_count, dimensions,
-                weight, page_color, language, supplier_id, supplier_price, image_url, gender, is_adult, artist, group_name, events, sinopsis
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                empresa_id, name, series, volume, cost_price, sale_price, stock, category, category_id,
+                barcode, isbn, extras, publication_date, publisher, publisher_id, page_count, dimensions,
+                weight, page_color, language, format_id, supplier_id, supplier_price, image_url, gender,
+                is_adult, artist, group_name, events, sinopsis, sinopsis_fuente
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
-            empresaId, name, cost_price, sale_price, stock || 0, category || null, categoryId,
-            finalBarcode || null, sbin_code || null, isbn || null, extras || null,
-            publication_date || null, publisher || null, publisherId, page_count || null, dimensions || null,
-            weight || null, page_color || null, language || null, supplier_id || null, supplier_price || null, imageUrl, null,
-            (is_adult === '1' || is_adult === true) ? 1 : 0, artist || null, group_name || null, events || null, sinopsis || null
+            empresaId, name, nulo(series), aEntero(volume), cost_price, sale_price, stock || 0,
+            nulo(category), categoryId, finalBarcode || null, nulo(isbn), nulo(extras),
+            nulo(publication_date), nulo(publisher), publisherId, aEntero(page_count), nulo(dimensions),
+            nulo(weight), nulo(page_color), nulo(language), aEntero(format_id), aEntero(supplier_id),
+            nulo(supplier_price), imageUrl, null,
+            rama, nulo(artist), nulo(group_name), nulo(events), nulo(sinopsis), nulo(sinopsis_fuente)
         ]);
 
         res.json({
@@ -436,16 +572,12 @@ router.post('/', requireInventoryWrite, upload.single('image'), async (req, res)
             }
         }
     } catch (error) {
-        // La unicidad la impone la base, no el SELECT previo. Si dos altas
-        // simultaneas mandan el mismo codigo, aqui llega la segunda.
-        if (error.code === 'ER_DUP_ENTRY') {
-            const campo = /barcode/.test(error.message) ? 'código de barras'
-                : /sbin/.test(error.message) ? 'código SBIN'
-                    : 'código';
-            return res.status(409).json({
-                error: `Ese ${campo} ya está en uso por otro producto de la empresa.`
-            });
-        }
+        // La unicidad y la coherencia de rama las impone la base, no un SELECT
+        // previo. Si dos altas simultaneas mandan el mismo codigo, aqui llega
+        // la segunda.
+        const traducido = traducirErrorDeBase(error);
+        if (traducido) return res.status(traducido.status).json({ error: traducido.error });
+
         console.error('Create product error:', error);
         res.status(500).json({ error: 'Error interno del servidor' });
     }
@@ -455,7 +587,10 @@ router.post('/', requireInventoryWrite, upload.single('image'), async (req, res)
 router.put('/:id', requireInventoryWrite, upload.single('image'), async (req, res) => {
     try {
         const empresaId = getEmpresaId(req);
-        const { name, cost_price, sale_price, stock, category, gender, barcode, sbin_code, isbn, extras, publication_date, publisher, page_count, dimensions, weight, page_color, language, supplier_id, supplier_price, is_adult, artist, group_name, events, sinopsis } = req.body;
+        const { name, series, volume, cost_price, sale_price, stock, category, gender, barcode, isbn,
+            extras, publication_date, publisher, page_count, dimensions, weight, page_color,
+            language, format_id, supplier_id, supplier_price, is_adult, artist, group_name,
+            events, sinopsis, sinopsis_fuente } = req.body;
         const { id } = req.params;
 
         if (!empresaId) {
@@ -484,36 +619,38 @@ router.put('/:id', requireInventoryWrite, upload.single('image'), async (req, re
             }
         }
 
-        // Check for duplicate SBIN code (within same empresa, excluding current product)
-        // Check for duplicate codes (sbin, isbn, barcode) - excluding current product
-        if (sbin_code) {
-            const [existing] = await pool.query('SELECT id FROM products WHERE empresa_id = ? AND sbin_code = ? AND id != ?', [empresaId, sbin_code, id]);
-            if (existing.length > 0) return res.status(400).json({ error: 'El código SBIN ya existe en otro producto' });
-        }
-        if (isbn) {
-            const [existing] = await pool.query('SELECT id FROM products WHERE empresa_id = ? AND isbn = ? AND id != ?', [empresaId, isbn, id]);
-            if (existing.length > 0) return res.status(400).json({ error: 'El ISBN ya existe en otro producto' });
-        }
-        if (barcode) {
-            const [existing] = await pool.query('SELECT id FROM products WHERE empresa_id = ? AND barcode = ? AND id != ?', [empresaId, barcode, id]);
-            if (existing.length > 0) return res.status(400).json({ error: 'El código de barras ya existe en otro producto' });
-        }
+        const rama = esAdulto(is_adult);
 
-        // ...
+        let categoryId;
+        try {
+            categoryId = await resolverCategoria(category, rama);
+        } catch (e) {
+            return res.status(400).json({ error: e.message });
+        }
+        const publisherId = await resolverEditorial(publisher);
 
+        // El UPDATE no tocaba category_id ni publisher_id: al cambiar la
+        // categoria de un producto, el texto se movia y el id se quedaba
+        // apuntando a la anterior. La tienda filtra por id, el POS muestra el
+        // texto, y el producto aparecia en dos categorias distintas segun donde
+        // se mirara.
         await pool.query(`
             UPDATE products SET
-                name = ?, cost_price = ?, sale_price = ?, stock = ?, category = ?, gender = ?, barcode = ?,
-                sbin_code = ?, isbn = ?, extras = ?, publication_date = ?,
-                publisher = ?, page_count = ?, dimensions = ?, weight = ?, page_color = ?, language = ?,
-                supplier_id = ?, supplier_price = ?, image_url = ?, is_adult = ?, artist = ?, group_name = ?, events = ?, sinopsis = ?
+                name = ?, series = ?, volume = ?, cost_price = ?, sale_price = ?, stock = ?,
+                category = ?, category_id = ?, gender = ?, barcode = ?, isbn = ?, extras = ?,
+                publication_date = ?, publisher = ?, publisher_id = ?, page_count = ?,
+                dimensions = ?, weight = ?, page_color = ?, language = ?, format_id = ?,
+                supplier_id = ?, supplier_price = ?, image_url = ?, is_adult = ?, artist = ?,
+                group_name = ?, events = ?, sinopsis = ?, sinopsis_fuente = ?
             WHERE id = ? AND empresa_id = ?
         `, [
-            name, cost_price, sale_price, stock || 0, category || null, null, barcode || null,
-            sbin_code || null, isbn || null, extras || null,
-            publication_date || null, publisher || null, page_count || null, dimensions || null,
-            weight || null, page_color || null, language || null,
-            supplier_id || null, supplier_price || null, imageUrl, (is_adult === '1' || is_adult === true) ? 1 : 0, artist || null, group_name || null, events || null, sinopsis || null, id, empresaId
+            name, nulo(series), aEntero(volume), cost_price, sale_price, stock || 0,
+            nulo(category), categoryId, null, nulo(barcode), nulo(isbn), nulo(extras),
+            nulo(publication_date), nulo(publisher), publisherId, aEntero(page_count),
+            nulo(dimensions), nulo(weight), nulo(page_color), nulo(language), aEntero(format_id),
+            aEntero(supplier_id), nulo(supplier_price), imageUrl, rama, nulo(artist),
+            nulo(group_name), nulo(events), nulo(sinopsis), nulo(sinopsis_fuente),
+            id, empresaId
         ]);
 
         // Save tags
@@ -528,6 +665,9 @@ router.put('/:id', requireInventoryWrite, upload.single('image'), async (req, re
 
         res.json({ message: 'Producto actualizado correctamente', image_url: imageUrl });
     } catch (error) {
+        const traducido = traducirErrorDeBase(error);
+        if (traducido) return res.status(traducido.status).json({ error: traducido.error });
+
         console.error('Update product error:', error);
         res.status(500).json({ error: 'Error interno del servidor' });
     }
@@ -655,13 +795,23 @@ router.post('/bulk', requireInventoryWrite, async (req, res) => {
 
         for (const product of products) {
             await pool.query(
-                'INSERT INTO products (empresa_id, name, sale_price, stock, category, sbin_code, isbn, extras, publication_date, publisher, page_count, dimensions, weight, page_color, language) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                [empresaId, product.name, product.sale_price ?? product.price, product.stock || 0, product.category || null, product.sbin_code || null, product.isbn || null, product.extras || null, product.publication_date || null, product.publisher || null, product.page_count || null, product.dimensions || null, product.weight || null, product.page_color || null, product.language || null]
+                `INSERT INTO products (empresa_id, name, series, volume, sale_price, stock, category,
+                                       isbn, extras, publication_date, publisher, page_count,
+                                       dimensions, weight, page_color, language)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [empresaId, product.name, nulo(product.series), aEntero(product.volume),
+                    product.sale_price ?? product.price, product.stock || 0, nulo(product.category),
+                    nulo(product.isbn), nulo(product.extras), nulo(product.publication_date),
+                    nulo(product.publisher), aEntero(product.page_count), nulo(product.dimensions),
+                    nulo(product.weight), nulo(product.page_color), nulo(product.language)]
             );
         }
 
         res.json({ message: `${products.length} productos creados correctamente` });
     } catch (error) {
+        const traducido = traducirErrorDeBase(error);
+        if (traducido) return res.status(traducido.status).json({ error: traducido.error });
+
         console.error('Bulk create products error:', error);
         res.status(500).json({ error: 'Error interno del servidor' });
     }
@@ -689,7 +839,11 @@ router.post('/print-label', async (req, res) => {
             return res.status(404).json({ error: 'Producto no encontrado' });
         }
 
-        const codeToPrint = product.isbn || product.sbin_code || product.barcode;
+        // El codigo de barras primero, no el ISBN. La etiqueta se imprime para
+        // escanearla en el mostrador y `barcode` es el que siempre existe —
+        // se genera solo en el alta. El ISBN puede faltar (figuras, mercancia)
+        // y ademas no todos los ISBN son EAN-13 imprimibles.
+        const codeToPrint = product.barcode || product.isbn;
         if (!codeToPrint) {
             return res.status(400).json({ error: 'El producto no tiene código para imprimir' });
         }

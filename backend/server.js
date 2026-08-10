@@ -3,13 +3,18 @@ process.env.TZ = 'America/Mexico_City';
 
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import pool, { initDatabase } from './database/db.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 
 // Import routes
 import authRoutes from './routes/auth.js';
 import featuresRoutes from './routes/features.js';
 import productsRoutes from './routes/products.js';
+import productFormatsRoutes from './routes/productFormats.js';
 import salesRoutes from './routes/sales.js';
 import empresasRoutes from './routes/empresas.js';
 import cashSessionsRoutes from './routes/cashSessions.js';
@@ -28,7 +33,6 @@ import storeCreditsRoutes from './routes/storeCredits.js';
 import eventosRoutes from './routes/eventos.js';
 
 
-import { runSchemaMigrations } from './migrations/startup.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000; // Use env PORT for cloud deployment, fallback to 3000
@@ -44,7 +48,14 @@ const allowedOrigins = [
     'https://torlanpos.com',
     'https://www.torlanpos.com',
     'http://localhost:5173',
-    'http://localhost:3000'
+    'http://localhost:3000',
+    // Vite toma otro puerto cuando el 5173 esta ocupado (dos ramas a la vez),
+    // y entonces el navegador choca contra CORS sin que nada mas cambie.
+    // CORS_EXTRA_ORIGINS deja anadirlos sin editar la lista de produccion:
+    //   CORS_EXTRA_ORIGINS=http://localhost:5174,http://localhost:5183
+    // Vacia por omision, asi que en produccion no cambia nada.
+    ...(process.env.CORS_EXTRA_ORIGINS || '')
+        .split(',').map(o => o.trim()).filter(Boolean),
 ];
 
 app.use(cors({
@@ -121,10 +132,18 @@ app.get('/api/health', (req, res) => {
 // =============================================================================
 // 5. API ROUTES (Modular)
 // =============================================================================
+// Imagenes guardadas en disco cuando LOCAL_UPLOADS=1 (ver utils/storage.js).
+// En produccion las sirve Cloud Storage y esta carpeta no existe.
+if (process.env.LOCAL_UPLOADS === '1') {
+    app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+    console.log('🖼️  Imagenes locales servidas en /uploads');
+}
+
 console.log('📦 Loading routes...');
 app.use('/api/auth', authRoutes);
 app.use('/api/features', featuresRoutes);
 app.use('/api/products', productsRoutes);
+app.use('/api/product-formats', productFormatsRoutes);
 app.use('/api/sales', salesRoutes);
 app.use('/api/empresas', empresasRoutes);
 app.use('/api/cash-sessions', cashSessionsRoutes); // Fixed: was /api/cash, now /api/cash-sessions
@@ -197,13 +216,16 @@ async function startServer() {
             iniciarOutboxWorker();
         });
 
-        // Run schema migrations asynchronously in the background
-        console.log('🔄 Running schema migrations in background...');
-        runSchemaMigrations().then(() => {
-            console.log('✅ Background schema migrations completed.');
-        }).catch(err => {
-            console.error('❌ Background schema migrations failed:', err);
-        });
+        // Aqui se llamaba a runSchemaMigrations(): catorce migraciones que
+        // creaban tablas y columnas con ALTER en cada arranque. El esquema
+        // completo vive ahora en db/schema.sql y se carga antes de levantar el
+        // servidor, asi que no queda nada que migrar en caliente.
+        //
+        // Ademas ya no podian funcionar: intentaban indexar products.sbin_code
+        // y sales.web_status, columnas que el esquema nuevo no tiene. Se
+        // ejecutaban en segundo plano con el error capturado y solo escrito al
+        // log, asi que el POS arrancaba "bien" con un fallo en cada arranque.
+        // Ver backend/migrations/README.md.
 
     } catch (error) {
         console.error('\n❌ Failed to start server:', error.message);

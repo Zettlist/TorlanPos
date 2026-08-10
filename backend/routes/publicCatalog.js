@@ -103,15 +103,17 @@ router.get('/products', async (req, res) => {
 
         // Get products with tags
         const [products] = await pool.query(`
-            SELECT p.id, p.name, p.sale_price, p.price, p.stock, p.category, p.gender,
-                   p.publisher, p.sbin_code, p.isbn, p.barcode, p.image_url,
+            SELECT p.id, p.name, p.series, p.volume, p.sale_price, p.stock, p.stock_disponible,
+                   p.category, p.gender, p.publisher, p.isbn, p.barcode, p.image_url,
                    p.publication_date, p.page_count, p.dimensions, p.weight,
+                   pf.length_cm, pf.width_cm, pf.height_cm, pf.weight_g,
                    p.page_color, p.language, p.extras, p.created_at, p.is_adult,
-                   p.artist, p.group_name,
+                   p.artist, p.group_name, p.sinopsis,
                    GROUP_CONCAT(DISTINCT t.name ORDER BY t.name SEPARATOR ',') as tags
             FROM products p
             LEFT JOIN product_tags pt ON p.id = pt.product_id
             LEFT JOIN tags t ON pt.tag_id = t.id
+            LEFT JOIN product_formats pf ON pf.id = p.format_id
             ${whereClause}
             GROUP BY p.id
             ORDER BY p.created_at DESC
@@ -121,7 +123,10 @@ router.get('/products', async (req, res) => {
         // Parse tags
         const productsWithTags = products.map(p => ({
             ...p,
-            price: Number(p.sale_price || p.price || 0),
+            // `price` era la columna ambigua que se elimino del esquema; se
+            // sigue publicando el campo porque los consumidores externos de
+            // esta API lo leen, pero sale de sale_price, que es la unica venta.
+            price: Number(p.sale_price || 0),
             tags: p.tags ? p.tags.split(',') : []
         }));
 

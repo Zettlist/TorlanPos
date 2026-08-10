@@ -8,7 +8,7 @@ import { API_URL } from '../config';
  */
 export const generateProductLabel = async (product, token) => {
     // Determine which code to use: ISBN > SBIN > Barcode
-    const codeToPrint = product.isbn || product.sbin_code || product.barcode;
+    const codeToPrint = product.barcode || product.isbn;
 
     if (!product || !codeToPrint) {
         console.error('Cannot generate label: Product or Code missing');

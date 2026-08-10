@@ -155,7 +155,7 @@ export default function Anticipos() {
                 quantity: 1,
                 stock: product.stock,
                 image_url: product.image_url,
-                sbin_code: product.sbin_code
+                isbn: product.isbn
             }]);
         }
 
@@ -512,8 +512,8 @@ export default function Anticipos() {
                                                     )}
                                                     <div className="flex-1 min-w-0">
                                                         <p className="font-medium truncate">{product.name}</p>
-                                                        {product.sbin_code && (
-                                                            <p className="text-xs text-muted font-mono">{product.sbin_code}</p>
+                                                        {product.isbn && (
+                                                            <p className="text-xs text-muted font-mono">{product.isbn}</p>
                                                         )}
                                                     </div>
                                                     <div className="text-right">

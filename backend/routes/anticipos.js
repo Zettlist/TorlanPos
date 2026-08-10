@@ -55,7 +55,7 @@ router.get('/:id', async (req, res) => {
         }
 
         const [items] = await pool.query(`
-            SELECT ai.*, p.name as product_name, p.image_url, p.sbin_code
+            SELECT ai.*, p.name as product_name, p.image_url, p.isbn, p.barcode
             FROM anticipo_items ai
             JOIN products p ON ai.product_id = p.id
             WHERE ai.anticipo_id = ?

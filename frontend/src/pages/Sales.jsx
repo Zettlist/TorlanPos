@@ -265,7 +265,7 @@ export default function Sales() {
                 name: product.name,
                 price: Number(product.sale_price || product.price),
                 quantity: 1,
-                sbin_code: product.sbin_code,
+                isbn: product.isbn,
                 stock: product.stock,
                 image_url: product.image_url
             }]);
@@ -1016,8 +1016,8 @@ export default function Sales() {
                                         )}
                                         <div className="flex-1 min-w-0">
                                             <p className="font-medium truncate">{product.name}</p>
-                                            {product.sbin_code && (
-                                                <p className="text-xs text-muted font-mono">{product.sbin_code}</p>
+                                            {product.isbn && (
+                                                <p className="text-xs text-muted font-mono">{product.isbn}</p>
                                             )}
                                         </div>
                                         <div className="text-right">
@@ -1073,8 +1073,8 @@ export default function Sales() {
                                         )}
                                     </div>
                                 </div>
-                                {product.sbin_code && (
-                                    <p className="text-xs text-muted mb-1 font-mono">{product.sbin_code}</p>
+                                {product.isbn && (
+                                    <p className="text-xs text-muted mb-1 font-mono">{product.isbn}</p>
                                 )}
                                 <p className="text-lg font-bold text-accent">
                                     ${Number(product.sale_price || product.price).toFixed(2)}
@@ -1155,8 +1155,8 @@ export default function Sales() {
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="font-medium text-sm truncate">{item.name}</p>
-                                        {item.sbin_code && (
-                                            <p className="text-xs text-muted font-mono">{item.sbin_code}</p>
+                                        {item.isbn && (
+                                            <p className="text-xs text-muted font-mono">{item.isbn}</p>
                                         )}
                                         <p className="text-xs text-muted">${item.price.toFixed(2)} c/u</p>
                                     </div>
@@ -1285,8 +1285,8 @@ export default function Sales() {
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className="font-medium text-sm truncate">{item.name}</p>
-                                            {item.sbin_code && (
-                                                <p className="text-xs text-muted font-mono">{item.sbin_code}</p>
+                                            {item.isbn && (
+                                                <p className="text-xs text-muted font-mono">{item.isbn}</p>
                                             )}
                                             <p className="text-xs text-muted">${item.price.toFixed(2)} c/u</p>
                                         </div>

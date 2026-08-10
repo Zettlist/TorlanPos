@@ -145,20 +145,36 @@ export default function Products() {
     const [forceDeleteConfirm, setForceDeleteConfirm] = useState(null);
     const [successData, setSuccessData] = useState(null);
     const [suppliers, setSuppliers] = useState([]);
-    const [sbinStatus, setSbinStatus] = useState({ checking: false, isDuplicate: false, existingProduct: null });
+    const [isbnStatus, setIsbnStatus] = useState({ checking: false, isDuplicate: false, existingProduct: null });
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
     const [showRotacion, setShowRotacion] = useState(false);
-    const [formData, setFormData] = useState({
+
+    // Formatos de envio: medidas por edicion, se miden una vez y se eligen.
+    const [formats, setFormats] = useState([]);
+    const [showFormatForm, setShowFormatForm] = useState(false);
+    const [newFormat, setNewFormat] = useState({ name: '', length_cm: '', width_cm: '', height_cm: '', weight_g: '' });
+
+    // Continuar serie: buscar la serie y heredar lo que no cambia entre tomos.
+    const [serieQuery, setSerieQuery] = useState('');
+    const [serieResults, setSerieResults] = useState([]);
+    const [serieAplicada, setSerieAplicada] = useState(null);
+
+    // Sinopsis copiada de catalogos publicos. No la redacta ningun modelo.
+    const [sinopsisEstado, setSinopsisEstado] = useState({ buscando: false, opciones: null, mensaje: null });
+
+    const FORM_VACIO = {
         name: '',
+        series: '',
+        volume: '',
         cost_price: '',
         sale_price: '',
         stock: '',
-        category: 'Manga',
-        sbin_code: '',
+        category: '',
         isbn: '',
         publication_date: '',
         publisher: '',
         page_count: '',
+        format_id: '',
         dimensions: { length: '', width: '', height: '' },
         weight: '',
         page_color: 'Blanco y Negro',
@@ -172,11 +188,13 @@ export default function Products() {
         artist: '',
         group_name: '',
         sinopsis: '',
+        sinopsis_fuente: '',
         events: {
             novedad: { active: false, type: 'until_stock', end_date: '' },
             liquidacion: { active: false, type: 'until_stock', end_date: '' }
         }
-    });
+    };
+    const [formData, setFormData] = useState(FORM_VACIO);
 
     const DEFAULT_EVENTS = { novedad: { active: false, type: 'until_stock', end_date: '' }, liquidacion: { active: false, type: 'until_stock', end_date: '' } };
     const updateEvent = (key, updates) => setFormData(prev => {
@@ -208,7 +226,24 @@ export default function Products() {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Suggestions state
-    const [suggestions, setSuggestions] = useState({ categories: [], publishers: [] });
+    const [suggestions, setSuggestions] = useState({
+        categories: [], publishers: [], categorias: { regular: [], adultos: [] }
+    });
+
+    // Categorias de la rama activa. La base rechaza un producto cuya rama no
+    // coincida con la de su categoria, asi que el formulario solo puede ofrecer
+    // las de la rama elegida — el error se evita en vez de traducirse.
+    const categoriasDeRama = useMemo(() => {
+        const c = suggestions.categorias || { regular: [], adultos: [] };
+        const lista = formData.is_adult ? c.adultos : c.regular;
+        // Semilla para una empresa nueva: sin catalogo la rejilla sale vacia y
+        // no hay forma de clasificar el primer producto.
+        const base = formData.is_adult
+            ? ['Doujinshi', 'Manga Hentai', 'Revista Hentai', 'Figura Hentai', 'Accesorio Adulto']
+            : ['Manga', 'Shonen', 'Seinen', 'Shojo', 'Revista', 'Figuras', 'Accesorio',
+                'Boxset', 'Calendario', 'Fanbook', 'Libro de Arte'];
+        return Array.from(new Set([...(lista || []).map(x => x.name), ...base]));
+    }, [suggestions.categorias, formData.is_adult]);
 
     // Helper to parse extras
     const parseExtras = (extras) => {
@@ -229,7 +264,37 @@ export default function Products() {
         fetchProducts();
         fetchSuggestions();
         fetchSuppliers();
+        fetchFormats();
     }, []);
+
+    const fetchFormats = async () => {
+        try {
+            const r = await fetch(`${API_URL}/product-formats`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (r.ok) setFormats(await r.json());
+        } catch (error) {
+            console.error('Error fetching formats:', error);
+        }
+    };
+
+    const crearFormato = async () => {
+        try {
+            const r = await fetch(`${API_URL}/product-formats`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify(newFormat)
+            });
+            const d = await r.json();
+            if (!r.ok) { alert(d.error || 'No se pudo crear el formato'); return; }
+            setFormats(prev => [...prev, { ...d, productos: 0 }].sort((a, b) => a.name.localeCompare(b.name)));
+            setFormData(prev => ({ ...prev, format_id: String(d.id) }));
+            setNewFormat({ name: '', length_cm: '', width_cm: '', height_cm: '', weight_g: '' });
+            setShowFormatForm(false);
+        } catch (e) {
+            alert('No se pudo crear el formato: ' + e.message);
+        }
+    };
 
     const fetchSuppliers = async () => {
         try {
@@ -254,47 +319,119 @@ export default function Products() {
         return Array.from(pubs).sort();
     }, [products, suggestions.publishers]);
 
-    // Debounced SBIN validation
+    // Aviso de ISBN repetido mientras se teclea. La unicidad la impone la base;
+    // esto solo adelanta el error al momento de escanear y dice cual es el
+    // producto que ya lo tiene — casi siempre el mismo tomo reingresado.
     useEffect(() => {
-        if (!formData.sbin_code || formData.sbin_code.trim() === '') {
-            setSbinStatus({ checking: false, isDuplicate: false, existingProduct: null });
+        if (!formData.isbn || formData.isbn.trim() === '') {
+            setIsbnStatus({ checking: false, isDuplicate: false, existingProduct: null });
             return;
         }
-
-        const timer = setTimeout(() => {
-            checkSbinDuplicate(formData.sbin_code);
-        }, 300);
-
+        const timer = setTimeout(() => checkIsbnDuplicate(formData.isbn), 300);
         return () => clearTimeout(timer);
-    }, [formData.sbin_code, editingProduct]);
+    }, [formData.isbn, editingProduct]);
 
-    // Auto-check adult content for specific categories
+    // Al cambiar de rama, la categoria elegida deja de ser valida: pertenece a
+    // la otra. Se limpia en vez de dejarla puesta y que la base rechace el alta
+    // al final del formulario.
     useEffect(() => {
-        const adultCategories = ['Doujinshi', 'Manga Hentai', 'Revista Hentai'];
-        if (adultCategories.includes(formData.category)) {
-            setFormData(prev => ({ ...prev, is_adult: true }));
-        }
-    }, [formData.category]);
+        setFormData(prev => (prev.category ? { ...prev, category: '' } : prev));
+    }, [formData.is_adult]);
 
-    const checkSbinDuplicate = async (sbin_code) => {
-        setSbinStatus(prev => ({ ...prev, checking: true }));
+    const checkIsbnDuplicate = async (isbn) => {
+        setIsbnStatus(prev => ({ ...prev, checking: true }));
         try {
             const excludeId = editingProduct?.id || '';
-            const response = await fetch(`${API_URL}/products/check-sbin?sbin_code=${encodeURIComponent(sbin_code)}&exclude_id=${excludeId}`, {
+            const response = await fetch(`${API_URL}/products/check-isbn?isbn=${encodeURIComponent(isbn)}&exclude_id=${excludeId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (response.ok) {
                 const data = await response.json();
-                setSbinStatus({
+                setIsbnStatus({
                     checking: false,
                     isDuplicate: data.isDuplicate,
                     existingProduct: data.existingProduct
                 });
             }
         } catch (error) {
-            console.error('Error checking SBIN:', error);
-            setSbinStatus({ checking: false, isDuplicate: false, existingProduct: null });
+            console.error('Error checking ISBN:', error);
+            setIsbnStatus({ checking: false, isDuplicate: false, existingProduct: null });
         }
+    };
+
+    // ── Continuar serie ─────────────────────────────────────────────────────
+    useEffect(() => {
+        if (!showForm || serieQuery.trim().length < 2) { setSerieResults([]); return; }
+        const timer = setTimeout(async () => {
+            try {
+                const r = await fetch(`${API_URL}/products/series?q=${encodeURIComponent(serieQuery)}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (r.ok) setSerieResults(await r.json());
+            } catch { setSerieResults([]); }
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [serieQuery, showForm, token]);
+
+    const continuarSerie = async (serie) => {
+        try {
+            const r = await fetch(`${API_URL}/products/series/plantilla?serie=${encodeURIComponent(serie)}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!r.ok) return;
+            const { plantilla, tomoBase } = await r.json();
+
+            // Los NULL de la base tienen que llegar al formulario como cadena
+            // vacia. Un null en un <input> lo vuelve no controlado, y al enviar
+            // el FormData lo serializa como el texto "null".
+            const vacio = Object.fromEntries(
+                Object.entries(plantilla).map(([k, v]) => [k, v ?? '']));
+
+            // Se hereda todo menos lo que es propio del tomo: existencias, ISBN,
+            // portada y sinopsis. Esos quedan vacios a proposito.
+            setFormData(prev => ({
+                ...prev,
+                ...vacio,
+                is_adult: !!plantilla.is_adult,
+                publisher: plantilla.publisher || '',
+                stock: '',
+                isbn: '',
+                sinopsis: '',
+                sinopsis_fuente: '',
+            }));
+            setSerieAplicada({ serie, desde: tomoBase });
+            setSerieResults([]);
+            setSerieQuery('');
+        } catch (e) {
+            console.error('Continuar serie:', e);
+        }
+    };
+
+    // ── Sinopsis ────────────────────────────────────────────────────────────
+    const buscarSinopsis = async () => {
+        const p = new URLSearchParams();
+        if (formData.isbn) p.set('isbn', formData.isbn);
+        if (formData.name) p.set('titulo', formData.name);
+        if (formData.series) p.set('serie', formData.series);
+        if (![...p.keys()].length) return;
+
+        setSinopsisEstado({ buscando: true, opciones: null, mensaje: null });
+        try {
+            const r = await fetch(`${API_URL}/products/sinopsis?${p}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const d = await r.json();
+            setSinopsisEstado({ buscando: false, opciones: d.resultados || [], mensaje: d.mensaje });
+        } catch (e) {
+            setSinopsisEstado({ buscando: false, opciones: [], mensaje: 'No se pudo consultar. Revisa la conexión.' });
+        }
+    };
+
+    // El texto entra al campo editable; no se guarda solo. `sinopsis_fuente`
+    // conserva la URL para poder atribuirlo.
+    const usarSinopsis = (op) => {
+        setFormData(prev => ({ ...prev, sinopsis: op.texto, sinopsis_fuente: op.url || '' }));
+        setSinopsisEstado({ buscando: false, opciones: null, mensaje: null });
     };
 
     const fetchProducts = async () => {
@@ -335,24 +472,15 @@ export default function Products() {
         }
     };
 
-    const generateSku = async () => {
-        try {
-            const response = await fetch(`${API_URL}/products/generate-sku`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (response.ok) {
-                const data = await response.json();
-                setFormData(prev => ({ ...prev, isbn: data.sku }));
-            }
-        } catch (error) {
-            console.error('Error generating SKU:', error);
-        }
-    };
+    // El boton «Generar» que rellenaba el ISBN con 13 digitos al azar ya no
+    // esta. Inventaba un ISBN falso y lo guardaba en el campo del identificador
+    // del editor, que es exactamente donde no debe haber un numero inventado.
+    // El codigo para escanear es el de barras, y lo asigna el servidor solo.
 
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (sbinStatus.isDuplicate) {
+        if (isbnStatus.isDuplicate) {
             return; // Block submission
         }
 
@@ -362,14 +490,9 @@ export default function Products() {
             return;
         }
 
-        // Warning on sensitive field changes
-        if (editingProduct) {
-            const sensitiveChanged = (formData.category !== editingProduct.category) || (formData.publisher !== editingProduct.publisher);
-            if (sensitiveChanged) {
-                const proceed = window.confirm("⚠️ ADVERTENCIA: Has modificado la Categoría o Editorial.\n\nEsto podría hacer que el código actual (SBIN/ISBN) ya no coincida con las reglas de generación.\n\n¿Estás seguro de que deseas guardar los cambios?");
-                if (!proceed) return;
-            }
-        }
+        // El aviso de "cambiar categoria rompe el codigo" ya no aplica: el
+        // codigo de barras no se deriva de la categoria desde el generador
+        // nuevo, asi que cambiarla no lo invalida.
 
         setIsSubmitting(true);
 
@@ -385,11 +508,17 @@ export default function Products() {
             formDataToSend.append('sale_price', formData.sale_price);
             formDataToSend.append('stock', formData.stock || 0);
             formDataToSend.append('category', formData.category);
-            formDataToSend.append('sbin_code', formData.sbin_code);
+            formDataToSend.append('series', formData.series || '');
+            formDataToSend.append('volume', formData.volume || '');
             formDataToSend.append('isbn', formData.isbn);
             formDataToSend.append('barcode', formData.barcode);
             formDataToSend.append('publication_date', formData.publication_date);
-            formDataToSend.append('publisher', formData.publisher ? formData.publisher.value : '');
+            // CreatableSelect trabaja con cadenas, no con {label, value}. La
+            // linea anterior hacia `formData.publisher.value` sobre una cadena:
+            // eso da undefined, y FormData lo convierte en el texto "undefined".
+            // Cada producto dado de alta por este formulario guardaba
+            // publisher = "undefined", que es lo que se mostraba en la tienda.
+            formDataToSend.append('publisher', formData.publisher || '');
 
             // Si es un producto adulto, enviar campos extra. Si no, forzar string vacio.
             if (formData.is_adult) {
@@ -400,18 +529,23 @@ export default function Products() {
                 formDataToSend.append('group_name', '');
             }
             formDataToSend.append('page_count', formData.page_count);
-            formDataToSend.append('weight', formData.weight);
+            formDataToSend.append('weight', formData.format_id ? '' : formData.weight);
             formDataToSend.append('page_color', formData.page_color);
             formDataToSend.append('language', formData.language);
             formDataToSend.append('supplier_id', formData.supplier_id || '');
             formDataToSend.append('supplier_price', formData.supplier_price || '');
 
-            formDataToSend.append('dimensions', JSON.stringify(formData.dimensions));
+            formDataToSend.append('format_id', formData.format_id || '');
+            // Las medidas sueltas solo viajan si el producto no tiene formato:
+            // con formato son las de la edicion y mandarlas duplicaria el dato.
+            const conFormato = !!formData.format_id;
+            formDataToSend.append('dimensions', conFormato ? '' : JSON.stringify(formData.dimensions));
             formDataToSend.append('extras', JSON.stringify(formData.extras || []));
             formDataToSend.append('tags', JSON.stringify(formData.tags || []));
             formDataToSend.append('is_adult', formData.is_adult ? '1' : '0');
             formDataToSend.append('events', JSON.stringify(formData.events || {}));
             formDataToSend.append('sinopsis', formData.sinopsis || '');
+            formDataToSend.append('sinopsis_fuente', formData.sinopsis_fuente || '');
 
             if (imageFile) {
                 formDataToSend.append('image', imageFile);
@@ -433,7 +567,7 @@ export default function Products() {
 
                 // Show success message if barcode was generated
                 // We check if we sent a barcode (from formData) vs what we got back
-                if (!editingProduct && !formData.barcode && !formData.sbin_code && data.barcode) {
+                if (!editingProduct && !formData.barcode && data.barcode) {
                     setSuccessData({
                         title: '¡Producto Creado!',
                         message: 'Se ha generado automáticamente un código de barras para este producto.',
@@ -456,18 +590,17 @@ export default function Products() {
     const closeForm = () => {
         setShowForm(false);
         setEditingProduct(null);
-        setFormData({
-            name: '', cost_price: '', sale_price: '', stock: '', category: 'Manga', sbin_code: '', isbn: '',
-            extras: [], publication_date: '', publisher: '', page_count: '', dimensions: { length: '', width: '', height: '' }, weight: '',
-            page_color: 'Blanco y Negro', language: 'Español', supplier_id: '', supplier_price: '', barcode: '', tags: [],
-            is_adult: false, artist: '', group_name: '', sinopsis: '',
-            events: { novedad: { active: false, type: 'until_stock', end_date: '' }, liquidacion: { active: false, type: 'until_stock', end_date: '' } }
-        });
-        setSbinStatus({ checking: false, isDuplicate: false, existingProduct: null });
+        setFormData(FORM_VACIO);
+        setIsbnStatus({ checking: false, isDuplicate: false, existingProduct: null });
         setSelectedExtras([]);
         setShowExtrasModal(false);
         setImageFile(null);
         setImagePreview(null);
+        setSerieQuery('');
+        setSerieResults([]);
+        setSerieAplicada(null);
+        setSinopsisEstado({ buscando: false, opciones: null, mensaje: null });
+        setShowFormatForm(false);
     };
 
     // Extras modal functions
@@ -521,7 +654,7 @@ export default function Products() {
             const query = searchQuery.toLowerCase();
             sortableItems = sortableItems.filter(product =>
                 product.name.toLowerCase().includes(query) ||
-                (product.sbin_code && product.sbin_code.toLowerCase().includes(query)) ||
+                (product.series && product.series.toLowerCase().includes(query)) ||
                 (product.isbn && product.isbn.toLowerCase().includes(query)) ||
                 (product.barcode && product.barcode.toLowerCase().includes(query)) ||
                 (product.category && product.category.toLowerCase().includes(query))
@@ -539,8 +672,8 @@ export default function Products() {
                         bValue = b.name || '';
                         break;
                     case 'isbn':
-                        aValue = a.isbn || a.sbin_code || a.barcode || '';
-                        bValue = b.isbn || b.sbin_code || b.barcode || '';
+                        aValue = a.isbn || a.barcode || '';
+                        bValue = b.isbn || b.barcode || '';
                         break;
                     case 'category':
                         aValue = a.category || '';
@@ -599,15 +732,17 @@ export default function Products() {
 
         setFormData({
             name: product.name,
+            series: product.series || '',
+            volume: product.volume ?? '',
             cost_price: product.cost_price || '',
-            sale_price: product.sale_price || product.price || '',
+            sale_price: product.sale_price || '',
             stock: product.stock.toString(),
-            category: product.category || 'Manga',
-            sbin_code: product.sbin_code || product.isbn || '',
-            isbn: product.isbn || product.sbin_code || '',
+            category: product.category || '',
+            isbn: product.isbn || '',
             publication_date: product.publication_date || '',
             publisher: product.publisher || '',
             page_count: product.page_count || '',
+            format_id: product.format_id ? String(product.format_id) : '',
             dimensions: parsedDimensions,
             weight: product.weight || '',
             page_color: product.page_color || 'Blanco y Negro',
@@ -621,12 +756,15 @@ export default function Products() {
             artist: product.artist || '',
             group_name: product.group_name || '',
             sinopsis: product.sinopsis || '',
+            sinopsis_fuente: product.sinopsis_fuente || '',
             events: (() => {
                 try { return product.events ? (typeof product.events === 'string' ? JSON.parse(product.events) : product.events) : { novedad: { active: false, type: 'until_stock', end_date: '' }, liquidacion: { active: false, type: 'until_stock', end_date: '' } }; } catch { return { novedad: { active: false, type: 'until_stock', end_date: '' }, liquidacion: { active: false, type: 'until_stock', end_date: '' } }; }
             })()
         });
         setSelectedExtras(parsedExtras);
-        setSbinStatus({ checking: false, isDuplicate: false, existingProduct: null });
+        setIsbnStatus({ checking: false, isDuplicate: false, existingProduct: null });
+        setSerieAplicada(null);
+        setSinopsisEstado({ buscando: false, opciones: null, mensaje: null });
         setImagePreview(product.image_url || null);
         setImageFile(null);
         setShowForm(true);
@@ -712,18 +850,16 @@ export default function Products() {
                     onClick={() => {
                         setShowForm(true);
                         setEditingProduct(null);
-                        setFormData({
-                            name: '', cost_price: '', sale_price: '', stock: '', category: 'Manga', sbin_code: '', isbn: '',
-                            publication_date: '', publisher: '', page_count: '',
-                            dimensions: { length: '', width: '', height: '' }, weight: '',
-                            page_color: 'Blanco y Negro', language: '',
-                            supplier_id: '', supplier_price: '', extras: [], barcode: '', tags: [], is_adult: false,
-                            sinopsis: '',
-                            events: { novedad: { active: false, type: 'until_stock', end_date: '' }, liquidacion: { active: false, type: 'until_stock', end_date: '' } }
-                        });
+                        // La rama arranca en la pestana en la que se esta: si se
+                        // estaba viendo el catalogo de adultos, el alta tambien.
+                        setFormData({ ...FORM_VACIO, is_adult: activeTab === 'adult' });
                         setSelectedExtras([]);
                         setImageFile(null);
                         setImagePreview(null);
+                        setSerieQuery('');
+                        setSerieResults([]);
+                        setSerieAplicada(null);
+                        setSinopsisEstado({ buscando: false, opciones: null, mensaje: null });
                     }}
                     className="btn-primary flex items-center gap-2"
                 >
@@ -975,6 +1111,73 @@ export default function Products() {
                                 </div>
                             </div>
 
+                            {/* ── 1 · Rama del catálogo ──
+                                Primero, no al final: define qué categorías se
+                                ofrecen después y dónde aparece en la tienda. */}
+                            <div className="space-y-2">
+                                <p className="text-xs font-semibold text-muted uppercase tracking-wider">Tipo de contenido</p>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {[
+                                        { adulto: false, etiqueta: 'Contenido Regular', pie: 'Shonen, Seinen, figuras…' },
+                                        { adulto: true, etiqueta: 'Contenido de Adultos', pie: 'Doujinshi, hentai · 18+' },
+                                    ].map(({ adulto, etiqueta, pie }) => {
+                                        const activo = formData.is_adult === adulto;
+                                        return (
+                                            <button key={etiqueta} type="button"
+                                                onClick={() => setFormData(prev => ({ ...prev, is_adult: adulto }))}
+                                                className={`px-3 py-3 rounded-control border text-left transition-all ${activo
+                                                    ? (adulto ? 'bg-rose-500/15 border-rose-500/60 text-rose-700' : 'bg-accent/15 border-accent/50 text-accent')
+                                                    : 'bg-white/3 border-line text-muted hover:border-line-strong hover:text-ink'}`}>
+                                                <span className="block text-sm font-semibold">{etiqueta}</span>
+                                                <span className="block text-xs opacity-70 mt-0.5">{pie}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* ── 2 · Continuar serie ──
+                                Casi todo lo que entra es un tomo nuevo de algo
+                                que ya se vende. Hereda las quince columnas que
+                                no cambian entre tomos. */}
+                            {!editingProduct && (
+                                <div className="space-y-2">
+                                    <p className="text-xs font-semibold text-muted uppercase tracking-wider">Continuar una serie</p>
+                                    {serieAplicada ? (
+                                        <div className="flex items-center gap-3 p-3 rounded-control bg-accent/10 border border-accent/25">
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-semibold text-ink truncate">{serieAplicada.serie}</p>
+                                                <p className="text-xs text-muted">
+                                                    Datos heredados de «{serieAplicada.desde?.name}». Faltan existencias, ISBN, portada y sinopsis.
+                                                </p>
+                                            </div>
+                                            <button type="button" onClick={() => { setSerieAplicada(null); setFormData({ ...FORM_VACIO, is_adult: formData.is_adult }); }}
+                                                className="text-xs text-muted hover:text-ink underline shrink-0">Deshacer</button>
+                                        </div>
+                                    ) : (
+                                        <div className="relative">
+                                            <input type="text" value={serieQuery} onChange={(e) => setSerieQuery(e.target.value)}
+                                                className="input-glass" placeholder="Buscar serie del catálogo (ej. Berserk)…" />
+                                            {serieResults.length > 0 && (
+                                                <div className="absolute z-50 w-full mt-1 bg-surface border border-line rounded-lg shadow-xl max-h-56 overflow-y-auto custom-scrollbar">
+                                                    {serieResults.map(s => (
+                                                        <button key={s.series} type="button" onClick={() => continuarSerie(s.series)}
+                                                            className="w-full text-left px-3 py-2.5 hover:bg-accent/15 transition-colors border-b border-line/50 last:border-0">
+                                                            <span className="block text-sm font-medium text-ink">{s.series}</span>
+                                                            <span className="block text-xs text-muted">
+                                                                {s.tomos} tomo{s.tomos > 1 ? 's' : ''} · último #{s.ultimo_volumen ?? '—'}
+                                                                {s.publisher ? ` · ${s.publisher}` : ''} · ${Number(s.sale_price || 0).toFixed(2)}
+                                                            </span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            <p className="text-xs text-muted mt-1">Hereda editorial, categoría, idioma, formato, proveedor y precio.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                             {/* ── Información Básica ── */}
                             <div className="space-y-3">
                                 <p className="text-xs font-semibold text-muted uppercase tracking-wider">Información básica</p>
@@ -982,13 +1185,48 @@ export default function Products() {
                                     <label className="block text-sm text-muted mb-1">Nombre</label>
                                     <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="input-glass" placeholder="Nombre del producto" required />
                                 </div>
-                                <div>
-                                    <label className="block text-sm text-muted mb-1">ISBN / SKU Interno</label>
-                                    <div className="flex gap-2">
-                                        <input type="text" value={formData.isbn} onChange={(e) => { const val = e.target.value.replace(/\D/g, ''); setFormData({ ...formData, isbn: val, sbin_code: val }); }} className="input-glass flex-1 font-mono" placeholder="ISBN-13 o SKU interno" maxLength={13} />
-                                        <button type="button" onClick={generateSku} disabled={!formData.name || !formData.category} className="px-3 py-2 bg-accent/20 text-accent hover:bg-accent/30 rounded-lg text-sm font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed">Generar</button>
+                                <div className="grid grid-cols-3 gap-3">
+                                    <div className="col-span-2">
+                                        <label className="block text-xs text-muted mb-1">Serie</label>
+                                        <input type="text" value={formData.series}
+                                            onChange={(e) => setFormData({ ...formData, series: e.target.value })}
+                                            className="input-glass" placeholder="Vacío si no es serie" list="series-existentes" />
+                                        <datalist id="series-existentes">
+                                            {Array.from(new Set(products.map(p => p.series).filter(Boolean))).map(s => <option key={s} value={s} />)}
+                                        </datalist>
                                     </div>
-                                    <p className="text-xs text-muted mt-1">El código generado también se usará para escáner</p>
+                                    <div>
+                                        <label className="block text-xs text-muted mb-1">Tomo</label>
+                                        <input type="number" value={formData.volume}
+                                            onChange={(e) => setFormData({ ...formData, volume: e.target.value.replace(/\D/g, '') })}
+                                            className="input-glass" placeholder="#" min="0" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm text-muted mb-1">ISBN</label>
+                                    <input type="text" value={formData.isbn}
+                                        onChange={(e) => setFormData({ ...formData, isbn: e.target.value.trim() })}
+                                        className={`input-glass font-mono ${isbnStatus.isDuplicate ? 'border-bad' : ''}`}
+                                        placeholder="Escanea o teclea el ISBN del editor" maxLength={100} />
+                                    {/* Aviso de repetido: casi siempre es el mismo tomo reingresado. */}
+                                    {isbnStatus.isDuplicate && isbnStatus.existingProduct && (
+                                        <div className="mt-2 p-2.5 rounded-control bg-bad-soft border border-bad/25">
+                                            <p className="text-xs font-semibold text-bad">Ese código ya está en el catálogo</p>
+                                            <p className="text-xs text-ink mt-0.5">
+                                                {isbnStatus.existingProduct.name}
+                                                {isbnStatus.existingProduct.volume ? ` · tomo ${isbnStatus.existingProduct.volume}` : ''}
+                                                {' · '}{isbnStatus.existingProduct.stock} en existencia
+                                            </p>
+                                            <p className="text-xs text-muted mt-1">
+                                                Si querías sumar existencias, edita ese producto en vez de crear otro.
+                                            </p>
+                                        </div>
+                                    )}
+                                    {!isbnStatus.isDuplicate && (
+                                        <p className="text-xs text-muted mt-1">
+                                            Opcional. El código de barras para escanear se asigna solo al guardar.
+                                        </p>
+                                    )}
                                 </div>
                                 <div className="grid grid-cols-3 gap-3">
                                     <div>
@@ -1010,14 +1248,9 @@ export default function Products() {
                             <div className="space-y-3">
                                 <p className="text-xs font-semibold text-muted uppercase tracking-wider">Clasificación</p>
 
-                                {/* Adult toggle */}
-                                <label className="flex items-center gap-3 cursor-pointer group w-fit">
-                                    <div className={`w-5 h-5 rounded flex items-center justify-center transition-colors ${formData.is_adult ? 'bg-rose-500' : 'border-2 border-line group-hover:border-line-strong'}`}>
-                                        {formData.is_adult && <svg className="w-3.5 h-3.5 text-ink" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
-                                    </div>
-                                    <input type="checkbox" checked={formData.is_adult} onChange={(e) => setFormData(prev => ({ ...prev, is_adult: e.target.checked, category: e.target.checked ? 'Manga Hentai' : 'Manga' }))} className="hidden" />
-                                    <span className={`text-sm font-medium transition-colors ${formData.is_adult ? 'text-rose-700' : 'text-muted'}`}>Producto para adultos (18+)</span>
-                                </label>
+                                {/* La casilla «Producto para adultos» vivia aqui, duplicando el
+                                    selector de rama de arriba. Dos controles para el mismo dato
+                                    es como se llegaba a category='Shonen' con is_adult=1. */}
 
                                 {formData.is_adult && (
                                     <div className="grid grid-cols-2 gap-3 p-3 rounded-control bg-rose-500/5 border border-rose-500/15">
@@ -1032,14 +1265,14 @@ export default function Products() {
                                     </div>
                                 )}
 
-                                {/* Category chips */}
+                                {/* Category chips — solo las de la rama activa: la base rechaza
+                                    un producto cuya categoria pertenezca a la otra. */}
                                 <div>
-                                    <label className="block text-xs text-muted mb-2">Categoría</label>
+                                    <label className="block text-xs text-muted mb-2">
+                                        Categoría <span className="opacity-60">· dentro de {formData.is_adult ? 'Adultos' : 'Regular'}</span>
+                                    </label>
                                     <div className="grid grid-cols-3 gap-2">
-                                        {(formData.is_adult
-                                            ? ['Manga Hentai', 'Doujinshi', 'Revista Hentai', 'Figura Hentai', 'Accesorio Adulto', 'Libro de Arte Adulto']
-                                            : ['Manga', 'Revista', 'Figuras', 'Accesorio', 'Boxset', 'Calendario', 'Edición Especial', 'Extra', 'Fanbook', 'Libro de Arte']
-                                        ).map(type => {
+                                        {categoriasDeRama.map(type => {
                                             const noPages = ['Figuras','Accesorio','Boxset','Calendario','Extra','Figura Hentai','Accesorio Adulto'].includes(type);
                                             return (
                                                 <button key={type} type="button"
@@ -1071,14 +1304,10 @@ export default function Products() {
                                         </select>
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-3 gap-3">
+                                <div className="grid grid-cols-2 gap-3">
                                     <div>
                                         <label className={`block text-xs mb-1 ${['Figuras','Accesorio','Boxset','Calendario','Extra'].includes(formData.category) ? 'text-ink' : 'text-muted'}`}>Páginas</label>
                                         <input type="number" value={formData.page_count} onChange={(e) => setFormData({ ...formData, page_count: e.target.value.replace(/^0+/,'').replace(/\D/g,'') })} className={`input-glass ${['Figuras','Accesorio','Boxset','Calendario','Extra'].includes(formData.category) ? 'opacity-40 cursor-not-allowed' : ''}`} placeholder="Núm" min="1" disabled={['Figuras','Accesorio','Boxset','Calendario','Extra'].includes(formData.category)} required={['Manga','Revista','Edición Especial','Fanbook','Libro de Arte'].includes(formData.category)} />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs text-muted mb-1">Peso (g)</label>
-                                        <input type="number" value={formData.weight} onChange={(e) => setFormData({ ...formData, weight: e.target.value.replace(/^0+/,'') })} className="input-glass" placeholder="Gramos" min="1" step="0.1" required />
                                     </div>
                                     <div>
                                         <label className={`block text-xs mb-1 ${['Figuras','Accesorio','Boxset','Calendario','Extra'].includes(formData.category) ? 'text-ink' : 'text-muted'}`}>Color págs.</label>
@@ -1088,13 +1317,63 @@ export default function Products() {
                                         </select>
                                     </div>
                                 </div>
+                                {/* ── Formato de envío ──
+                                    Largo, ancho, alto y peso solo sirven para cotizar con
+                                    Envia.com, y dentro de una edición son idénticos entre
+                                    tomos. Se miden una vez por edición y se eligen. */}
                                 <div>
-                                    <label className="block text-xs text-muted mb-1">Dimensiones (cm) — Largo / Ancho / Alto</label>
-                                    <div className="grid grid-cols-3 gap-2">
-                                        <input type="number" value={formData.dimensions.length} onChange={(e) => setFormData({ ...formData, dimensions: { ...formData.dimensions, length: e.target.value.replace(/^0+/,'') } })} className="input-glass" placeholder="Largo" min="0.1" step="0.1" required />
-                                        <input type="number" value={formData.dimensions.width} onChange={(e) => setFormData({ ...formData, dimensions: { ...formData.dimensions, width: e.target.value.replace(/^0+/,'') } })} className="input-glass" placeholder="Ancho" min="0.1" step="0.1" required />
-                                        <input type="number" value={formData.dimensions.height} onChange={(e) => setFormData({ ...formData, dimensions: { ...formData.dimensions, height: e.target.value.replace(/^0+/,'') } })} className="input-glass" placeholder="Alto" min="0.1" step="0.1" required />
+                                    <label className="block text-xs text-muted mb-1">Formato de envío</label>
+                                    <div className="flex gap-2">
+                                        <select value={formData.format_id}
+                                            onChange={(e) => setFormData({ ...formData, format_id: e.target.value })}
+                                            className="input-glass flex-1">
+                                            <option value="">Sin formato — medidas propias</option>
+                                            {formats.map(f => (
+                                                <option key={f.id} value={f.id}>
+                                                    {f.name} · {Number(f.length_cm)}×{Number(f.width_cm)}×{Number(f.height_cm)} cm · {f.weight_g} g
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <button type="button" onClick={() => setShowFormatForm(v => !v)}
+                                            className="px-3 py-2 bg-accent/20 text-accent hover:bg-accent/30 rounded-lg text-sm font-medium transition-colors shrink-0">
+                                            {showFormatForm ? 'Cerrar' : 'Nuevo'}
+                                        </button>
                                     </div>
+
+                                    {showFormatForm && (
+                                        <div className="mt-2 p-3 rounded-control bg-white/3 border border-line space-y-2">
+                                            <input type="text" value={newFormat.name}
+                                                onChange={(e) => setNewFormat({ ...newFormat, name: e.target.value })}
+                                                className="input-glass" placeholder="Nombre (ej. Tankōbon Panini)" />
+                                            <div className="grid grid-cols-4 gap-2">
+                                                {[['length_cm', 'Largo'], ['width_cm', 'Ancho'], ['height_cm', 'Alto'], ['weight_g', 'Peso g']].map(([k, etq]) => (
+                                                    <input key={k} type="number" value={newFormat[k]}
+                                                        onChange={(e) => setNewFormat({ ...newFormat, [k]: e.target.value })}
+                                                        className="input-glass" placeholder={etq} min="0.1" step={k === 'weight_g' ? '1' : '0.1'} />
+                                                ))}
+                                            </div>
+                                            <button type="button" onClick={crearFormato} className="btn-secondary w-full text-sm">
+                                                Guardar formato y usarlo
+                                            </button>
+                                            <p className="text-xs text-muted">
+                                                Se mide una vez. Todos los tomos de esa edición lo reutilizan.
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {/* Sin formato hay que medir este producto: es lo que ocurre
+                                        con una figura suelta o un artículo importado. */}
+                                    {!formData.format_id && (
+                                        <div className="mt-2 space-y-2">
+                                            <div className="grid grid-cols-4 gap-2">
+                                                <input type="number" value={formData.dimensions.length} onChange={(e) => setFormData({ ...formData, dimensions: { ...formData.dimensions, length: e.target.value.replace(/^0+/, '') } })} className="input-glass" placeholder="Largo" min="0.1" step="0.1" required />
+                                                <input type="number" value={formData.dimensions.width} onChange={(e) => setFormData({ ...formData, dimensions: { ...formData.dimensions, width: e.target.value.replace(/^0+/, '') } })} className="input-glass" placeholder="Ancho" min="0.1" step="0.1" required />
+                                                <input type="number" value={formData.dimensions.height} onChange={(e) => setFormData({ ...formData, dimensions: { ...formData.dimensions, height: e.target.value.replace(/^0+/, '') } })} className="input-glass" placeholder="Alto" min="0.1" step="0.1" required />
+                                                <input type="number" value={formData.weight} onChange={(e) => setFormData({ ...formData, weight: e.target.value.replace(/^0+/, '') })} className="input-glass" placeholder="Peso g" min="1" step="0.1" required />
+                                            </div>
+                                            <p className="text-xs text-muted">En centímetros y gramos. Necesarias para cotizar el envío.</p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -1246,23 +1525,72 @@ export default function Products() {
                                 </div>
                             </div>
 
-                            {/* ── Sinopsis ── */}
+                            {/* ── Sinopsis ──
+                                El botón copia texto de catálogos públicos (Google Books,
+                                Open Library, AniList) por ISBN o por serie. No lo redacta
+                                ningún modelo: si ninguna fuente conoce el título, el campo
+                                se queda vacío en vez de inventar la trama. */}
                             <div className="space-y-2">
-                                <p className="text-xs font-semibold text-muted uppercase tracking-wider">Sinopsis</p>
+                                <div className="flex items-center justify-between">
+                                    <p className="text-xs font-semibold text-muted uppercase tracking-wider">Sinopsis</p>
+                                    <button type="button" onClick={buscarSinopsis}
+                                        disabled={sinopsisEstado.buscando || (!formData.isbn && !formData.name && !formData.series)}
+                                        className="px-3 py-1.5 bg-accent/20 text-accent hover:bg-accent/30 rounded-lg text-xs font-semibold transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5">
+                                        {sinopsisEstado.buscando && <div className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />}
+                                        {sinopsisEstado.buscando ? 'Buscando…' : 'Generar sinopsis'}
+                                    </button>
+                                </div>
+
+                                {sinopsisEstado.mensaje && (
+                                    <p className="text-xs text-warn bg-warn-soft border border-warn/25 rounded-control px-3 py-2">
+                                        {sinopsisEstado.mensaje}
+                                    </p>
+                                )}
+
+                                {/* Se muestran todas las que respondieron: elegir es más
+                                    rápido que buscar, y ver dos versiones deja claro cuál
+                                    corresponde a esta edición. */}
+                                {sinopsisEstado.opciones?.length > 0 && (
+                                    <div className="space-y-2">
+                                        {sinopsisEstado.opciones.map((op, i) => (
+                                            <div key={i} className="p-3 rounded-control bg-white/3 border border-line">
+                                                <div className="flex items-center gap-2 mb-1.5">
+                                                    <span className="px-2 py-0.5 rounded-full bg-accent/15 text-accent text-[10px] font-semibold uppercase tracking-wide">
+                                                        {op.fuente}
+                                                    </span>
+                                                    {op.idioma && <span className="text-[10px] text-muted uppercase">{op.idioma}</span>}
+                                                    <button type="button" onClick={() => usarSinopsis(op)}
+                                                        className="ml-auto text-xs font-semibold text-accent hover:underline">
+                                                        Usar este texto
+                                                    </button>
+                                                </div>
+                                                {op.nota && <p className="text-xs text-warn mb-1.5">{op.nota}</p>}
+                                                <p className="text-xs text-muted line-clamp-4 whitespace-pre-line">{op.texto}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
                                 <textarea
                                     value={formData.sinopsis}
-                                    onChange={(e) => setFormData({ ...formData, sinopsis: e.target.value })}
+                                    onChange={(e) => setFormData({ ...formData, sinopsis: e.target.value, sinopsis_fuente: '' })}
                                     className="input-glass w-full resize-none"
-                                    rows={4}
+                                    rows={5}
                                     placeholder="Descripción o sinopsis del producto..."
                                     required
                                 />
+                                {formData.sinopsis_fuente && (
+                                    <p className="text-xs text-muted">
+                                        Copiada de <a href={formData.sinopsis_fuente} target="_blank" rel="noreferrer noopener" className="underline hover:text-ink">{formData.sinopsis_fuente}</a>.
+                                        Conviene editarla antes de publicar.
+                                    </p>
+                                )}
                             </div>
 
                             {/* ── Botones ── */}
                             <div className="flex gap-3 pt-2 border-t border-line">
                                 <button type="button" onClick={closeForm} className="flex-1 btn-secondary">Cancelar</button>
-                                <button type="submit" className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2" disabled={sbinStatus.isDuplicate || sbinStatus.checking || isSubmitting}>
+                                <button type="submit" className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2" disabled={isbnStatus.isDuplicate || isbnStatus.checking || isSubmitting}>
                                     {isSubmitting && <div className="w-4 h-4 border-2 border-line border-t-white rounded-full animate-spin" />}
                                     {editingProduct ? 'Guardar Cambios' : 'Crear Producto'}
                                 </button>
@@ -1375,9 +1703,9 @@ export default function Products() {
                                     </td>
                                     <td className="table-cell font-medium">{product.name}</td>
                                     <td className="table-cell">
-                                        {(product.barcode || product.sbin_code || product.isbn) ? (
+                                        {(product.barcode || product.isbn) ? (
                                             <span className="font-mono text-sm bg-raised/50 px-2 py-1 rounded">
-                                                {product.barcode || product.sbin_code || product.isbn}
+                                                {product.barcode || product.isbn}
                                             </span>
                                         ) : (
                                             <span className="text-muted text-sm">-</span>
@@ -1434,12 +1762,12 @@ export default function Products() {
                                             </button>
                                             <button
                                                 onClick={() => generateProductLabel(product, token)}
-                                                disabled={!product.isbn && !product.sbin_code && !product.barcode}
-                                                className={`p-2 rounded-lg transition-colors ${(product.isbn || product.sbin_code || product.barcode)
+                                                disabled={!product.isbn && !product.barcode}
+                                                className={`p-2 rounded-lg transition-colors ${(product.isbn || product.barcode)
                                                     ? 'hover:bg-raised text-muted hover:text-white'
                                                     : 'text-ink cursor-not-allowed'
                                                     }`}
-                                                title={(product.isbn || product.sbin_code || product.barcode) ? "Imprimir etiqueta" : "Sin código para imprimir"}
+                                                title={(product.isbn || product.barcode) ? "Imprimir etiqueta" : "Sin código para imprimir"}
                                             >
                                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h10v2H7V7zm0 4h10v2H7v-2zM7 15h10v2H7v-2zM20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h4v4h8v-4h4c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H4V4h16v12z" />
@@ -1482,8 +1810,8 @@ export default function Products() {
                         </div>
                         <div className="bg-raised rounded-control p-4 mb-6 border border-line">
                             <p className="font-medium text-ink">{deleteConfirm.name}</p>
-                            {deleteConfirm.sbin_code && (
-                                <p className="text-sm text-muted font-mono">{deleteConfirm.sbin_code}</p>
+                            {deleteConfirm.isbn && (
+                                <p className="text-sm text-muted font-mono">{deleteConfirm.isbn}</p>
                             )}
                             <p className="text-sm text-ok font-bold mt-1">${Number(deleteConfirm.sale_price || deleteConfirm.price || 0).toFixed(2)}</p>
                         </div>

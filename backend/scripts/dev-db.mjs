@@ -69,19 +69,51 @@ const [prov] = await conn.query(
     `INSERT INTO suppliers (empresa_id, name, contact_info) VALUES (?,?,?)`,
     [empresaId, 'Panini Manga', 'ventas@panini.example']);
 
-const CATALOGO = [
-    ['Berserk, Vol. 1',        '9788498147087', 110, 189, 12, 'Seinen'],
-    ['Chainsaw Man, Vol. 4',   '9788411013246', 100, 175,  8, 'Shonen'],
-    ['Vagabond, Vol. 12',      '9788416700455', 130, 220,  3, 'Seinen'],
-    ['Jujutsu Kaisen, Vol. 2', '9788418610257',  95, 165, 20, 'Shonen'],
-    ['Monster, Vol. 1',        '9788418862632', 140, 245,  0, 'Seinen'],
+// Formatos de envio. Las medidas son de ejemplo: en produccion se toman una
+// vez por edicion. Sirven para que el selector del alta no salga vacio.
+const FORMATOS = [
+    ['Tankobon Panini', 18.0, 12.8, 1.5, 190],
+    ['Kanzenban',       21.0, 14.8, 3.2, 480],
+    ['Figura 1/7',      28.0, 20.0, 20.0, 900],
 ];
-for (const [name, isbn, cost, sale, stock, cat] of CATALOGO) {
+const formatoId = {};
+for (const [nombre, l, w, h, g] of FORMATOS) {
+    const [r] = await conn.query(
+        `INSERT INTO product_formats (empresa_id, name, length_cm, width_cm, height_cm, weight_g)
+         VALUES (?,?,?,?,?,?)`, [empresaId, nombre, l, w, h, g]);
+    formatoId[nombre] = r.insertId;
+}
+
+// Las categorias cuelgan de una rama: is_adult forma parte de su identidad y la
+// base exige que coincida con la del producto (FIX 20).
+const CATEGORIAS = [['Seinen', 0], ['Shonen', 0], ['Shojo', 0], ['Doujinshi', 1]];
+const categoriaId = {};
+for (const [nombre, adulto] of CATEGORIAS) {
+    const [r] = await conn.query(
+        `INSERT INTO categories (name, is_adult) VALUES (?,?)`, [nombre, adulto]);
+    categoriaId[nombre] = r.insertId;
+}
+
+// Series repetidas a proposito: «continuar serie» necesita al menos una serie
+// con varios tomos para que se note lo que hereda.
+const CATALOGO = [
+    ['Berserk',        1, '9781506711980', 110, 189, 12, 'Seinen'],
+    ['Berserk',        2, '9781506712000', 110, 189,  7, 'Seinen'],
+    ['Berserk',        3, '9781506712017', 110, 189,  4, 'Seinen'],
+    ['Chainsaw Man',   4, '9788411013246', 100, 175,  8, 'Shonen'],
+    ['Vagabond',      12, '9788416700455', 130, 220,  3, 'Seinen'],
+    ['Jujutsu Kaisen', 2, '9788418610257',  95, 165, 20, 'Shonen'],
+    ['Monster',        1, '9788418862632', 140, 245,  0, 'Seinen'],
+];
+for (const [serie, tomo, isbn, cost, sale, stock, cat] of CATALOGO) {
     await conn.query(
-        `INSERT INTO products (empresa_id, name, isbn, barcode, cost_price, sale_price,
-                               stock, category, supplier_id, supplier_price, publisher)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
-        [empresaId, name, isbn, isbn, cost, sale, stock, cat, prov.insertId, cost, 'Panini']);
+        `INSERT INTO products (empresa_id, name, series, volume, isbn, barcode,
+                               cost_price, sale_price, stock, category, category_id, is_adult,
+                               format_id, supplier_id, supplier_price, publisher, language)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,0,?,?,?,?,?)`,
+        [empresaId, `${serie}, Vol. ${tomo}`, serie, tomo, isbn, isbn, cost, sale, stock,
+            cat, categoriaId[cat], formatoId['Tankobon Panini'], prov.insertId, cost,
+            'Panini', 'es']);
 }
 
 // ── Apunta el backend a esta base ────────────────────────────────────────────
@@ -94,7 +126,12 @@ if (existsSync(envPath)) {
         .replace(/^DB_USER=.*$/m, `DB_USER=${db.username}`)
         .replace(/^DB_PASSWORD=.*$/m, 'DB_PASSWORD=')
         .replace(/^DB_NAME=.*$/m, 'DB_NAME=torlan_pos');
-    writeFileSync(envPath, actualizado);
+    // Sin credenciales de GCS ninguna alta de producto pasa, porque la imagen
+    // es obligatoria. En local se guardan en backend/uploads.
+    writeFileSync(envPath,
+        /^LOCAL_UPLOADS=/m.test(actualizado)
+            ? actualizado.replace(/^LOCAL_UPLOADS=.*$/m, 'LOCAL_UPLOADS=1')
+            : `${actualizado.trimEnd()}\nLOCAL_UPLOADS=1\n`);
     console.log('backend/.env actualizado con los datos de esta base.');
 }
 
