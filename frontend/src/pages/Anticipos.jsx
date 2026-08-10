@@ -347,7 +347,7 @@ export default function Anticipos() {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-screen">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-primary-500"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-accent"></div>
             </div>
         );
     }
@@ -365,24 +365,24 @@ export default function Anticipos() {
                         <div className="overflow-x-auto">
                             <table className="w-full">
                                 <thead>
-                                    <tr className="border-b border-white/10">
-                                        <th className="text-left p-3 text-sm text-slate-400">Cliente</th>
-                                        <th className="text-left p-3 text-sm text-slate-400">Total</th>
-                                        <th className="text-left p-3 text-sm text-slate-400">Abonado</th>
-                                        <th className="text-left p-3 text-sm text-slate-400">Estado</th>
-                                        <th className="text-right p-3 text-sm text-slate-400">Acciones</th>
+                                    <tr className="border-b border-line">
+                                        <th className="text-left p-3 text-sm text-muted">Cliente</th>
+                                        <th className="text-left p-3 text-sm text-muted">Total</th>
+                                        <th className="text-left p-3 text-sm text-muted">Abonado</th>
+                                        <th className="text-left p-3 text-sm text-muted">Estado</th>
+                                        <th className="text-right p-3 text-sm text-muted">Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {anticipos.map(anticipo => {
                                         const remaining = Number(anticipo.total_amount) - Number(anticipo.paid_amount);
                                         return (
-                                            <tr key={anticipo.id} className="border-b border-white/5 hover:bg-white/5">
+                                            <tr key={anticipo.id} className="border-b border-line hover:bg-raised">
                                                 <td className="p-3">
                                                     <div>
                                                         <p className="font-medium">{anticipo.customer_name}</p>
                                                         {anticipo.customer_phone && (
-                                                            <p className="text-sm text-slate-400">{anticipo.customer_phone}</p>
+                                                            <p className="text-sm text-muted">{anticipo.customer_phone}</p>
                                                         )}
                                                     </div>
                                                 </td>
@@ -390,13 +390,13 @@ export default function Anticipos() {
                                                 <td className="p-3">
                                                     <div>
                                                         <p>${Number(anticipo.paid_amount).toFixed(2)}</p>
-                                                        <p className="text-xs text-amber-400">Pendiente: ${remaining.toFixed(2)}</p>
+                                                        <p className="text-xs text-warn">Pendiente: ${remaining.toFixed(2)}</p>
                                                     </div>
                                                 </td>
                                                 <td className="p-3">
-                                                    <span className={`px-2 py-1 text-xs rounded-full ${anticipo.status === 'pending' ? 'bg-amber-500/20 text-amber-400' :
-                                                        anticipo.status === 'completed' ? 'bg-emerald-500/20 text-emerald-400' :
-                                                            'bg-slate-500/20 text-slate-400'
+                                                    <span className={`px-2 py-1 text-xs rounded-full ${anticipo.status === 'pending' ? 'bg-warn-soft text-warn' :
+                                                        anticipo.status === 'completed' ? 'bg-ok-soft text-ok' :
+                                                            'bg-slate-500/20 text-muted'
                                                         }`}>
                                                         {anticipo.status === 'pending' ? 'Pendiente' :
                                                             anticipo.status === 'completed' ? 'Completado' : 'Cancelado'}
@@ -419,7 +419,7 @@ export default function Anticipos() {
                                                             </button>
                                                             <button
                                                                 onClick={() => handleDeleteAnticipo(anticipo.id)}
-                                                                className="text-red-400 hover:text-red-300 text-xs px-2 py-1"
+                                                                className="text-bad hover:text-bad text-xs px-2 py-1"
                                                             >
                                                                 Eliminar
                                                             </button>
@@ -433,7 +433,7 @@ export default function Anticipos() {
                             </table>
 
                             {anticipos.length === 0 && (
-                                <div className="text-center py-12 text-slate-400">
+                                <div className="text-center py-12 text-muted">
                                     No hay anticipos registrados
                                 </div>
                             )}
@@ -448,7 +448,7 @@ export default function Anticipos() {
                             {/* Customer Info */}
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="block text-sm text-slate-400 mb-1">Nombre del Cliente *</label>
+                                    <label className="block text-sm text-muted mb-1">Nombre del Cliente *</label>
                                     <input
                                         type="text"
                                         value={customerName}
@@ -458,7 +458,7 @@ export default function Anticipos() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm text-slate-400 mb-1">Teléfono</label>
+                                    <label className="block text-sm text-muted mb-1">Teléfono</label>
                                     <input
                                         type="tel"
                                         value={customerPhone}
@@ -471,7 +471,7 @@ export default function Anticipos() {
 
                             {/* Product Search with Autocomplete - COPIED FROM SALES.JSX */}
                             <div>
-                                <label className="block text-sm text-slate-400 mb-1">Buscar Productos</label>
+                                <label className="block text-sm text-muted mb-1">Buscar Productos</label>
                                 <div className="relative" ref={autocompleteRef}>
                                     <input
                                         ref={searchInputRef}
@@ -485,16 +485,16 @@ export default function Anticipos() {
 
                                     {/* Autocomplete Dropdown */}
                                     {showAutocomplete && products.length > 0 && (
-                                        <div className="absolute top-full left-0 right-0 mt-2 bg-slate-900/98 backdrop-blur-xl border-2 border-primary-500/30 rounded-lg overflow-hidden z-50 shadow-2xl max-h-80 overflow-y-auto">
+                                        <div className="absolute top-full left-0 right-0 mt-2 bg-surface border-2 border-accent/25 rounded-lg overflow-hidden z-50 shadow-2xl max-h-80 overflow-y-auto">
                                             {products.slice(0, 5).map((product, index) => (
                                                 <button
                                                     key={product.id}
                                                     onClick={() => handleSuggestionClick(product)}
                                                     disabled={product.stock <= 0}
                                                     className={`w-full p-3 flex items-center gap-3 transition-colors text-left ${index === selectedSuggestionIndex
-                                                        ? 'bg-primary-500/30 border-l-2 border-primary-400'
-                                                        : 'hover:bg-white/5'
-                                                        } ${product.stock <= 0 ? 'opacity-50 cursor-not-allowed' : ''} ${index !== products.slice(0, 5).length - 1 ? 'border-b border-white/5' : ''
+                                                        ? 'bg-accent/30 border-l-2 border-accent'
+                                                        : 'hover:bg-raised'
+                                                        } ${product.stock <= 0 ? 'opacity-50 cursor-not-allowed' : ''} ${index !== products.slice(0, 5).length - 1 ? 'border-b border-line' : ''
                                                         }`}
                                                 >
                                                     {product.image_url ? (
@@ -505,7 +505,7 @@ export default function Anticipos() {
                                                         />
                                                     ) : (
                                                         <div className="w-12 h-12 bg-black/20 rounded flex items-center justify-center">
-                                                            <svg className="w-6 h-6 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <svg className="w-6 h-6 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                                             </svg>
                                                         </div>
@@ -513,17 +513,17 @@ export default function Anticipos() {
                                                     <div className="flex-1 min-w-0">
                                                         <p className="font-medium truncate">{product.name}</p>
                                                         {product.sbin_code && (
-                                                            <p className="text-xs text-slate-400 font-mono">{product.sbin_code}</p>
+                                                            <p className="text-xs text-muted font-mono">{product.sbin_code}</p>
                                                         )}
                                                     </div>
                                                     <div className="text-right">
-                                                        <p className="font-bold text-primary-400">
+                                                        <p className="font-bold text-accent">
                                                             ${Number(product.sale_price || product.price).toFixed(2)}
                                                         </p>
                                                         {product.stock <= 0 ? (
-                                                            <p className="text-xs text-red-400">Sin stock</p>
+                                                            <p className="text-xs text-bad">Sin stock</p>
                                                         ) : product.stock <= 5 ? (
-                                                            <p className="text-xs text-amber-400">Stock: {product.stock}</p>
+                                                            <p className="text-xs text-warn">Stock: {product.stock}</p>
                                                         ) : null}
                                                     </div>
                                                 </button>
@@ -531,8 +531,8 @@ export default function Anticipos() {
                                         </div>
                                     )}
                                 </div>
-                                <p className="text-xs text-slate-500 mt-1">
-                                    Usa <kbd className="px-1 py-0.5 bg-slate-700 rounded text-xs">↑↓</kbd> para navegar • <kbd className="px-1 py-0.5 bg-slate-700 rounded text-xs">Enter</kbd> para agregar
+                                <p className="text-xs text-muted mt-1">
+                                    Usa <kbd className="px-1 py-0.5 bg-raised rounded text-xs">↑↓</kbd> para navegar • <kbd className="px-1 py-0.5 bg-raised rounded text-xs">Enter</kbd> para agregar
                                 </p>
                             </div>
 
@@ -540,12 +540,12 @@ export default function Anticipos() {
                             {selectedItems.length > 0 && (
                                 <div>
                                     <div className="flex justify-between items-end mb-2">
-                                        <label className="text-sm text-slate-400">Productos Seleccionados</label>
-                                        <span className="text-xs text-slate-500">{selectedItems.reduce((acc, item) => acc + item.quantity, 0)} artículos</span>
+                                        <label className="text-sm text-muted">Productos Seleccionados</label>
+                                        <span className="text-xs text-muted">{selectedItems.reduce((acc, item) => acc + item.quantity, 0)} artículos</span>
                                     </div>
-                                    <div className="bg-slate-900/50 rounded-lg overflow-hidden border border-white/5 max-h-60 overflow-y-auto">
+                                    <div className="bg-surface rounded-lg overflow-hidden border border-line max-h-60 overflow-y-auto">
                                         <table className="w-full text-sm">
-                                            <thead className="bg-white/5 text-slate-400">
+                                            <thead className="bg-raised text-muted">
                                                 <tr>
                                                     <th className="p-2 text-left">Producto</th>
                                                     <th className="p-2 text-center w-24">Cant.</th>
@@ -553,9 +553,9 @@ export default function Anticipos() {
                                                     <th className="p-2 w-8"></th>
                                                 </tr>
                                             </thead>
-                                            <tbody className="divide-y divide-white/5">
+                                            <tbody className="divide-y divide-line">
                                                 {selectedItems.map(item => (
-                                                    <tr key={item.product_id} className="hover:bg-white/5 transition-colors">
+                                                    <tr key={item.product_id} className="hover:bg-raised transition-colors">
                                                         <td className="p-2">
                                                             <div className="flex items-center gap-2">
                                                                 {item.image_url && (
@@ -563,7 +563,7 @@ export default function Anticipos() {
                                                                 )}
                                                                 <div className="min-w-0">
                                                                     <p className="font-medium truncate max-w-[150px]">{item.name}</p>
-                                                                    <p className="text-xs text-slate-500">${item.price.toFixed(2)}</p>
+                                                                    <p className="text-xs text-muted">${item.price.toFixed(2)}</p>
                                                                 </div>
                                                             </div>
                                                         </td>
@@ -571,26 +571,26 @@ export default function Anticipos() {
                                                             <div className="flex items-center justify-center gap-1">
                                                                 <button
                                                                     onClick={() => updateItemQuantity(item.product_id, -1)}
-                                                                    className="w-6 h-6 flex items-center justify-center bg-slate-700/50 hover:bg-slate-700 rounded transition-colors"
+                                                                    className="w-6 h-6 flex items-center justify-center bg-raised/50 hover:bg-raised rounded transition-colors"
                                                                 >
                                                                     -
                                                                 </button>
                                                                 <span className="w-6 text-center tabular-nums">{item.quantity}</span>
                                                                 <button
                                                                     onClick={() => updateItemQuantity(item.product_id, 1)}
-                                                                    className="w-6 h-6 flex items-center justify-center bg-slate-700/50 hover:bg-slate-700 rounded transition-colors"
+                                                                    className="w-6 h-6 flex items-center justify-center bg-raised/50 hover:bg-raised rounded transition-colors"
                                                                 >
                                                                     +
                                                                 </button>
                                                             </div>
                                                         </td>
-                                                        <td className="p-2 text-right font-medium text-emerald-400 tabular-nums">
+                                                        <td className="p-2 text-right font-medium text-ok tabular-nums">
                                                             ${(item.price * item.quantity).toFixed(2)}
                                                         </td>
                                                         <td className="p-2 text-center">
                                                             <button
                                                                 onClick={() => removeItem(item.product_id)}
-                                                                className="text-slate-500 hover:text-red-400 transition-colors"
+                                                                className="text-muted hover:text-bad transition-colors"
                                                             >
                                                                 &times;
                                                             </button>
@@ -606,7 +606,7 @@ export default function Anticipos() {
                             {/* Additional Info */}
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="block text-sm text-slate-400 mb-1">Abono Inicial</label>
+                                    <label className="block text-sm text-muted mb-1">Abono Inicial</label>
                                     <input
                                         type="number"
                                         value={paidAmount}
@@ -618,15 +618,15 @@ export default function Anticipos() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm text-slate-400 mb-1">Total</label>
-                                    <div className="input-glass bg-slate-800 text-primary-400 font-bold">
+                                    <label className="block text-sm text-muted mb-1">Total</label>
+                                    <div className="input-glass bg-surface text-accent font-bold">
                                         ${getTotal().toFixed(2)}
                                     </div>
                                 </div>
                             </div>
 
                             <div>
-                                <label className="block text-sm text-slate-400 mb-1">Notas</label>
+                                <label className="block text-sm text-muted mb-1">Notas</label>
                                 <textarea
                                     value={notes}
                                     onChange={(e) => setNotes(e.target.value)}
@@ -650,28 +650,28 @@ export default function Anticipos() {
 
             {/* Payment Modal */}
             {showPaymentModal && selectedAnticipo && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
                     <div className="glass-card max-w-md w-full">
                         <h3 className="text-xl font-semibold mb-4">Registrar Abono</h3>
 
                         <div className="space-y-3">
                             <div className="flex justify-between text-sm">
-                                <span className="text-slate-400">Total:</span>
+                                <span className="text-muted">Total:</span>
                                 <span className="font-bold">${Number(selectedAnticipo.total_amount).toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                                <span className="text-slate-400">Abonado:</span>
+                                <span className="text-muted">Abonado:</span>
                                 <span>${Number(selectedAnticipo.paid_amount).toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                                <span className="text-slate-400">Pendiente:</span>
-                                <span className="text-amber-400 font-bold">
+                                <span className="text-muted">Pendiente:</span>
+                                <span className="text-warn font-bold">
                                     ${(Number(selectedAnticipo.total_amount) - Number(selectedAnticipo.paid_amount)).toFixed(2)}
                                 </span>
                             </div>
 
                             <div>
-                                <label className="block text-sm text-slate-400 mb-1">Monto a Abonar</label>
+                                <label className="block text-sm text-muted mb-1">Monto a Abonar</label>
                                 <input
                                     type="number"
                                     value={paymentAmount}
@@ -705,32 +705,32 @@ export default function Anticipos() {
 
             {/* Complete Modal */}
             {showCompleteModal && selectedAnticipo && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
                     <div className="glass-card max-w-md w-full">
                         <h3 className="text-xl font-semibold mb-4">Liquidar Anticipo</h3>
 
                         <div className="space-y-3">
                             <div className="flex justify-between text-sm">
-                                <span className="text-slate-400">Cliente:</span>
+                                <span className="text-muted">Cliente:</span>
                                 <span className="font-medium">{selectedAnticipo.customer_name}</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                                <span className="text-slate-400">Total:</span>
+                                <span className="text-muted">Total:</span>
                                 <span className="font-bold">${Number(selectedAnticipo.total_amount).toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                                <span className="text-slate-400">Abonado:</span>
+                                <span className="text-muted">Abonado:</span>
                                 <span>${Number(selectedAnticipo.paid_amount).toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between text-lg">
-                                <span className="text-slate-400">Saldo Final:</span>
-                                <span className="text-emerald-400 font-bold">
+                                <span className="text-muted">Saldo Final:</span>
+                                <span className="text-ok font-bold">
                                     ${(Number(selectedAnticipo.total_amount) - Number(selectedAnticipo.paid_amount)).toFixed(2)}
                                 </span>
                             </div>
 
                             <div>
-                                <label className="block text-sm text-slate-400 mb-1">Pago Final</label>
+                                <label className="block text-sm text-muted mb-1">Pago Final</label>
                                 <input
                                     type="number"
                                     value={finalPayment}
@@ -742,7 +742,7 @@ export default function Anticipos() {
                             </div>
 
                             <div>
-                                <label className="block text-sm text-slate-400 mb-1">Método de Pago</label>
+                                <label className="block text-sm text-muted mb-1">Método de Pago</label>
                                 <select
                                     value={paymentMethod}
                                     onChange={(e) => setPaymentMethod(e.target.value)}

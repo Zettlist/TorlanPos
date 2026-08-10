@@ -116,7 +116,7 @@ export default function UserManager() {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent"></div>
             </div>
         );
     }
@@ -127,7 +127,7 @@ export default function UserManager() {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold">Gestión de Usuarios</h1>
-                    <p className="text-slate-400">{users.length} usuarios registrados</p>
+                    <p className="text-muted">{users.length} usuarios registrados</p>
                 </div>
                 <button
                     onClick={() => {
@@ -146,7 +146,7 @@ export default function UserManager() {
 
             {/* Success Message */}
             {success && (
-                <div className="p-4 bg-emerald-500/20 border border-emerald-500/30 rounded-xl text-emerald-300 animate-fade-in">
+                <div className="p-4 bg-ok-soft border border-emerald-500/30 rounded-control text-ok animate-fade-in">
                     <div className="flex items-center gap-2">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -158,7 +158,7 @@ export default function UserManager() {
 
             {/* Error Message */}
             {error && (
-                <div className="p-4 bg-red-500/20 border border-red-500/30 rounded-xl text-red-300 animate-fade-in">
+                <div className="p-4 bg-bad-soft border border-bad/30 rounded-control text-bad animate-fade-in">
                     <div className="flex items-center gap-2">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -170,23 +170,23 @@ export default function UserManager() {
 
             {/* Delete Confirmation Modal */}
             {deleteConfirm && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                     <div className="glass-card p-6 w-full max-w-md animate-slide-up">
                         <div className="flex items-center gap-4 mb-4">
-                            <div className="p-3 bg-red-500/20 rounded-full">
-                                <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="p-3 bg-bad-soft rounded-full">
+                                <svg className="w-8 h-8 text-bad" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                 </svg>
                             </div>
                             <div>
                                 <h3 className="text-lg font-semibold">¿Eliminar usuario?</h3>
-                                <p className="text-slate-400 text-sm">
+                                <p className="text-muted text-sm">
                                     Esta acción no se puede deshacer.
                                 </p>
                             </div>
                         </div>
-                        <p className="text-slate-300 mb-6">
-                            Estás a punto de eliminar al usuario <span className="font-semibold text-white">"{deleteConfirm.username}"</span>.
+                        <p className="text-ink mb-6">
+                            Estás a punto de eliminar al usuario <span className="font-semibold text-ink">"{deleteConfirm.username}"</span>.
                             Se eliminarán todos sus datos y permisos.
                         </p>
                         <div className="flex gap-3">
@@ -209,7 +209,7 @@ export default function UserManager() {
 
             {/* New User Form Modal */}
             {showForm && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                     <div className="glass-card p-6 w-full max-w-md animate-slide-up">
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-xl font-semibold">Registrar nuevo empleado</h2>
@@ -219,7 +219,7 @@ export default function UserManager() {
                                     setShowPassword(false);
                                     setShowConfirmPassword(false);
                                 }}
-                                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                                className="p-2 hover:bg-raised rounded-lg transition-colors"
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -228,14 +228,14 @@ export default function UserManager() {
                         </div>
 
                         {error && (
-                            <div className="mb-4 p-4 bg-red-500/20 border border-red-500/30 rounded-xl text-red-300 text-sm">
+                            <div className="mb-4 p-4 bg-bad-soft border border-bad/30 rounded-control text-bad text-sm">
                                 {error}
                             </div>
                         )}
 
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-sm text-slate-400 mb-1">
+                                <label className="block text-sm text-muted mb-1">
                                     Nombre de empleado
                                 </label>
                                 <input
@@ -251,7 +251,7 @@ export default function UserManager() {
                             </div>
 
                             <div>
-                                <label className="block text-sm text-slate-400 mb-1">
+                                <label className="block text-sm text-muted mb-1">
                                     Número de Empleado (Opcional - Auto si vacío)
                                 </label>
                                 <input
@@ -265,7 +265,7 @@ export default function UserManager() {
                             </div>
 
                             <div>
-                                <label className="block text-sm text-slate-400 mb-1">
+                                <label className="block text-sm text-muted mb-1">
                                     Contraseña
                                 </label>
                                 <div className="relative">
@@ -280,7 +280,7 @@ export default function UserManager() {
                                     <button
                                         type="button"
                                         onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-white transition-colors"
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted hover:text-ink transition-colors"
                                         title={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                                     >
                                         {showPassword ? (
@@ -298,7 +298,7 @@ export default function UserManager() {
                             </div>
 
                             <div>
-                                <label className="block text-sm text-slate-400 mb-1">
+                                <label className="block text-sm text-muted mb-1">
                                     Confirmar Contraseña
                                 </label>
                                 <div className="relative">
@@ -313,7 +313,7 @@ export default function UserManager() {
                                     <button
                                         type="button"
                                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-white transition-colors"
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted hover:text-ink transition-colors"
                                         title={showConfirmPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                                     >
                                         {showConfirmPassword ? (
@@ -330,14 +330,14 @@ export default function UserManager() {
                                 </div>
                             </div>
 
-                            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 mt-4">
+                            <div className="bg-warn-soft border border-amber-500/30 rounded-control p-4 mt-4">
                                 <div className="flex items-start gap-3">
-                                    <svg className="w-5 h-5 text-amber-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className="w-5 h-5 text-warn mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                     <div className="text-sm text-amber-200">
                                         <p className="font-medium">Nota:</p>
-                                        <p className="text-amber-300/80">El usuario deberá cambiar su contraseña en el primer inicio de sesión.</p>
+                                        <p className="text-warn/80">El usuario deberá cambiar su contraseña en el primer inicio de sesión.</p>
                                     </div>
                                 </div>
                             </div>
@@ -367,7 +367,7 @@ export default function UserManager() {
             <div className="glass-card overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full">
-                        <thead className="bg-white/5">
+                        <thead className="bg-raised">
                             <tr>
                                 <th className="table-header">Usuario</th>
                                 <th className="table-header">No. Empleado</th>
@@ -377,14 +377,14 @@ export default function UserManager() {
                                 <th className="table-header text-right">Acciones</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-white/5">
+                        <tbody className="divide-y divide-line">
                             {users.map(u => (
-                                <tr key={u.id} className="hover:bg-white/5 transition-colors">
+                                <tr key={u.id} className="hover:bg-raised transition-colors">
                                     <td className="table-cell">
                                         <div className="flex items-center gap-3">
                                             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${u.is_admin
                                                 ? 'bg-gradient-to-br from-amber-500 to-orange-500'
-                                                : 'bg-gradient-to-br from-primary-500 to-accent-500'
+                                                : 'bg-accent'
                                                 }`}>
                                                 {u.username.charAt(0).toUpperCase()}
                                             </div>
@@ -393,38 +393,38 @@ export default function UserManager() {
                                                     {u.username}
                                                 </p>
                                                 {u.nombre_empresa && (
-                                                    <span className="text-[10px] uppercase tracking-wider bg-slate-700/50 text-slate-300 px-1.5 py-0.5 rounded border border-slate-600/50">
+                                                    <span className="text-[10px] uppercase tracking-wider bg-raised/50 text-ink px-1.5 py-0.5 rounded border border-line/50">
                                                         {u.nombre_empresa}
                                                     </span>
                                                 )}
                                                 {u.id === user.id && (
-                                                    <p className="text-xs text-primary-400">(Tú)</p>
+                                                    <p className="text-xs text-accent">(Tú)</p>
                                                 )}
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="table-cell font-mono text-slate-300">
+                                    <td className="table-cell font-mono text-ink">
                                         {u.employee_number || '-'}
                                     </td>
                                     <td className="table-cell">
                                         {u.is_admin ? (
-                                            <span className="px-3 py-1 bg-amber-500/20 text-amber-400 rounded-full text-xs font-medium">
+                                            <span className="px-3 py-1 bg-warn-soft text-warn rounded-full text-xs font-medium">
                                                 Gerente de Empresa
                                             </span>
                                         ) : (
-                                            <span className="px-3 py-1 bg-primary-500/20 text-primary-400 rounded-full text-xs font-medium">
+                                            <span className="px-3 py-1 bg-accent/20 text-accent rounded-full text-xs font-medium">
                                                 Empleado
                                             </span>
                                         )}
                                     </td>
                                     <td className="table-cell">
                                         {u.first_login ? (
-                                            <span className="flex items-center gap-2 text-amber-400">
+                                            <span className="flex items-center gap-2 text-warn">
                                                 <span className="w-2 h-2 bg-amber-400 rounded-full"></span>
                                                 Pendiente (primer login)
                                             </span>
                                         ) : u.has_setup_complete ? (
-                                            <span className="flex items-center gap-2 text-emerald-400">
+                                            <span className="flex items-center gap-2 text-ok">
                                                 <span className="w-2 h-2 bg-emerald-400 rounded-full"></span>
                                                 Activo
                                             </span>
@@ -435,7 +435,7 @@ export default function UserManager() {
                                             </span>
                                         )}
                                     </td>
-                                    <td className="table-cell text-slate-400">
+                                    <td className="table-cell text-muted">
                                         {u.created_at ? new Date(u.created_at).toLocaleDateString('es-MX') : '-'}
                                     </td>
                                     <td className="table-cell text-right">
@@ -448,7 +448,7 @@ export default function UserManager() {
                                             (isGlobalAdmin() || (!u.is_admin && u.role === 'employee')) && (
                                                 <button
                                                     onClick={() => setDeleteConfirm({ id: u.id, username: u.username, role: u.role })}
-                                                    className="p-2 hover:bg-red-500/20 rounded-lg transition-colors text-slate-400 hover:text-red-400"
+                                                    className="p-2 hover:bg-bad-soft rounded-lg transition-colors text-muted hover:text-bad"
                                                     title="Eliminar usuario"
                                                 >
                                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

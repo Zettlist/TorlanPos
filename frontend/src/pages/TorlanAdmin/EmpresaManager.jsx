@@ -276,26 +276,26 @@ export default function EmpresaManager() {
 
     const getEstadoBadge = (estado) => {
         const colors = {
-            'Activo': 'bg-green-500/20 text-green-300 border border-green-500/30',
-            'Suspendido': 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30',
-            'Baja': 'bg-red-500/20 text-red-300 border border-red-500/30'
+            'Activo': 'bg-ok-soft text-ok border border-ok/30',
+            'Suspendido': 'bg-warn-soft text-warn border border-warn/30',
+            'Baja': 'bg-bad-soft text-bad border border-bad/30'
         };
-        return colors[estado] || 'bg-slate-700 text-slate-300';
+        return colors[estado] || 'bg-raised text-ink';
     };
 
     const getPlanBadge = (plan) => {
         const colors = {
-            'Basico': 'bg-slate-700 text-slate-300',
+            'Basico': 'bg-raised text-ink',
             'Premium': 'bg-blue-500/20 text-blue-300 border border-blue-500/30',
             'Empresarial': 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
         };
-        return colors[plan] || 'bg-slate-700 text-slate-300';
+        return colors[plan] || 'bg-raised text-ink';
     };
 
     if (!isGlobalAdmin()) {
         return (
             <div className="p-6">
-                <div className="bg-red-500/20 text-red-300 border border-red-500/30 p-4 rounded-lg">
+                <div className="bg-bad-soft text-bad border border-bad/30 p-4 rounded-lg">
                     Acceso denegado. Solo TorlanAdmin puede acceder a esta sección.
                 </div>
             </div>
@@ -306,8 +306,8 @@ export default function EmpresaManager() {
         <div className="p-6 h-full overflow-auto">
             <div className="flex justify-between items-center mb-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-white">Gestión de Empresas</h1>
-                    <p className="text-slate-400">Panel de administración de clientes SaaS</p>
+                    <h1 className="text-2xl font-bold text-ink">Gestión de Empresas</h1>
+                    <p className="text-muted">Panel de administración de clientes SaaS</p>
                 </div>
                 <button
                     onClick={() => { resetForm(); setShowModal(true); }}
@@ -322,13 +322,13 @@ export default function EmpresaManager() {
 
             {/* Alerts */}
             {error && (
-                <div className="bg-red-500/20 text-red-300 border border-red-500/30 p-4 rounded-lg mb-4">
+                <div className="bg-bad-soft text-bad border border-bad/30 p-4 rounded-lg mb-4">
                     {error}
-                    <button onClick={() => setError('')} className="float-right hover:text-white">&times;</button>
+                    <button onClick={() => setError('')} className="float-right hover:text-ink">&times;</button>
                 </div>
             )}
             {success && (
-                <div className="bg-green-500/20 text-green-300 border border-green-500/30 p-4 rounded-lg mb-4">
+                <div className="bg-ok-soft text-ok border border-ok/30 p-4 rounded-lg mb-4">
                     {success}
                 </div>
             )}
@@ -361,23 +361,23 @@ export default function EmpresaManager() {
             {/* Stats Cards */}
             <div className="grid grid-cols-4 gap-4 mb-6">
                 <div className="glass-card-dark p-4">
-                    <p className="text-slate-400 text-sm">Total Empresas</p>
-                    <p className="text-2xl font-bold text-white">{empresas.length}</p>
+                    <p className="text-muted text-sm">Total Empresas</p>
+                    <p className="text-2xl font-bold text-ink">{empresas.length}</p>
                 </div>
                 <div className="glass-card-dark p-4">
-                    <p className="text-slate-400 text-sm">Activas</p>
-                    <p className="text-2xl font-bold text-green-400">
+                    <p className="text-muted text-sm">Activas</p>
+                    <p className="text-2xl font-bold text-ok">
                         {empresas.filter(e => e.estado === 'Activo').length}
                     </p>
                 </div>
                 <div className="glass-card-dark p-4">
-                    <p className="text-slate-400 text-sm">Suspendidas</p>
-                    <p className="text-2xl font-bold text-yellow-400">
+                    <p className="text-muted text-sm">Suspendidas</p>
+                    <p className="text-2xl font-bold text-warn">
                         {empresas.filter(e => e.estado === 'Suspendido').length}
                     </p>
                 </div>
                 <div className="glass-card-dark p-4">
-                    <p className="text-slate-400 text-sm">Premium+</p>
+                    <p className="text-muted text-sm">Premium+</p>
                     <p className="text-2xl font-bold text-blue-400">
                         {empresas.filter(e => e.plan_contratado !== 'Basico').length}
                     </p>
@@ -387,33 +387,33 @@ export default function EmpresaManager() {
             {/* Table */}
             <div className="glass-card-dark overflow-hidden min-h-[400px]">
                 <table className="w-full">
-                    <thead className="bg-white/5">
+                    <thead className="bg-raised">
                         <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Empresa</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Plan</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Estado</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Usuarios</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Productos</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Registro</th>
-                            <th className="px-6 py-3 text-right text-xs font-medium text-slate-400 uppercase">Acciones</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-muted uppercase">Empresa</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-muted uppercase">Plan</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-muted uppercase">Estado</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-muted uppercase">Usuarios</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-muted uppercase">Productos</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-muted uppercase">Registro</th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-muted uppercase">Acciones</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-700">
+                    <tbody className="divide-y divide-line">
                         {loading ? (
                             <tr>
-                                <td colSpan="7" className="px-6 py-4 text-center text-slate-400">Cargando...</td>
+                                <td colSpan="7" className="px-6 py-4 text-center text-muted">Cargando...</td>
                             </tr>
                         ) : empresas.length === 0 ? (
                             <tr>
-                                <td colSpan="7" className="px-6 py-4 text-center text-slate-500">
+                                <td colSpan="7" className="px-6 py-4 text-center text-muted">
                                     No hay empresas registradas
                                 </td>
                             </tr>
                         ) : empresas.map(empresa => (
-                            <tr key={empresa.id} className="hover:bg-white/5 transition-colors">
+                            <tr key={empresa.id} className="hover:bg-raised transition-colors">
                                 <td className="px-6 py-4">
-                                    <div className="font-medium text-white">{empresa.nombre_empresa}</div>
-                                    <div className="text-sm text-slate-500">ID: {empresa.id}</div>
+                                    <div className="font-medium text-ink">{empresa.nombre_empresa}</div>
+                                    <div className="text-sm text-muted">ID: {empresa.id}</div>
                                 </td>
                                 <td className="px-6 py-4">
                                     <span className={`px-2 py-1 text-xs rounded-full ${getPlanBadge(empresa.plan_contratado)}`}>
@@ -426,16 +426,16 @@ export default function EmpresaManager() {
                                     </span>
                                 </td>
                                 <td className="px-6 py-4">
-                                    <span className="text-sm text-slate-300">
+                                    <span className="text-sm text-ink">
                                         {empresa.total_usuarios || 0} / {empresa.max_usuarios}
                                     </span>
                                 </td>
                                 <td className="px-6 py-4">
-                                    <span className="text-sm text-slate-300">
+                                    <span className="text-sm text-ink">
                                         {empresa.total_productos || 0} / {empresa.max_productos}
                                     </span>
                                 </td>
-                                <td className="px-6 py-4 text-sm text-slate-400">
+                                <td className="px-6 py-4 text-sm text-muted">
                                     {new Date(empresa.fecha_registro).toLocaleDateString()}
                                 </td>
                                 <td className="px-6 py-4 text-right">
@@ -445,7 +445,7 @@ export default function EmpresaManager() {
                                                 e.stopPropagation();
                                                 setActiveMenu(activeMenu === empresa.id ? null : empresa.id);
                                             }}
-                                            className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-white/10"
+                                            className="p-1 text-muted hover:text-ink rounded-lg hover:bg-raised"
                                         >
                                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
@@ -453,10 +453,10 @@ export default function EmpresaManager() {
                                         </button>
 
                                         {activeMenu === empresa.id && (
-                                            <div className="absolute right-0 mt-2 w-56 glass-card-dark border border-slate-700 rounded-lg shadow-xl z-10 animate-fade-in overflow-hidden">
+                                            <div className="absolute right-0 mt-2 w-56 glass-card-dark border border-line rounded-lg shadow-xl z-10 animate-fade-in overflow-hidden">
                                                 <button
                                                     onClick={() => openEditModal(empresa)}
-                                                    className="w-full text-left px-4 py-3 hover:bg-white/10 flex items-center gap-3 text-sm text-slate-300 hover:text-white"
+                                                    className="w-full text-left px-4 py-3 hover:bg-raised flex items-center gap-3 text-sm text-ink hover:text-ink"
                                                 >
                                                     <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -465,9 +465,9 @@ export default function EmpresaManager() {
                                                 </button>
                                                 <button
                                                     onClick={() => openAdminModal(empresa)}
-                                                    className="w-full text-left px-4 py-3 hover:bg-white/10 flex items-center gap-3 text-sm text-slate-300 hover:text-white"
+                                                    className="w-full text-left px-4 py-3 hover:bg-raised flex items-center gap-3 text-sm text-ink hover:text-ink"
                                                 >
-                                                    <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <svg className="w-5 h-5 text-ok" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                                                     </svg>
                                                     Crear Admin
@@ -475,7 +475,7 @@ export default function EmpresaManager() {
                                                 {empresa.estado === 'Activo' ? (
                                                     <button
                                                         onClick={() => handleSuspend(empresa)}
-                                                        className="w-full text-left px-4 py-3 hover:bg-white/10 flex items-center gap-3 text-sm text-slate-300 hover:text-white"
+                                                        className="w-full text-left px-4 py-3 hover:bg-raised flex items-center gap-3 text-sm text-ink hover:text-ink"
                                                     >
                                                         <svg className="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -485,7 +485,7 @@ export default function EmpresaManager() {
                                                 ) : empresa.estado === 'Suspendido' ? (
                                                     <button
                                                         onClick={() => handleActivate(empresa)}
-                                                        className="w-full text-left px-4 py-3 hover:bg-white/10 flex items-center gap-3 text-sm text-slate-300 hover:text-white"
+                                                        className="w-full text-left px-4 py-3 hover:bg-raised flex items-center gap-3 text-sm text-ink hover:text-ink"
                                                     >
                                                         <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
@@ -494,10 +494,10 @@ export default function EmpresaManager() {
                                                         Reactivar
                                                     </button>
                                                 ) : null}
-                                                <div className="border-t border-slate-700 my-1"></div>
+                                                <div className="border-t border-line my-1"></div>
                                                 <button
                                                     onClick={() => openPurgeModal(empresa)}
-                                                    className="w-full text-left px-4 py-3 hover:bg-red-500/10 flex items-center gap-3 text-sm text-red-400 hover:text-red-300"
+                                                    className="w-full text-left px-4 py-3 hover:bg-bad-soft flex items-center gap-3 text-sm text-bad hover:text-bad"
                                                 >
                                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -516,14 +516,14 @@ export default function EmpresaManager() {
 
             {/* Create/Edit Modal */}
             {showModal && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
-                    <div className="glass-card-dark w-full max-w-md p-6 border border-slate-700">
-                        <h2 className="text-xl font-bold mb-4 text-white">
+                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+                    <div className="glass-card-dark w-full max-w-md p-6 border border-line">
+                        <h2 className="text-xl font-bold mb-4 text-ink">
                             {selectedEmpresa ? 'Editar Empresa' : 'Nueva Empresa'}
                         </h2>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-1">
+                                <label className="block text-sm font-medium text-ink mb-1">
                                     Nombre de Empresa
                                 </label>
                                 <input
@@ -536,7 +536,7 @@ export default function EmpresaManager() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-1">
+                                <label className="block text-sm font-medium text-ink mb-1">
                                     Plan
                                 </label>
                                 <select
@@ -552,7 +552,7 @@ export default function EmpresaManager() {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-1">
+                                <label className="block text-sm font-medium text-ink mb-1">
                                     Fecha de Facturación (Día del mes)
                                 </label>
                                 <input
@@ -562,12 +562,12 @@ export default function EmpresaManager() {
                                     className="input-dark"
                                     placeholder="Seleccionar fecha"
                                 />
-                                <p className="text-xs text-slate-500 mt-1">Se usará el día del mes para el ciclo de cobro.</p>
+                                <p className="text-xs text-muted mt-1">Se usará el día del mes para el ciclo de cobro.</p>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-300 mb-1">
+                                    <label className="block text-sm font-medium text-ink mb-1">
                                         Máx. Usuarios
                                     </label>
                                     <input
@@ -579,7 +579,7 @@ export default function EmpresaManager() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-300 mb-1">
+                                    <label className="block text-sm font-medium text-ink mb-1">
                                         Máx. Productos
                                     </label>
                                     <input
@@ -592,7 +592,7 @@ export default function EmpresaManager() {
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-1">
+                                <label className="block text-sm font-medium text-ink mb-1">
                                     Notas
                                 </label>
                                 <textarea
@@ -608,7 +608,7 @@ export default function EmpresaManager() {
                                     type="button"
                                     onClick={() => setShowModal(false)}
                                     disabled={submitting}
-                                    className="px-4 py-2 text-slate-300 hover:bg-white/10 rounded-lg transition-colors disabled:opacity-50"
+                                    className="px-4 py-2 text-ink hover:bg-raised rounded-lg transition-colors disabled:opacity-50"
                                 >
                                     Cancelar
                                 </button>
@@ -618,7 +618,7 @@ export default function EmpresaManager() {
                                     className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                                 >
                                     {submitting && (
-                                        <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <svg className="animate-spin h-4 w-4 text-ink" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                         </svg>
@@ -633,14 +633,14 @@ export default function EmpresaManager() {
 
             {/* Create Admin Modal */}
             {showAdminModal && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
-                    <div className="glass-card-dark w-full max-w-md p-6 border border-slate-700">
-                        <h2 className="text-xl font-bold mb-4 text-white">
+                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+                    <div className="glass-card-dark w-full max-w-md p-6 border border-line">
+                        <h2 className="text-xl font-bold mb-4 text-ink">
                             Crear Administrador para {selectedEmpresa?.nombre_empresa}
                         </h2>
                         <form onSubmit={handleCreateAdmin} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-1">
+                                <label className="block text-sm font-medium text-ink mb-1">
                                     Nombre de Usuario
                                 </label>
                                 <input
@@ -653,7 +653,7 @@ export default function EmpresaManager() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-1">
+                                <label className="block text-sm font-medium text-ink mb-1">
                                     Contraseña
                                 </label>
                                 <input
@@ -670,13 +670,13 @@ export default function EmpresaManager() {
                                 <button
                                     type="button"
                                     onClick={() => setShowAdminModal(false)}
-                                    className="px-4 py-2 text-slate-300 hover:bg-white/10 rounded-lg transition-colors"
+                                    className="px-4 py-2 text-ink hover:bg-raised rounded-lg transition-colors"
                                 >
                                     Cancelar
                                 </button>
                                 <button
                                     type="submit"
-                                    className="px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 shadow-lg shadow-green-600/20"
+                                    className="px-4 py-2 bg-green-600 text-white rounded-control hover:bg-green-700 shadow-lg shadow-green-600/20"
                                 >
                                     Crear Administrador
                                 </button>
@@ -688,27 +688,27 @@ export default function EmpresaManager() {
 
             {/* Purge Confirmation Modal */}
             {showPurgeModal && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="glass-card-dark w-full max-w-md p-6 border border-red-500/30 shadow-2xl shadow-red-500/10">
+                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+                    <div className="glass-card-dark w-full max-w-md p-6 border border-bad/30 shadow-2xl shadow-red-500/10">
                         <div className="flex items-center gap-4 mb-6">
-                            <div className="p-3 bg-red-500/20 rounded-full">
+                            <div className="p-3 bg-bad-soft rounded-full">
                                 <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                 </svg>
                             </div>
                             <div>
-                                <h2 className="text-xl font-bold text-white">¿Eliminar Permanentemente?</h2>
-                                <p className="text-red-400 text-sm font-medium">ESTA ACCIÓN ES IRREVERSIBLE</p>
+                                <h2 className="text-xl font-bold text-ink">¿Eliminar Permanentemente?</h2>
+                                <p className="text-bad text-sm font-medium">ESTA ACCIÓN ES IRREVERSIBLE</p>
                             </div>
                         </div>
 
-                        <p className="text-slate-300 mb-4">
-                            Estás a punto de eliminar la empresa <span className="font-bold text-white">"{selectedEmpresa?.nombre_empresa}"</span>.
+                        <p className="text-ink mb-4">
+                            Estás a punto de eliminar la empresa <span className="font-bold text-ink">"{selectedEmpresa?.nombre_empresa}"</span>.
                         </p>
 
-                        <div className="bg-red-500/10 p-4 rounded-lg border border-red-500/20 mb-6">
+                        <div className="bg-bad-soft p-4 rounded-lg border border-bad/30 mb-6">
                             <p className="text-sm text-red-200 mb-2 font-medium">Se eliminarán permanentemente:</p>
-                            <ul className="list-disc list-inside text-sm text-red-300/80 space-y-1">
+                            <ul className="list-disc list-inside text-sm text-bad/80 space-y-1">
                                 <li>Todos los usuarios y permisos</li>
                                 <li>Todo el inventario y productos</li>
                                 <li>Historial completo de ventas</li>
@@ -717,14 +717,14 @@ export default function EmpresaManager() {
                         </div>
 
                         <div className="mb-6">
-                            <label className="block text-sm text-slate-400 mb-2">
+                            <label className="block text-sm text-muted mb-2">
                                 Escribe el nombre de la empresa para confirmar:
                             </label>
                             <input
                                 type="text"
                                 value={purgeConfirmName}
                                 onChange={(e) => setPurgeConfirmName(e.target.value)}
-                                className="input-dark w-full border-red-500/30 focus:border-red-500"
+                                className="input-dark w-full border-bad/30 focus:border-red-500"
                                 placeholder={selectedEmpresa?.nombre_empresa}
                             />
                         </div>
@@ -732,14 +732,14 @@ export default function EmpresaManager() {
                         <div className="flex justify-end gap-3">
                             <button
                                 onClick={() => setShowPurgeModal(false)}
-                                className="px-4 py-2 text-slate-300 hover:bg-white/10 rounded-lg transition-colors"
+                                className="px-4 py-2 text-ink hover:bg-raised rounded-lg transition-colors"
                             >
                                 Cancelar
                             </button>
                             <button
                                 onClick={handlePurge}
                                 disabled={purgeConfirmName !== selectedEmpresa?.nombre_empresa}
-                                className="px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 shadow-lg shadow-red-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-4 py-2 bg-red-600 text-white rounded-control hover:bg-red-700 shadow-lg shadow-red-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 Confirmar Eliminación
                             </button>

@@ -120,7 +120,7 @@ export default function SalesReports() {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent"></div>
             </div>
         );
     }
@@ -130,16 +130,16 @@ export default function SalesReports() {
             {/* Header */}
             <div>
                 <h1 className="text-3xl font-bold mb-2">📊 Reportes de Ventas</h1>
-                <p className="text-slate-400">Auditoría y análisis histórico para toma de decisiones estratégicas</p>
+                <p className="text-muted">Auditoría y análisis histórico para toma de decisiones estratégicas</p>
             </div>
 
             {/* Tabs Navigation */}
-            <div className="glass-card-dark p-1 inline-flex gap-2 rounded-xl">
+            <div className="glass-card-dark p-1 inline-flex gap-2 rounded-control">
                 <button
                     onClick={() => setActiveTab('daily')}
                     className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === 'daily'
-                        ? 'bg-primary-500 text-white shadow-lg'
-                        : 'text-slate-400 hover:text-white'
+                        ? 'bg-accent text-white shadow-lg'
+                        : 'text-muted hover:text-white'
                         }`}
                 >
                     📅 Diario
@@ -147,8 +147,8 @@ export default function SalesReports() {
                 <button
                     onClick={() => setActiveTab('monthly')}
                     className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === 'monthly'
-                        ? 'bg-primary-500 text-white shadow-lg'
-                        : 'text-slate-400 hover:text-white'
+                        ? 'bg-accent text-white shadow-lg'
+                        : 'text-muted hover:text-white'
                         }`}
                 >
                     📆 Mensual
@@ -159,7 +159,7 @@ export default function SalesReports() {
             <div className="glass-card-dark p-4 flex gap-4 items-center">
                 {activeTab === 'daily' ? (
                     <div>
-                        <label className="text-sm text-slate-400 block mb-1">Mes</label>
+                        <label className="text-sm text-muted block mb-1">Mes</label>
                         <input
                             type="month"
                             value={selectedMonth || getCurrentMonth()}
@@ -169,7 +169,7 @@ export default function SalesReports() {
                     </div>
                 ) : (
                     <div>
-                        <label className="text-sm text-slate-400 block mb-1">Año</label>
+                        <label className="text-sm text-muted block mb-1">Año</label>
                         <select
                             value={selectedYear}
                             onChange={(e) => setSelectedYear(parseInt(e.target.value))}
@@ -196,30 +196,30 @@ export default function SalesReports() {
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead>
-                                <tr className="border-b border-white/10">
-                                    <th className="text-left p-4 text-sm font-medium text-slate-400">Fecha</th>
-                                    <th className="text-right p-4 text-sm font-medium text-slate-400">Ventas Totales</th>
-                                    <th className="text-right p-4 text-sm font-medium text-slate-400">Cajas Cerradas</th>
-                                    <th className="text-right p-4 text-sm font-medium text-slate-400">Ticket Promedio</th>
-                                    <th className="text-center p-4 text-sm font-medium text-slate-400">Acciones</th>
+                                <tr className="border-b border-line">
+                                    <th className="text-left p-4 text-sm font-medium text-muted">Fecha</th>
+                                    <th className="text-right p-4 text-sm font-medium text-muted">Ventas Totales</th>
+                                    <th className="text-right p-4 text-sm font-medium text-muted">Cajas Cerradas</th>
+                                    <th className="text-right p-4 text-sm font-medium text-muted">Ticket Promedio</th>
+                                    <th className="text-center p-4 text-sm font-medium text-muted">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {dailyData.length === 0 ? (
                                     <tr>
-                                        <td colSpan="5" className="p-8 text-center text-slate-500">
+                                        <td colSpan="5" className="p-8 text-center text-muted">
                                             No hay datos para este periodo
                                         </td>
                                     </tr>
                                 ) : (
                                     dailyData.map((row) => (
-                                        <tr key={row.date} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                                        <tr key={row.date} className="border-b border-line hover:bg-raised transition-colors">
                                             <td className="p-4">{formatDate(row.date)}</td>
-                                            <td className="p-4 text-right font-semibold text-primary-400">
+                                            <td className="p-4 text-right font-semibold text-accent">
                                                 {formatCurrency(row.totalSales)}
                                             </td>
                                             <td className="p-4 text-right">{row.cashSessionsCount}</td>
-                                            <td className="p-4 text-right text-slate-300">
+                                            <td className="p-4 text-right text-ink">
                                                 {formatCurrency(row.averageTicket)}
                                             </td>
                                             <td className="p-4 text-center">
@@ -245,33 +245,33 @@ export default function SalesReports() {
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead>
-                                <tr className="border-b border-white/10">
-                                    <th className="text-left p-4 text-sm font-medium text-slate-400">Mes/Año</th>
-                                    <th className="text-right p-4 text-sm font-medium text-slate-400">Ventas Totales</th>
-                                    <th className="text-right p-4 text-sm font-medium text-slate-400">Meta</th>
-                                    <th className="text-right p-4 text-sm font-medium text-slate-400">Meta Alcanzada</th>
-                                    <th className="text-center p-4 text-sm font-medium text-slate-400">Acciones</th>
+                                <tr className="border-b border-line">
+                                    <th className="text-left p-4 text-sm font-medium text-muted">Mes/Año</th>
+                                    <th className="text-right p-4 text-sm font-medium text-muted">Ventas Totales</th>
+                                    <th className="text-right p-4 text-sm font-medium text-muted">Meta</th>
+                                    <th className="text-right p-4 text-sm font-medium text-muted">Meta Alcanzada</th>
+                                    <th className="text-center p-4 text-sm font-medium text-muted">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {monthlyData.length === 0 ? (
                                     <tr>
-                                        <td colSpan="5" className="p-8 text-center text-slate-500">
+                                        <td colSpan="5" className="p-8 text-center text-muted">
                                             No hay datos para este año
                                         </td>
                                     </tr>
                                 ) : (
                                     monthlyData.map((row) => (
-                                        <tr key={row.month} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                                        <tr key={row.month} className="border-b border-line hover:bg-raised transition-colors">
                                             <td className="p-4 capitalize">{formatMonth(row.month)}</td>
-                                            <td className="p-4 text-right font-semibold text-primary-400">
+                                            <td className="p-4 text-right font-semibold text-accent">
                                                 {formatCurrency(row.totalSales)}
                                             </td>
-                                            <td className="p-4 text-right text-slate-300">
+                                            <td className="p-4 text-right text-ink">
                                                 {formatCurrency(row.goal)}
                                             </td>
                                             <td className="p-4 text-right">
-                                                <span className={`font-bold ${row.goalAchieved ? 'text-green-400' : 'text-orange-400'
+                                                <span className={`font-bold ${row.goalAchieved ? 'text-ok' : 'text-orange-400'
                                                     }`}>
                                                     {row.goalPercentage.toFixed(1)}%
                                                 </span>

@@ -167,8 +167,8 @@ export default function RotacionSemanal({ onClose }) {
     /* ── Row color: tab-scoped keys ── */
     function rowColor(product) {
         const ev = effectiveEvents(product);
-        if (ev[keys.nov]?.active) return 'bg-emerald-500/10 border-l-2 border-emerald-500';
-        if (ev[keys.liq]?.active) return 'bg-amber-500/10 border-l-2 border-amber-500';
+        if (ev[keys.nov]?.active) return 'bg-ok-soft border-l-2 border-emerald-500';
+        if (ev[keys.liq]?.active) return 'bg-warn-soft border-l-2 border-amber-500';
         return '';
     }
 
@@ -176,32 +176,32 @@ export default function RotacionSemanal({ onClose }) {
     function ColumnPanel({ colKey, label, color, products: colProds }) {
         const isSelected  = activeCol === colKey;
         const borderClass = color === 'emerald'
-            ? (isSelected ? 'border-emerald-500' : 'border-white/10')
-            : (isSelected ? 'border-amber-500'   : 'border-white/10');
-        const headerClass = color === 'emerald' ? 'text-emerald-400' : 'text-amber-400';
+            ? (isSelected ? 'border-emerald-500' : 'border-line')
+            : (isSelected ? 'border-amber-500'   : 'border-line');
+        const headerClass = color === 'emerald' ? 'text-ok' : 'text-warn';
         const badgeClass  = color === 'emerald'
-            ? 'bg-emerald-500/20 text-emerald-300'
-            : 'bg-amber-500/20 text-amber-300';
+            ? 'bg-ok-soft text-ok'
+            : 'bg-warn-soft text-warn';
 
         return (
             <div
-                className={`flex flex-col border-2 rounded-xl transition-all cursor-pointer ${borderClass} ${isSelected ? 'shadow-lg' : ''}`}
+                className={`flex flex-col border-2 rounded-control transition-all cursor-pointer ${borderClass} ${isSelected ? 'shadow-lg' : ''}`}
                 style={{ minHeight: 0 }}
                 onClick={() => setActiveCol(prev => prev === colKey ? null : colKey)}
             >
-                <div className="px-4 py-3 border-b border-white/8 flex items-center justify-between">
+                <div className="px-4 py-3 border-b border-line flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <span className={`font-bold text-sm uppercase tracking-wide ${headerClass}`}>{label}</span>
                         <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${badgeClass}`}>{colProds.length}</span>
                     </div>
-                    {isSelected && <span className="text-xs text-slate-400 animate-pulse">● Columna activa</span>}
+                    {isSelected && <span className="text-xs text-muted animate-pulse">● Columna activa</span>}
                 </div>
 
                 {colProds.length > 0 && (
-                    <div className="px-3 py-2 border-b border-white/5">
+                    <div className="px-3 py-2 border-b border-line">
                         <button
                             onClick={e => { e.stopPropagation(); clearColumn(colKey); }}
-                            className="text-xs text-slate-400 hover:text-red-400 transition-colors flex items-center gap-1"
+                            className="text-xs text-muted hover:text-bad transition-colors flex items-center gap-1"
                         >
                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -213,20 +213,20 @@ export default function RotacionSemanal({ onClose }) {
 
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1">
                     {colProds.length === 0 ? (
-                        <p className="text-center text-slate-500 text-xs py-6">
+                        <p className="text-center text-muted text-xs py-6">
                             {isSelected ? 'Selecciona productos de la lista' : 'Sin productos'}
                         </p>
                     ) : (
                         colProds.map(p => (
-                            <div key={p.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-white/4 hover:bg-white/8 transition-colors group">
+                            <div key={p.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-white/4 hover:bg-raised transition-colors group">
                                 {p.image_url
                                     ? <img src={p.image_url} alt="" className="w-7 h-7 rounded object-cover flex-shrink-0" />
-                                    : <div className="w-7 h-7 rounded bg-white/10 flex items-center justify-center text-xs flex-shrink-0">📚</div>
+                                    : <div className="w-7 h-7 rounded bg-raised flex items-center justify-center text-xs flex-shrink-0">📚</div>
                                 }
-                                <span className="text-xs text-slate-200 truncate flex-1">{p.name}</span>
+                                <span className="text-xs text-ink truncate flex-1">{p.name}</span>
                                 <button
                                     onClick={e => { e.stopPropagation(); toggleProduct(p); }}
-                                    className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-red-400 transition-all"
+                                    className="opacity-0 group-hover:opacity-100 text-muted hover:text-bad transition-all"
                                 >
                                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -244,33 +244,33 @@ export default function RotacionSemanal({ onClose }) {
     const isAdultTab   = activeTab === 'adult';
 
     return (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[200] flex flex-col">
+        <div className="fixed inset-0 bg-black/70 z-[200] flex flex-col">
             {/* Top bar */}
-            <div className="flex items-center justify-between px-6 py-4 bg-slate-900/95 border-b border-white/8">
+            <div className="flex items-center justify-between px-6 py-4 bg-surface border-b border-line">
                 <div className="flex items-center gap-3">
-                    <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
+                    <button onClick={onClose} className="text-muted hover:text-ink transition-colors">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                         </svg>
                     </button>
                     <div>
-                        <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                        <h2 className="text-lg font-bold text-ink flex items-center gap-2">
                             Rotación Semanal
                             {isAdultTab && (
                                 <span className="text-xs px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 font-semibold">18+</span>
                             )}
                         </h2>
-                        <p className="text-xs text-slate-400">
+                        <p className="text-xs text-muted">
                             Selecciona una columna y luego los productos ·
-                            <span className="text-emerald-400 mx-1">■ Novedad</span>
-                            <span className="text-amber-400">■ Liquidación</span>
+                            <span className="text-ok mx-1">■ Novedad</span>
+                            <span className="text-warn">■ Liquidación</span>
                             {isAdultTab && <span className="text-rose-400 ml-1">· rotación independiente</span>}
                         </p>
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
                     {pendingCount > 0 && (
-                        <span className="text-xs text-slate-400">
+                        <span className="text-xs text-muted">
                             {pendingCount} producto{pendingCount > 1 ? 's' : ''} con cambios
                         </span>
                     )}
@@ -289,7 +289,7 @@ export default function RotacionSemanal({ onClose }) {
                         disabled={saving || pendingCount === 0}
                         className="btn-primary text-sm flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
                     >
-                        {saving && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                        {saving && <div className="w-4 h-4 border-2 border-line border-t-white rounded-full animate-spin" />}
                         Guardar Rotación {pendingCount > 0 && `(${pendingCount})`}
                     </button>
                 </div>
@@ -298,9 +298,9 @@ export default function RotacionSemanal({ onClose }) {
             {/* Body */}
             <div className="flex flex-1 overflow-hidden">
                 {/* ── Left: product list ── */}
-                <div className="flex flex-col w-1/2 border-r border-white/8 overflow-hidden">
-                    <div className="px-4 pt-3 pb-0 bg-slate-900/60 space-y-3">
-                        <div className="flex border-b border-white/10">
+                <div className="flex flex-col w-1/2 border-r border-line overflow-hidden">
+                    <div className="px-4 pt-3 pb-0 bg-surface space-y-3">
+                        <div className="flex border-b border-line">
                             {[
                                 { key: 'general', label: 'Catálogo General' },
                                 { key: 'adult',   label: 'Adultos (18+)' },
@@ -310,8 +310,8 @@ export default function RotacionSemanal({ onClose }) {
                                     onClick={() => switchTab(t.key)}
                                     className={`px-4 py-2.5 text-sm font-medium transition-colors relative flex items-center gap-1.5 ${
                                         activeTab === t.key
-                                            ? (t.key === 'adult' ? 'text-rose-400' : 'text-primary-400')
-                                            : 'text-slate-400 hover:text-slate-200'
+                                            ? (t.key === 'adult' ? 'text-rose-400' : 'text-accent')
+                                            : 'text-muted hover:text-ink'
                                     }`}
                                 >
                                     {t.label}
@@ -344,10 +344,10 @@ export default function RotacionSemanal({ onClose }) {
                     {activeCol && (
                         <div className={`mx-4 mb-2 mt-2 px-3 py-2 rounded-lg border ${
                             activeCol === keys.nov
-                                ? 'bg-emerald-500/10 border-emerald-500/30'
-                                : 'bg-amber-500/10 border-amber-500/30'
+                                ? 'bg-ok-soft border-emerald-500/30'
+                                : 'bg-warn-soft border-amber-500/30'
                         }`}>
-                            <p className={`text-xs font-medium ${activeCol === keys.nov ? 'text-emerald-300' : 'text-amber-300'}`}>
+                            <p className={`text-xs font-medium ${activeCol === keys.nov ? 'text-ok' : 'text-warn'}`}>
                                 {activeCol === keys.nov ? '✦ Columna Novedad activa' : '⬇ Columna Liquidación activa'} — toca un producto para asignarlo
                             </p>
                         </div>
@@ -357,10 +357,10 @@ export default function RotacionSemanal({ onClose }) {
                     <div className="flex-1 overflow-y-auto custom-scrollbar px-4 pb-4 space-y-1">
                         {loading ? (
                             <div className="flex items-center justify-center py-12">
-                                <div className="w-6 h-6 border-2 border-primary-500/30 border-t-primary-500 rounded-full animate-spin" />
+                                <div className="w-6 h-6 border-2 border-accent/25 border-t-primary-500 rounded-full animate-spin" />
                             </div>
                         ) : filteredProducts.length === 0 ? (
-                            <p className="text-center text-slate-500 text-sm py-8">Sin productos</p>
+                            <p className="text-center text-muted text-sm py-8">Sin productos</p>
                         ) : (
                             filteredProducts.map(product => {
                                 const ev           = effectiveEvents(product);
@@ -374,29 +374,29 @@ export default function RotacionSemanal({ onClose }) {
                                         onClick={() => toggleProduct(product)}
                                         className={`
                                             flex items-center gap-3 px-3 py-2 rounded-lg transition-all
-                                            ${activeCol ? 'cursor-pointer hover:bg-white/8' : 'cursor-default'}
+                                            ${activeCol ? 'cursor-pointer hover:bg-raised' : 'cursor-default'}
                                             ${rowColor(product)}
                                         `}
                                     >
                                         {product.image_url
                                             ? <img src={product.image_url} alt="" className="w-9 h-9 rounded object-cover flex-shrink-0" />
-                                            : <div className="w-9 h-9 rounded bg-white/10 flex items-center justify-center text-base flex-shrink-0">📚</div>
+                                            : <div className="w-9 h-9 rounded bg-raised flex items-center justify-center text-base flex-shrink-0">📚</div>
                                         }
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-medium text-slate-100 truncate">{product.name}</p>
-                                            <p className="text-xs text-slate-500 truncate">{product.category} · Stock: {product.stock}</p>
+                                            <p className="text-sm font-medium text-ink truncate">{product.name}</p>
+                                            <p className="text-xs text-muted truncate">{product.category} · Stock: {product.stock}</p>
                                         </div>
                                         <div className="flex items-center gap-1 flex-shrink-0">
-                                            {isNov && <span className="text-xs px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-semibold">N</span>}
-                                            {isLiq && <span className="text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-semibold">L</span>}
+                                            {isNov && <span className="text-xs px-1.5 py-0.5 rounded bg-ok-soft text-ok font-semibold">N</span>}
+                                            {isLiq && <span className="text-xs px-1.5 py-0.5 rounded bg-warn-soft text-warn font-semibold">L</span>}
                                             {activeCol && (
                                                 <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
                                                     isInActiveCol
                                                         ? (activeCol === keys.nov ? 'bg-emerald-500 border-emerald-500' : 'bg-amber-500 border-amber-500')
-                                                        : 'border-slate-600'
+                                                        : 'border-line'
                                                 }`}>
                                                     {isInActiveCol && (
-                                                        <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <svg className="w-2.5 h-2.5 text-ink" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                                                         </svg>
                                                     )}

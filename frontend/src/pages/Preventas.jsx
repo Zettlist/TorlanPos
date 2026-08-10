@@ -11,11 +11,11 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.j
 const Modal = ({ type, title, isOpen, onClose, children }) => {
     if (!isOpen) return null;
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
-            <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-2xl overflow-hidden animate-scale-in">
-                <div className="flex justify-between items-center p-4 border-b border-slate-700 bg-slate-900/50">
-                    <h3 className="text-xl font-bold text-white">{title}</h3>
-                    <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 animate-fade-in">
+            <div className="bg-surface rounded-control shadow-2xl border border-line w-full max-w-2xl overflow-hidden animate-scale-in">
+                <div className="flex justify-between items-center p-4 border-b border-line bg-surface">
+                    <h3 className="text-xl font-bold text-ink">{title}</h3>
+                    <button onClick={onClose} className="text-muted hover:text-ink transition-colors">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
@@ -24,12 +24,12 @@ const Modal = ({ type, title, isOpen, onClose, children }) => {
                 <div className="p-6 max-h-[70vh] overflow-y-auto">
                     {children}
                 </div>
-                <div className="p-4 border-t border-slate-700 bg-slate-900/50 flex justify-end">
-                    <button onClick={onClose} className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors">
+                <div className="p-4 border-t border-line bg-surface flex justify-end">
+                    <button onClick={onClose} className="px-4 py-2 bg-raised hover:bg-raised text-ink rounded-lg transition-colors">
                         Cerrar
                     </button>
                     {type === 'order' && (
-                        <button className="ml-2 px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-lg transition-colors flex items-center gap-2">
+                        <button className="ml-2 px-4 py-2 bg-accent hover:bg-accent text-white rounded-lg transition-colors flex items-center gap-2">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
                             Imprimir Recibo
                         </button>
@@ -531,19 +531,19 @@ export default function Preventas() {
 
     return (
         <div className="space-y-6">
-            <h1 className="text-2xl font-bold text-slate-100">Módulo de Preventas</h1>
+            <h1 className="text-2xl font-bold text-ink">Módulo de Preventas</h1>
 
             {/* QR Download Banner - shown when accessed via QR code */}
             {showQRDownload && qrOrderData && (
-                <div className="bg-gradient-to-r from-green-600 to-green-700 rounded-xl p-6 shadow-lg border-2 border-green-400 animate-pulse">
+                <div className="bg-gradient-to-r from-green-600 to-green-700 rounded-control p-6 shadow-lg border-2 border-green-400 animate-pulse">
                     <div className="text-center space-y-4">
                         <div className="flex items-center justify-center gap-3">
-                            <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-12 h-12 text-ink" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
                             </svg>
-                            <h2 className="text-2xl font-bold text-white">¡Comprobante Listo!</h2>
+                            <h2 className="text-2xl font-bold text-ink">¡Comprobante Listo!</h2>
                         </div>
-                        <p className="text-white text-lg">
+                        <p className="text-ink text-lg">
                             Pedido: <span className="font-mono font-bold">{qrOrderData.orderNumber}</span>
                         </p>
                         <p className="text-green-100">
@@ -662,13 +662,13 @@ export default function Preventas() {
             }
 
             {/* Form Card */}
-            <div className="bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-700">
-                <h2 className="text-lg font-semibold text-slate-200 mb-4">Registrar Nuevo Título</h2>
+            <div className="bg-surface rounded-control p-6 shadow-sm border border-line">
+                <h2 className="text-lg font-semibold text-ink mb-4">Registrar Nuevo Título</h2>
                 <form onSubmit={handleSubmit} className="space-y-6">
 
                     {/* Client Information Section */}
-                    <div className="border border-slate-600 rounded-lg p-4 bg-slate-900/30">
-                        <h3 className="text-md font-semibold text-primary-400 mb-3 flex items-center gap-2">
+                    <div className="border border-line rounded-lg p-4 bg-surface">
+                        <h3 className="text-md font-semibold text-accent mb-3 flex items-center gap-2">
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                             </svg>
@@ -676,49 +676,49 @@ export default function Preventas() {
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                             <div className="space-y-1">
-                                <label className="text-sm text-slate-400">Nombre del Cliente</label>
+                                <label className="text-sm text-muted">Nombre del Cliente</label>
                                 <input
                                     type="text"
                                     name="clientName"
                                     value={formData.clientName}
                                     onChange={handleChange}
-                                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                    className="w-full bg-surface border border-line rounded-lg px-4 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-primary-500"
                                     placeholder="Nombre completo"
                                 />
                             </div>
 
                             <div className="space-y-1">
-                                <label className="text-sm text-slate-400">Teléfono</label>
+                                <label className="text-sm text-muted">Teléfono</label>
                                 <input
                                     type="tel"
                                     name="clientPhone"
                                     value={formData.clientPhone}
                                     onChange={handleChange}
-                                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                    className="w-full bg-surface border border-line rounded-lg px-4 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-primary-500"
                                     placeholder="000-000-0000"
                                 />
                             </div>
 
                             <div className="space-y-1">
-                                <label className="text-sm text-slate-400">Email</label>
+                                <label className="text-sm text-muted">Email</label>
                                 <input
                                     type="email"
                                     name="clientEmail"
                                     value={formData.clientEmail}
                                     onChange={handleChange}
-                                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                    className="w-full bg-surface border border-line rounded-lg px-4 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-primary-500"
                                     placeholder="correo@ejemplo.com"
                                 />
                             </div>
 
                             <div className="space-y-1">
-                                <label className="text-sm text-slate-400">Dirección</label>
+                                <label className="text-sm text-muted">Dirección</label>
                                 <input
                                     type="text"
                                     name="clientAddress"
                                     value={formData.clientAddress}
                                     onChange={handleChange}
-                                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                    className="w-full bg-surface border border-line rounded-lg px-4 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-primary-500"
                                     placeholder="Dirección del cliente"
                                 />
                             </div>
@@ -729,20 +729,20 @@ export default function Preventas() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
 
                         <div className="space-y-1">
-                            <label className="text-sm text-slate-400">Título</label>
+                            <label className="text-sm text-muted">Título</label>
                             <input
                                 type="text"
                                 name="title"
                                 value={formData.title}
                                 onChange={handleChange}
                                 required
-                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                className="w-full bg-surface border border-line rounded-lg px-4 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-primary-500"
                                 placeholder="Nombre del libro/obra"
                             />
                         </div>
 
                         <div className="space-y-1">
-                            <label className="text-sm text-slate-400">Costo del Producto</label>
+                            <label className="text-sm text-muted">Costo del Producto</label>
                             <input
                                 type="number"
                                 name="totalPrice"
@@ -751,13 +751,13 @@ export default function Preventas() {
                                 required
                                 min="0"
                                 step="0.01"
-                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                className="w-full bg-surface border border-line rounded-lg px-4 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-primary-500"
                                 placeholder="0.00"
                             />
                         </div>
 
                         <div className="space-y-1">
-                            <label className="text-sm text-slate-400">Apartado del Cliente</label>
+                            <label className="text-sm text-muted">Apartado del Cliente</label>
                             <input
                                 type="number"
                                 name="deposit"
@@ -766,42 +766,42 @@ export default function Preventas() {
                                 required
                                 min="0"
                                 step="0.01"
-                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                className="w-full bg-surface border border-line rounded-lg px-4 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-primary-500"
                                 placeholder="0.00"
                             />
                         </div>
 
                         <div className="space-y-1">
-                            <label className="text-sm text-slate-400">Artista/Autor</label>
+                            <label className="text-sm text-muted">Artista/Autor</label>
                             <input
                                 type="text"
                                 name="artist"
                                 value={formData.artist}
                                 onChange={handleChange}
-                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                className="w-full bg-surface border border-line rounded-lg px-4 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-primary-500"
                                 placeholder="Nombre del autor"
                             />
                         </div>
 
                         <div className="space-y-1">
-                            <label className="text-sm text-slate-400">Grupo/Editorial</label>
+                            <label className="text-sm text-muted">Grupo/Editorial</label>
                             <input
                                 type="text"
                                 name="group"
                                 value={formData.group}
                                 onChange={handleChange}
-                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                className="w-full bg-surface border border-line rounded-lg px-4 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-primary-500"
                                 placeholder="Editorial o grupo"
                             />
                         </div>
 
                         <div className="space-y-1">
-                            <label className="text-sm text-slate-400">Lenguaje</label>
+                            <label className="text-sm text-muted">Lenguaje</label>
                             <select
                                 name="language"
                                 value={formData.language}
                                 onChange={handleChange}
-                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                className="w-full bg-surface border border-line rounded-lg px-4 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-primary-500"
                             >
                                 <option value="">Seleccionar...</option>
                                 <option value="Español">Español</option>
@@ -812,7 +812,7 @@ export default function Preventas() {
 
                         {/* Category Checkboxes */}
                         <div className="space-y-2 col-span-1 md:col-span-2 lg:col-span-2">
-                            <label className="text-sm text-slate-400">Categoría</label>
+                            <label className="text-sm text-muted">Categoría</label>
                             <div className="flex flex-wrap gap-3">
                                 {['Revista', 'Manga', 'Figura', 'Adultos'].map(cat => (
                                     <label key={cat} className="flex items-center gap-2 cursor-pointer group">
@@ -822,7 +822,7 @@ export default function Preventas() {
                                             onChange={() => handleCategoryChange(cat)}
                                             className="w-4 h-4 rounded accent-primary-500"
                                         />
-                                        <span className="text-sm text-slate-300 group-hover:text-white transition-colors">{cat}</span>
+                                        <span className="text-sm text-ink group-hover:text-ink transition-colors">{cat}</span>
                                     </label>
                                 ))}
                             </div>
@@ -830,7 +830,7 @@ export default function Preventas() {
 
                         {/* International Order */}
                         <div className="space-y-2 col-span-1 md:col-span-2 lg:col-span-2">
-                            <label className="text-sm text-slate-400">Pedido Internacional</label>
+                            <label className="text-sm text-muted">Pedido Internacional</label>
                             <div className="flex items-center gap-4">
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <input
@@ -839,7 +839,7 @@ export default function Preventas() {
                                         onChange={e => setFormData(prev => ({ ...prev, internationalOrder: e.target.checked, internationalCountry: e.target.checked ? prev.internationalCountry : '' }))}
                                         className="w-4 h-4 rounded accent-primary-500"
                                     />
-                                    <span className="text-sm text-slate-300">Es pedido internacional</span>
+                                    <span className="text-sm text-ink">Es pedido internacional</span>
                                 </label>
                                 {formData.internationalOrder && (
                                     <div className="flex gap-3">
@@ -853,7 +853,7 @@ export default function Preventas() {
                                                     onChange={() => setFormData(prev => ({ ...prev, internationalCountry: country }))}
                                                     className="accent-primary-500"
                                                 />
-                                                <span className="text-sm text-slate-300 group-hover:text-white transition-colors">
+                                                <span className="text-sm text-ink group-hover:text-ink transition-colors">
                                                     {country === 'España' ? '🇪🇸' : '🇯🇵'} {country}
                                                 </span>
                                             </label>
@@ -865,19 +865,19 @@ export default function Preventas() {
 
                         {/* Multi-Photo Upload */}
                         <div className="space-y-2 col-span-1 md:col-span-2 lg:col-span-4">
-                            <label className="text-sm text-slate-400">Fotografías (puedes subir varias)</label>
+                            <label className="text-sm text-muted">Fotografías (puedes subir varias)</label>
                             <input
                                 type="file"
                                 accept="image/*"
                                 multiple
                                 onChange={handlePhotoChange}
-                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-600 file:text-white hover:file:bg-primary-700"
+                                className="w-full bg-surface border border-line rounded-lg px-4 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-primary-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-accent file:text-white hover:file:bg-primary-700"
                             />
                             {formData.photos.length > 0 && (
                                 <div className="flex flex-wrap gap-2 mt-2">
                                     {formData.photos.map((photo, idx) => (
                                         <div key={idx} className="relative group">
-                                            <img src={photo} alt={`Foto ${idx + 1}`} className="h-20 w-20 object-cover rounded-md border border-slate-600" />
+                                            <img src={photo} alt={`Foto ${idx + 1}`} className="h-20 w-20 object-cover rounded-md border border-line" />
                                             <button
                                                 type="button"
                                                 onClick={() => removePhoto(idx)}
@@ -894,7 +894,7 @@ export default function Preventas() {
                         <div className="col-span-1 md:col-span-2 lg:col-span-4 flex justify-end mt-2">
                             <button
                                 type="submit"
-                                className="bg-primary-600 hover:bg-primary-700 text-white font-medium py-2 px-6 rounded-lg transition-colors flex items-center gap-2"
+                                className="bg-accent hover:bg-primary-700 text-white font-medium py-2 px-6 rounded-lg transition-colors flex items-center gap-2"
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -908,26 +908,26 @@ export default function Preventas() {
             </div>
 
             {/* Table Card */}
-            <div className="bg-slate-800 rounded-xl shadow-sm border border-slate-700 overflow-hidden">
+            <div className="bg-surface rounded-control shadow-sm border border-line overflow-hidden">
                 {/* Tabs + Actions header */}
-                <div className="p-4 border-b border-slate-700 flex items-center justify-between flex-wrap gap-3">
+                <div className="p-4 border-b border-line flex items-center justify-between flex-wrap gap-3">
                     {/* Tab selectors */}
-                    <div className="flex items-center gap-1 bg-slate-900/60 rounded-lg p-1">
+                    <div className="flex items-center gap-1 bg-surface rounded-lg p-1">
                         <button
                             onClick={() => setActiveTab('open')}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-all ${activeTab === 'open' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-all ${activeTab === 'open' ? 'bg-indigo-600 text-white shadow' : 'text-muted hover:text-ink'}`}
                         >
                             <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span>
                             Pedidos Abiertos
-                            <span className="ml-1 bg-slate-700 text-slate-300 rounded-full px-2 py-0.5 text-xs">{items.length}</span>
+                            <span className="ml-1 bg-raised text-ink rounded-full px-2 py-0.5 text-xs">{items.length}</span>
                         </button>
                         <button
                             onClick={() => setActiveTab('closed')}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-all ${activeTab === 'closed' ? 'bg-slate-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-all ${activeTab === 'closed' ? 'bg-raised text-white shadow' : 'text-muted hover:text-ink'}`}
                         >
                             <span className="w-2 h-2 rounded-full bg-slate-500 inline-block"></span>
                             Pedidos Cerrados
-                            <span className="ml-1 bg-slate-700 text-slate-300 rounded-full px-2 py-0.5 text-xs">{closedBatches.length}</span>
+                            <span className="ml-1 bg-raised text-ink rounded-full px-2 py-0.5 text-xs">{closedBatches.length}</span>
                         </button>
                     </div>
                     {/* Cerrar Pedido button (only shown on open tab) */}
@@ -947,39 +947,39 @@ export default function Preventas() {
 
                 {/* Close Batch Confirmation Modal */}
                 {showCloseBatchModal && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-                        <div className="bg-slate-800 rounded-2xl shadow-2xl border border-indigo-500/30 w-full max-w-md mx-4 p-6 space-y-5">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 ">
+                        <div className="bg-surface rounded-panel shadow-2xl border border-indigo-500/30 w-full max-w-md mx-4 p-6 space-y-5">
                             <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 bg-indigo-600/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                                <div className="w-12 h-12 bg-indigo-600/20 rounded-control flex items-center justify-center flex-shrink-0">
                                     <svg className="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                     </svg>
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-bold text-slate-100">Cerrar Pedido</h3>
-                                    <p className="text-sm text-slate-400">Se moverán <span className="font-semibold text-indigo-400">{items.length} pedidos</span> al historial</p>
+                                    <h3 className="text-lg font-bold text-ink">Cerrar Pedido</h3>
+                                    <p className="text-sm text-muted">Se moverán <span className="font-semibold text-indigo-400">{items.length} pedidos</span> al historial</p>
                                 </div>
                             </div>
 
-                            <p className="text-sm text-slate-300">
+                            <p className="text-sm text-ink">
                                 Al cerrar el pedido se generará un PDF para el proveedor y todos los pedidos actuales pasarán al historial de <strong>Pedidos Cerrados</strong>. El área de pedidos abiertos quedará vacía para la siguiente temporada.
                             </p>
 
                             <div className="space-y-1">
-                                <label className="text-xs text-slate-400 font-medium">Nombre del lote (opcional)</label>
+                                <label className="text-xs text-muted font-medium">Nombre del lote (opcional)</label>
                                 <input
                                     type="text"
                                     value={batchName}
                                     onChange={e => setBatchName(e.target.value)}
                                     placeholder={`Ej. Temporada Febrero 2026`}
-                                    className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-slate-600"
+                                    className="w-full bg-surface border border-line rounded-lg px-4 py-2 text-ink text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-slate-600"
                                 />
                             </div>
 
                             <div className="flex gap-3 pt-2">
                                 <button
                                     onClick={() => { setShowCloseBatchModal(false); setBatchName(''); }}
-                                    className="flex-1 bg-slate-700 hover:bg-slate-600 text-slate-300 font-medium py-2 rounded-lg transition-colors"
+                                    className="flex-1 bg-raised hover:bg-raised text-ink font-medium py-2 rounded-lg transition-colors"
                                     disabled={closingBatch}
                                 >
                                     Cancelar
@@ -1003,8 +1003,8 @@ export default function Preventas() {
                 {/* OPEN ORDERS TAB */}
                 {activeTab === 'open' && (
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm text-slate-300">
-                            <thead className="bg-slate-900/50 text-slate-400 uppercase text-xs">
+                        <table className="w-full text-left text-sm text-ink">
+                            <thead className="bg-surface text-muted uppercase text-xs">
                                 <tr>
                                     <th className="px-6 py-3">No. Pedido</th>
                                     <th className="px-6 py-3">No. Cliente</th>
@@ -1015,20 +1015,20 @@ export default function Preventas() {
                                     <th className="px-6 py-3 text-center">Estado</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-700">
+                            <tbody className="divide-y divide-line">
                                 {items.length === 0 ? (
                                     <tr>
-                                        <td colSpan="8" className="px-6 py-8 text-center text-slate-500 italic">
+                                        <td colSpan="8" className="px-6 py-8 text-center text-muted italic">
                                             No hay pedidos abiertos. Usa el formulario de arriba para registrar una preventa.
                                         </td>
                                     </tr>
                                 ) : (
                                     items.map((item) => (
-                                        <tr key={item.id} className="hover:bg-slate-700/30 transition-colors">
+                                        <tr key={item.id} className="hover:bg-raised/30 transition-colors">
                                             <td className="px-6 py-4">
                                                 <button
                                                     onClick={() => setSelectedOrder(item)}
-                                                    className="text-primary-400 hover:text-primary-300 hover:underline font-mono font-medium"
+                                                    className="text-accent hover:text-accent hover:underline font-mono font-medium"
                                                 >
                                                     #{item.orderNumber}
                                                 </button>
@@ -1036,7 +1036,7 @@ export default function Preventas() {
                                             <td className="px-6 py-4">
                                                 <button
                                                     onClick={() => setSelectedClient(item.clientNumber)}
-                                                    className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-2 py-1 rounded transition-colors font-mono"
+                                                    className="bg-raised hover:bg-raised text-ink text-xs px-2 py-1 rounded transition-colors font-mono"
                                                 >
                                                     {item.clientNumber}
                                                 </button>
@@ -1045,19 +1045,19 @@ export default function Preventas() {
                                                 {item.photo ? (
                                                     <img src={item.photo} alt={item.title} className="w-10 h-10 object-cover rounded-md" />
                                                 ) : (
-                                                    <div className="w-10 h-10 bg-slate-700 rounded-md flex items-center justify-center text-xs text-slate-500">N/A</div>
+                                                    <div className="w-10 h-10 bg-raised rounded-md flex items-center justify-center text-xs text-muted">N/A</div>
                                                 )}
                                             </td>
-                                            <td className="px-6 py-4 font-medium text-slate-200">{item.title}</td>
+                                            <td className="px-6 py-4 font-medium text-ink">{item.title}</td>
                                             <td className="px-6 py-4">{item.artist}</td>
                                             <td className="px-6 py-4 text-right font-medium">
-                                                <span className={item.balance > 0 ? "text-orange-400" : "text-green-400"}>
+                                                <span className={item.balance > 0 ? "text-orange-400" : "text-ok"}>
                                                     ${formatPrice(item.balance)}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 text-center">
                                                 <span className={`text-xs px-2 py-1 rounded font-medium ${item.isPaidInFull
-                                                    ? "bg-green-600/20 text-green-400 ring-1 ring-green-500/30"
+                                                    ? "bg-green-600/20 text-ok ring-1 ring-green-500/30"
                                                     : "bg-orange-600/20 text-orange-400 ring-1 ring-orange-500/30"
                                                     }`}>
                                                     {item.isPaidInFull ? "Liquidado" : "Apartado"}
@@ -1075,29 +1075,29 @@ export default function Preventas() {
                 {activeTab === 'closed' && (
                     <div className="p-4 space-y-3">
                         {closedBatches.length === 0 ? (
-                            <div className="py-12 text-center text-slate-500 italic">
-                                <svg className="w-12 h-12 mx-auto mb-3 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="py-12 text-center text-muted italic">
+                                <svg className="w-12 h-12 mx-auto mb-3 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
                                 </svg>
                                 No hay lotes cerrados aún. Cuando cierres un pedido aparecerá aquí.
                             </div>
                         ) : (
                             closedBatches.map((batch) => (
-                                <div key={batch.id} className="bg-slate-900/50 rounded-xl border border-slate-700 overflow-hidden">
+                                <div key={batch.id} className="bg-surface rounded-control border border-line overflow-hidden">
                                     {/* Batch header */}
                                     <button
                                         onClick={() => setExpandedBatch(expandedBatch === batch.id ? null : batch.id)}
-                                        className="w-full flex items-center justify-between p-4 hover:bg-slate-700/30 transition-colors"
+                                        className="w-full flex items-center justify-between p-4 hover:bg-raised/30 transition-colors"
                                     >
                                         <div className="flex items-center gap-3">
-                                            <div className="w-9 h-9 bg-slate-700 rounded-lg flex items-center justify-center flex-shrink-0">
-                                                <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <div className="w-9 h-9 bg-raised rounded-lg flex items-center justify-center flex-shrink-0">
+                                                <svg className="w-5 h-5 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8" />
                                                 </svg>
                                             </div>
                                             <div className="text-left">
-                                                <p className="text-sm font-semibold text-slate-200">{batch.name}</p>
-                                                <p className="text-xs text-slate-500">
+                                                <p className="text-sm font-semibold text-ink">{batch.name}</p>
+                                                <p className="text-xs text-muted">
                                                     Cerrado: {new Date(batch.closedAt || batch.closed_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' })}
                                                     &nbsp;·&nbsp;{batch.totalOrders} pedidos
                                                 </p>
@@ -1105,10 +1105,10 @@ export default function Preventas() {
                                         </div>
                                         <div className="flex items-center gap-4">
                                             <div className="text-right">
-                                                <p className="text-sm font-bold text-slate-100">${formatPrice(batch.totalValue || batch.total_value)}</p>
-                                                <p className="text-xs text-slate-500">Valor total</p>
+                                                <p className="text-sm font-bold text-ink">${formatPrice(batch.totalValue || batch.total_value)}</p>
+                                                <p className="text-xs text-muted">Valor total</p>
                                             </div>
-                                            <svg className={`w-5 h-5 text-slate-400 transition-transform ${expandedBatch === batch.id ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg className={`w-5 h-5 text-muted transition-transform ${expandedBatch === batch.id ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                             </svg>
                                         </div>
@@ -1116,9 +1116,9 @@ export default function Preventas() {
 
                                     {/* Expanded orders */}
                                     {expandedBatch === batch.id && (
-                                        <div className="border-t border-slate-700">
-                                            <table className="w-full text-left text-sm text-slate-300">
-                                                <thead className="bg-slate-800/80 text-slate-400 uppercase text-xs">
+                                        <div className="border-t border-line">
+                                            <table className="w-full text-left text-sm text-ink">
+                                                <thead className="bg-surface text-muted uppercase text-xs">
                                                     <tr>
                                                         <th className="px-4 py-2">No. Pedido</th>
                                                         <th className="px-4 py-2">Cliente</th>
@@ -1128,23 +1128,23 @@ export default function Preventas() {
                                                         <th className="px-4 py-2 text-center">Estado</th>
                                                     </tr>
                                                 </thead>
-                                                <tbody className="divide-y divide-slate-700/60">
+                                                <tbody className="divide-y divide-line/60">
                                                     {batch.orders.map((order) => (
-                                                        <tr key={order.id} className="hover:bg-slate-700/20 transition-colors">
+                                                        <tr key={order.id} className="hover:bg-raised/20 transition-colors">
                                                             <td className="px-4 py-3">
                                                                 <button
                                                                     onClick={() => setSelectedOrder(order)}
-                                                                    className="text-primary-400 hover:text-primary-300 hover:underline font-mono text-xs"
+                                                                    className="text-accent hover:text-accent hover:underline font-mono text-xs"
                                                                 >
                                                                     #{order.orderNumber}
                                                                 </button>
                                                             </td>
-                                                            <td className="px-4 py-3 text-xs text-slate-300">{order.clientName || order.clientNumber}</td>
-                                                            <td className="px-4 py-3 text-xs text-slate-300 max-w-[180px] truncate">{order.title}</td>
-                                                            <td className="px-4 py-3 text-xs text-slate-400">{Array.isArray(order.categories) ? order.categories.join(', ') : order.category}</td>
-                                                            <td className="px-4 py-3 text-right text-xs font-medium text-slate-200">${formatPrice(order.totalPrice)}</td>
+                                                            <td className="px-4 py-3 text-xs text-ink">{order.clientName || order.clientNumber}</td>
+                                                            <td className="px-4 py-3 text-xs text-ink max-w-[180px] truncate">{order.title}</td>
+                                                            <td className="px-4 py-3 text-xs text-muted">{Array.isArray(order.categories) ? order.categories.join(', ') : order.category}</td>
+                                                            <td className="px-4 py-3 text-right text-xs font-medium text-ink">${formatPrice(order.totalPrice)}</td>
                                                             <td className="px-4 py-3 text-center">
-                                                                <span className={`text-xs px-2 py-0.5 rounded font-medium ${order.isPaidInFull ? 'bg-green-600/20 text-green-400 ring-1 ring-green-500/30' : 'bg-orange-600/20 text-orange-400 ring-1 ring-orange-500/30'}`}>
+                                                                <span className={`text-xs px-2 py-0.5 rounded font-medium ${order.isPaidInFull ? 'bg-green-600/20 text-ok ring-1 ring-green-500/30' : 'bg-orange-600/20 text-orange-400 ring-1 ring-orange-500/30'}`}>
                                                                     {order.isPaidInFull ? 'Liquidado' : 'Apartado'}
                                                                 </span>
                                                             </td>
@@ -1169,10 +1169,10 @@ export default function Preventas() {
                 onClose={() => setSelectedClient(null)}
             >
                 <div className="space-y-4">
-                    <p className="text-slate-400 text-sm">Mostrando todos los anticipos y registros asociados a este cliente.</p>
-                    <div className="overflow-hidden bg-slate-900 rounded-lg border border-slate-700">
-                        <table className="w-full text-left text-sm text-slate-300">
-                            <thead className="bg-slate-800 text-slate-400 uppercase text-xs">
+                    <p className="text-muted text-sm">Mostrando todos los anticipos y registros asociados a este cliente.</p>
+                    <div className="overflow-hidden bg-surface rounded-lg border border-line">
+                        <table className="w-full text-left text-sm text-ink">
+                            <thead className="bg-surface text-muted uppercase text-xs">
                                 <tr>
                                     <th className="px-4 py-2">Fecha</th>
                                     <th className="px-4 py-2">Pedido</th>
@@ -1181,15 +1181,15 @@ export default function Preventas() {
                                     <th className="px-4 py-2 text-right">Saldo</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-700">
+                            <tbody className="divide-y divide-line">
                                 {clientHistory.map(histItem => (
                                     <tr key={histItem.id}>
                                         <td className="px-4 py-2">{histItem.lastPaymentDate}</td>
                                         <td className="px-4 py-2 font-mono text-xs">{histItem.orderNumber}</td>
                                         <td className="px-4 py-2">{histItem.title}</td>
-                                        <td className="px-4 py-2 text-right text-slate-200">${formatPrice(histItem.totalPrice)}</td>
+                                        <td className="px-4 py-2 text-right text-ink">${formatPrice(histItem.totalPrice)}</td>
                                         <td className="px-4 py-2 text-right">
-                                            <span className={histItem.balance > 0 ? "text-orange-400" : "text-green-400"}>
+                                            <span className={histItem.balance > 0 ? "text-orange-400" : "text-ok"}>
                                                 ${formatPrice(histItem.balance)}
                                             </span>
                                         </td>
@@ -1199,8 +1199,8 @@ export default function Preventas() {
                         </table>
                     </div>
                     <div className="flex justify-between pt-2">
-                        <p className="text-lg font-bold text-slate-200">
-                            Total de Órdenes: <span className="text-primary-400">{clientHistory.length}</span>
+                        <p className="text-lg font-bold text-ink">
+                            Total de Órdenes: <span className="text-accent">{clientHistory.length}</span>
                         </p>
                     </div>
                 </div>
@@ -1221,68 +1221,68 @@ export default function Preventas() {
                                 {(selectedOrder.photos?.length > 0 || selectedOrder.photo) ? (
                                     <div className="flex flex-col gap-2">
                                         {(selectedOrder.photos?.length > 0 ? selectedOrder.photos : [selectedOrder.photo]).map((photo, idx) => (
-                                            <img key={idx} src={photo} alt={`${selectedOrder.title} - Foto ${idx + 1}`} className="w-full h-auto rounded-lg shadow-lg border border-slate-600" />
+                                            <img key={idx} src={photo} alt={`${selectedOrder.title} - Foto ${idx + 1}`} className="w-full h-auto rounded-lg shadow-lg border border-line" />
                                         ))}
                                     </div>
                                 ) : (
-                                    <div className="w-full aspect-square bg-slate-700 rounded-lg flex items-center justify-center text-slate-500">Sin Foto</div>
+                                    <div className="w-full aspect-square bg-raised rounded-lg flex items-center justify-center text-muted">Sin Foto</div>
                                 )}
                             </div>
 
                             {/* Details */}
                             <div className="w-full md:w-2/3 space-y-4">
                                 <div>
-                                    <h4 className="text-sm text-slate-400 uppercase tracking-wider">Título de la Obra</h4>
-                                    <p className="text-xl font-bold text-white">{selectedOrder.title}</p>
+                                    <h4 className="text-sm text-muted uppercase tracking-wider">Título de la Obra</h4>
+                                    <p className="text-xl font-bold text-ink">{selectedOrder.title}</p>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <h4 className="text-xs text-slate-500 uppercase">Artista / Grupo</h4>
-                                        <p className="text-slate-200">{selectedOrder.artist} <span className="text-slate-500">/</span> {selectedOrder.group}</p>
+                                        <h4 className="text-xs text-muted uppercase">Artista / Grupo</h4>
+                                        <p className="text-ink">{selectedOrder.artist} <span className="text-muted">/</span> {selectedOrder.group}</p>
                                     </div>
                                     <div>
-                                        <h4 className="text-xs text-slate-500 uppercase">Idioma / Categoría</h4>
-                                        <p className="text-slate-200">{selectedOrder.language} - {selectedOrder.category}</p>
+                                        <h4 className="text-xs text-muted uppercase">Idioma / Categoría</h4>
+                                        <p className="text-ink">{selectedOrder.language} - {selectedOrder.category}</p>
                                     </div>
                                     <div>
-                                        <h4 className="text-xs text-slate-500 uppercase">Categorías</h4>
-                                        <p className="text-slate-300">
+                                        <h4 className="text-xs text-muted uppercase">Categorías</h4>
+                                        <p className="text-ink">
                                             {Array.isArray(selectedOrder.categories) ? selectedOrder.categories.join(', ') : (selectedOrder.category || 'N/A')}
                                         </p>
                                     </div>
                                     <div>
-                                        <h4 className="text-xs text-slate-500 uppercase">Pedido Internacional</h4>
-                                        <p className="text-slate-300">
+                                        <h4 className="text-xs text-muted uppercase">Pedido Internacional</h4>
+                                        <p className="text-ink">
                                             {selectedOrder.internationalOrder ? `✅ ${selectedOrder.internationalCountry || ''}` : 'No'}
                                         </p>
                                     </div>
                                 </div>
 
-                                <div className="p-4 bg-slate-700/30 rounded-lg border border-slate-700/50 mt-4">
+                                <div className="p-4 bg-raised/30 rounded-lg border border-line/50 mt-4">
                                     <div className="flex justify-between items-center mb-2">
-                                        <span className="text-slate-400">Cliente</span>
-                                        <span className="font-mono text-white text-lg">{selectedOrder.clientNumber}</span>
+                                        <span className="text-muted">Cliente</span>
+                                        <span className="font-mono text-ink text-lg">{selectedOrder.clientNumber}</span>
                                     </div>
                                     <div className="flex justify-between items-center mb-2">
-                                        <span className="text-slate-400">Nombre</span>
-                                        <span className="text-white font-medium">{selectedOrder.clientName}</span>
+                                        <span className="text-muted">Nombre</span>
+                                        <span className="text-ink font-medium">{selectedOrder.clientName}</span>
                                     </div>
-                                    <div className="w-full h-px bg-slate-600 my-3"></div>
+                                    <div className="w-full h-px bg-raised my-3"></div>
 
                                     <div className="space-y-2">
                                         <div className="flex justify-between items-center">
-                                            <span className="text-slate-400">Costo Total</span>
-                                            <span className="text-lg font-medium text-slate-200">${formatPrice(selectedOrder.totalPrice)}</span>
+                                            <span className="text-muted">Costo Total</span>
+                                            <span className="text-lg font-medium text-ink">${formatPrice(selectedOrder.totalPrice)}</span>
                                         </div>
                                         <div className="flex justify-between items-center">
-                                            <span className="text-slate-400">Total Pagado</span>
+                                            <span className="text-muted">Total Pagado</span>
                                             <span className="text-lg font-medium text-blue-400">${formatPrice(selectedOrder.totalPaid)}</span>
                                         </div>
-                                        <div className="w-full h-px bg-slate-600 my-2"></div>
+                                        <div className="w-full h-px bg-raised my-2"></div>
                                         <div className="flex justify-between items-center">
-                                            <span className="text-slate-400 font-medium">Saldo Pendiente</span>
-                                            <span className={`text-2xl font-bold ${selectedOrder.balance > 0 ? 'text-orange-400' : 'text-green-400'}`}>
+                                            <span className="text-muted font-medium">Saldo Pendiente</span>
+                                            <span className={`text-2xl font-bold ${selectedOrder.balance > 0 ? 'text-orange-400' : 'text-ok'}`}>
                                                 ${formatPrice(selectedOrder.balance)}
                                             </span>
                                         </div>
@@ -1293,22 +1293,22 @@ export default function Preventas() {
 
                         {/* Payment History */}
                         <div className="mt-6">
-                            <h4 className="text-sm font-semibold text-slate-300 mb-3 uppercase tracking-wider">Historial de Pagos</h4>
-                            <div className="overflow-hidden bg-slate-900 rounded-lg border border-slate-700">
-                                <table className="w-full text-left text-sm text-slate-300">
-                                    <thead className="bg-slate-800 text-slate-400 uppercase text-xs">
+                            <h4 className="text-sm font-semibold text-ink mb-3 uppercase tracking-wider">Historial de Pagos</h4>
+                            <div className="overflow-hidden bg-surface rounded-lg border border-line">
+                                <table className="w-full text-left text-sm text-ink">
+                                    <thead className="bg-surface text-muted uppercase text-xs">
                                         <tr>
                                             <th className="px-4 py-2">#</th>
                                             <th className="px-4 py-2">Fecha</th>
                                             <th className="px-4 py-2 text-right">Monto</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-700">
+                                    <tbody className="divide-y divide-line">
                                         {selectedOrder.payments.map((payment, index) => (
                                             <tr key={index}>
                                                 <td className="px-4 py-2 font-mono text-xs">{payment.paymentNumber}</td>
                                                 <td className="px-4 py-2">{payment.date}</td>
-                                                <td className="px-4 py-2 text-right text-green-400">${formatPrice(payment.amount)}</td>
+                                                <td className="px-4 py-2 text-right text-ok">${formatPrice(payment.amount)}</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -1333,7 +1333,7 @@ export default function Preventas() {
                             {selectedOrder.balance > 0 && (
                                 <button
                                     onClick={() => setShowLiquidateModal(true)}
-                                    className="bg-primary-600 hover:bg-primary-700 text-white font-medium py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
+                                    className="bg-accent hover:bg-primary-700 text-white font-medium py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
                                 >
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -1356,15 +1356,15 @@ export default function Preventas() {
                 }}
             >
                 <div className="space-y-4">
-                    <div className="p-4 bg-slate-900 rounded-lg border border-slate-700">
+                    <div className="p-4 bg-surface rounded-lg border border-line">
                         <div className="flex justify-between items-center mb-2">
-                            <span className="text-slate-400">Saldo Pendiente:</span>
+                            <span className="text-muted">Saldo Pendiente:</span>
                             <span className="text-2xl font-bold text-orange-400">${formatPrice(selectedOrder?.balance || 0)}</span>
                         </div>
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-sm text-slate-400 font-medium">Monto del Pago</label>
+                        <label className="text-sm text-muted font-medium">Monto del Pago</label>
                         <input
                             type="number"
                             value={liquidateAmount}
@@ -1373,9 +1373,9 @@ export default function Preventas() {
                             min="0"
                             step="0.01"
                             max={selectedOrder?.balance || 0}
-                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-slate-200 text-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            className="w-full bg-surface border border-line rounded-lg px-4 py-3 text-ink text-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                         />
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-muted">
                             Saldo restante después del pago: ${formatPrice(Math.max(0, (selectedOrder?.balance || 0) - (parseFloat(liquidateAmount) || 0)))}
                         </p>
                     </div>
@@ -1399,7 +1399,7 @@ export default function Preventas() {
                 }}
             >
                 <div className="flex flex-col items-center space-y-4">
-                    <p className="text-slate-400 text-center">
+                    <p className="text-muted text-center">
                         Escanea este código QR con tu teléfono para descargar el comprobante en PDF
                     </p>
                     <div className="p-6 bg-white rounded-lg">
@@ -1412,7 +1412,7 @@ export default function Preventas() {
                             />
                         )}
                     </div>
-                    <p className="text-sm text-slate-500">
+                    <p className="text-sm text-muted">
                         También puedes hacer clic en el botón de abajo para descargar directamente
                     </p>
                     <button
@@ -1424,7 +1424,7 @@ export default function Preventas() {
                             link.click();
                             URL.revokeObjectURL(pdfURL);
                         }}
-                        className="bg-primary-600 hover:bg-primary-700 text-white font-medium py-2 px-6 rounded-lg transition-colors flex items-center gap-2"
+                        className="bg-accent hover:bg-primary-700 text-white font-medium py-2 px-6 rounded-lg transition-colors flex items-center gap-2"
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />

@@ -123,10 +123,10 @@ export default function ComprobantePublico() {
 
     return (
         <div className="min-h-screen bg-gray-100 py-8 px-4 flex flex-col items-center justify-center">
-            <div className="max-w-md w-full bg-white rounded-xl shadow-2xl overflow-hidden">
+            <div className="max-w-md w-full bg-white rounded-control shadow-2xl overflow-hidden">
                 {/* Header */}
                 <div className="bg-green-600 p-6 text-center">
-                    <h1 className="text-2xl font-bold text-white mb-1">Comprobante de Pago</h1>
+                    <h1 className="text-2xl font-bold text-ink mb-1">Comprobante de Pago</h1>
                     <p className="text-green-100 text-sm">Escanea para descargar tu recibo</p>
                 </div>
 
@@ -136,19 +136,19 @@ export default function ComprobantePublico() {
                         <div className="space-y-4 mb-6">
                             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                                 <div className="flex justify-between items-center mb-2">
-                                    <span className="text-gray-500 text-sm">Orden:</span>
+                                    <span className="text-muted text-sm">Orden:</span>
                                     <span className="font-bold text-gray-800">#{orderData.orderNumber}</span>
                                 </div>
                                 <div className="flex justify-between items-center mb-2">
-                                    <span className="text-gray-500 text-sm">Producto:</span>
+                                    <span className="text-muted text-sm">Producto:</span>
                                     <span className="font-medium text-gray-800 text-right truncate w-40">{orderData.title}</span>
                                 </div>
                                 <div className="flex justify-between items-center mb-2">
-                                    <span className="text-gray-500 text-sm">Total Pagado:</span>
+                                    <span className="text-muted text-sm">Total Pagado:</span>
                                     <span className="font-bold text-green-600">${formatPrice(orderData.totalPaid)}</span>
                                 </div>
                                 <div className="flex justify-between items-center">
-                                    <span className="text-gray-500 text-sm">Fecha:</span>
+                                    <span className="text-muted text-sm">Fecha:</span>
                                     <span className="text-gray-800">{orderData.lastPaymentDate}</span>
                                 </div>
                             </div>
@@ -175,7 +175,7 @@ export default function ComprobantePublico() {
                                     className="w-full rounded-lg shadow-md"
                                 />
                                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
-                                    <span className="text-white font-medium">Vista Previa</span>
+                                    <span className="text-ink font-medium">Vista Previa</span>
                                 </div>
                             </div>
 
@@ -193,7 +193,7 @@ export default function ComprobantePublico() {
 
                             <button
                                 onClick={() => setReceiptImageURL(null)}
-                                className="block w-full text-gray-500 hover:text-gray-700 text-sm py-2"
+                                className="block w-full text-muted hover:text-gray-700 text-sm py-2"
                             >
                                 ← Volver
                             </button>
@@ -203,7 +203,7 @@ export default function ComprobantePublico() {
 
                 {/* Footer */}
                 <div className="bg-gray-50 px-6 py-4 border-t border-gray-100 text-center">
-                    <p className="text-xs text-gray-400">Torlan POS System</p>
+                    <p className="text-xs text-muted">Torlan POS System</p>
                 </div>
             </div>
         </div>

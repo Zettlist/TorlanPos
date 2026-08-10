@@ -71,12 +71,12 @@ export default function ReportModal({ report, onClose }) {
     const period = report.date || report.month;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in modal-overlay">
-            <div className="bg-slate-900 rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col modal-content">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 animate-fade-in modal-overlay">
+            <div className="bg-surface rounded-panel shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col modal-content">
                 {/* Header */}
-                <div className="bg-gradient-to-r from-primary-600 to-accent-600 p-6 flex items-center justify-between print:hidden">
+                <div className="bg-accent p-6 flex items-center justify-between print:hidden">
                     <div>
-                        <h2 className="text-2xl font-bold text-white capitalize">
+                        <h2 className="text-2xl font-bold text-ink capitalize">
                             📊 Reporte de Ventas - {formatDate(period)}
                         </h2>
                         <p className="text-primary-100 text-sm mt-1">
@@ -86,7 +86,7 @@ export default function ReportModal({ report, onClose }) {
                     <div className="flex gap-2">
                         <button
                             onClick={handleExportPDF}
-                            className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors flex items-center gap-2"
+                            className="px-4 py-2 bg-raised hover:bg-raised text-ink rounded-lg transition-colors flex items-center gap-2"
                             title="Exportar a PDF"
                         >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -96,7 +96,7 @@ export default function ReportModal({ report, onClose }) {
                         </button>
                         <button
                             onClick={handlePrint}
-                            className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors flex items-center gap-2"
+                            className="px-4 py-2 bg-raised hover:bg-raised text-ink rounded-lg transition-colors flex items-center gap-2"
                             title="Imprimir"
                         >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -106,7 +106,7 @@ export default function ReportModal({ report, onClose }) {
                         </button>
                         <button
                             onClick={onClose}
-                            className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-200 rounded-lg transition-colors"
+                            className="px-4 py-2 bg-bad-soft hover:bg-bad-soft text-red-200 rounded-lg transition-colors"
                         >
                             ✕ Cerrar
                         </button>
@@ -173,10 +173,10 @@ export default function ReportModal({ report, onClose }) {
                                 <p className="kpi-value">{formatCurrency(metrics.totalCost)}</p>
                                 <p className="kpi-context">Costo de productos</p>
                             </div>
-                            <div className="kpi-card bg-red-500/10 border-red-500/30">
-                                <p className="kpi-label !text-red-400">Pago a Proveedores</p>
+                            <div className="kpi-card bg-bad-soft border-bad/30">
+                                <p className="kpi-label !text-bad">Pago a Proveedores</p>
                                 <p className="kpi-value !text-red-200">{formatCurrency(metrics.totalSupplierDebt)}</p>
-                                <p className="kpi-context !text-red-400/70">Deuda generada</p>
+                                <p className="kpi-context !text-bad/70">Deuda generada</p>
                             </div>
                         </div>
 
@@ -184,19 +184,19 @@ export default function ReportModal({ report, onClose }) {
                         {report.goal && (
                             <div className="mt-6 glass-card-dark p-4">
                                 <div className="flex justify-between items-center mb-2">
-                                    <span className="text-sm text-slate-400">Meta del Mes</span>
-                                    <span className="font-bold text-primary-400">{formatCurrency(report.goal)}</span>
+                                    <span className="text-sm text-muted">Meta del Mes</span>
+                                    <span className="font-bold text-accent">{formatCurrency(report.goal)}</span>
                                 </div>
-                                <div className="h-3 bg-white/10 rounded-full overflow-hidden">
+                                <div className="h-3 bg-raised rounded-full overflow-hidden">
                                     <div
                                         className={`h-full transition-all rounded-full ${(metrics.totalSales / report.goal) * 100 >= 100
                                             ? 'bg-green-500'
-                                            : 'bg-primary-500'
+                                            : 'bg-accent'
                                             }`}
                                         style={{ width: `${Math.min((metrics.totalSales / report.goal) * 100, 100)}%` }}
                                     />
                                 </div>
-                                <p className="text-xs text-slate-400 mt-1 text-right">
+                                <p className="text-xs text-muted mt-1 text-right">
                                     {((metrics.totalSales / report.goal) * 100).toFixed(1)}% completado
                                 </p>
                             </div>
@@ -214,42 +214,42 @@ export default function ReportModal({ report, onClose }) {
                         <div className="glass-card-dark overflow-hidden">
                             <table className="data-table w-full">
                                 <thead>
-                                    <tr className="border-b border-white/10">
-                                        <th className="text-left p-3 text-sm font-medium text-slate-400">Empleado</th>
-                                        <th className="text-right p-3 text-sm font-medium text-slate-400">Ventas</th>
-                                        <th className="text-right p-3 text-sm font-medium text-slate-400">Total</th>
-                                        <th className="text-right p-3 text-sm font-medium text-slate-400">Contribución</th>
+                                    <tr className="border-b border-line">
+                                        <th className="text-left p-3 text-sm font-medium text-muted">Empleado</th>
+                                        <th className="text-right p-3 text-sm font-medium text-muted">Ventas</th>
+                                        <th className="text-right p-3 text-sm font-medium text-muted">Total</th>
+                                        <th className="text-right p-3 text-sm font-medium text-muted">Contribución</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {teamPerformance.length === 0 ? (
                                         <tr>
-                                            <td colSpan="4" className="p-6 text-center text-slate-500">
+                                            <td colSpan="4" className="p-6 text-center text-muted">
                                                 No hay datos de ventas
                                             </td>
                                         </tr>
                                     ) : (
                                         teamPerformance.map((member, idx) => (
-                                            <tr key={member.userId} className="border-b border-white/5">
+                                            <tr key={member.userId} className="border-b border-line">
                                                 <td className="p-3 font-medium">
                                                     <span className="print:hidden">{idx === 0 && '🏆'}</span>
                                                     {member.username}
                                                 </td>
                                                 <td className="p-3 text-right">{member.salesCount}</td>
-                                                <td className="p-3 text-right font-semibold text-primary-400">
+                                                <td className="p-3 text-right font-semibold text-accent">
                                                     {formatCurrency(member.salesTotal)}
                                                 </td>
                                                 <td className="p-3 text-right">
                                                     <div className="flex items-center justify-end gap-2">
-                                                        <div className="w-20 h-2 bg-white/10 rounded-full overflow-hidden">
+                                                        <div className="w-20 h-2 bg-raised rounded-full overflow-hidden">
                                                             <div
-                                                                className="h-full bg-primary-500 rounded-full"
+                                                                className="h-full bg-accent rounded-full"
                                                                 style={{
                                                                     width: `${(member.salesTotal / metrics.totalSales) * 100}%`
                                                                 }}
                                                             />
                                                         </div>
-                                                        <span className="text-sm text-slate-400">
+                                                        <span className="text-sm text-muted">
                                                             {((member.salesTotal / metrics.totalSales) * 100).toFixed(1)}%
                                                         </span>
                                                     </div>
@@ -272,31 +272,31 @@ export default function ReportModal({ report, onClose }) {
                         <div className="glass-card-dark overflow-hidden">
                             <table className="data-table w-full text-sm">
                                 <thead>
-                                    <tr className="border-b border-white/10">
-                                        <th className="text-left p-3 font-medium text-slate-400">Usuario</th>
-                                        <th className="text-right p-3 font-medium text-slate-400">Apertura</th>
-                                        <th className="text-right p-3 font-medium text-slate-400">Cierre</th>
-                                        <th className="text-right p-3 font-medium text-slate-400">Esperado</th>
-                                        <th className="text-right p-3 font-medium text-slate-400">Declarado</th>
-                                        <th className="text-right p-3 font-medium text-slate-400">Diferencia</th>
-                                        <th className="text-center p-3 font-medium text-slate-400">Estado</th>
+                                    <tr className="border-b border-line">
+                                        <th className="text-left p-3 font-medium text-muted">Usuario</th>
+                                        <th className="text-right p-3 font-medium text-muted">Apertura</th>
+                                        <th className="text-right p-3 font-medium text-muted">Cierre</th>
+                                        <th className="text-right p-3 font-medium text-muted">Esperado</th>
+                                        <th className="text-right p-3 font-medium text-muted">Declarado</th>
+                                        <th className="text-right p-3 font-medium text-muted">Diferencia</th>
+                                        <th className="text-center p-3 font-medium text-muted">Estado</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {cashSessions.length === 0 ? (
                                         <tr>
-                                            <td colSpan="7" className="p-6 text-center text-slate-500">
+                                            <td colSpan="7" className="p-6 text-center text-muted">
                                                 No hay cajas registradas
                                             </td>
                                         </tr>
                                     ) : (
                                         cashSessions.map((session) => (
-                                            <tr key={session.id} className="border-b border-white/5">
+                                            <tr key={session.id} className="border-b border-line">
                                                 <td className="p-3">{session.username}</td>
-                                                <td className="p-3 text-right text-xs text-slate-400">
+                                                <td className="p-3 text-right text-xs text-muted">
                                                     {formatDateTime(session.opened_at)}
                                                 </td>
-                                                <td className="p-3 text-right text-xs text-slate-400">
+                                                <td className="p-3 text-right text-xs text-muted">
                                                     {session.closed_at ? formatDateTime(session.closed_at) : 'Abierta'}
                                                 </td>
                                                 <td className="p-3 text-right">
@@ -306,10 +306,10 @@ export default function ReportModal({ report, onClose }) {
                                                     {formatCurrency(session.declared_amount)}
                                                 </td>
                                                 <td className={`p-3 text-right font-bold ${session.difference === 0
-                                                    ? 'text-green-400'
+                                                    ? 'text-ok'
                                                     : session.difference > 0
                                                         ? 'text-accent-400'
-                                                        : 'text-red-400'
+                                                        : 'text-bad'
                                                     }`}>
                                                     {session.difference > 0 && '+'}
                                                     {formatCurrency(session.difference)}
@@ -320,7 +320,7 @@ export default function ReportModal({ report, onClose }) {
                                                             🤖 Auto
                                                         </span>
                                                     ) : (
-                                                        <span className="text-xs px-2 py-1 bg-green-500/20 text-green-300 rounded">
+                                                        <span className="text-xs px-2 py-1 bg-ok-soft text-ok rounded">
                                                             ✓ Manual
                                                         </span>
                                                     )}
@@ -343,12 +343,12 @@ export default function ReportModal({ report, onClose }) {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="glass-card-dark p-4 border-l-4 border-green-500">
                                 <div className="flex items-center justify-between mb-2">
-                                    <span className="text-slate-400"><span className="print:hidden">💵</span> Efectivo</span>
-                                    <span className="text-2xl font-bold text-green-400">
+                                    <span className="text-muted"><span className="print:hidden">💵</span> Efectivo</span>
+                                    <span className="text-2xl font-bold text-ok">
                                         {formatCurrency(paymentBreakdown.cash)}
                                     </span>
                                 </div>
-                                <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                                <div className="h-2 bg-raised rounded-full overflow-hidden">
                                     <div
                                         className="h-full bg-green-500 rounded-full"
                                         style={{
@@ -356,18 +356,18 @@ export default function ReportModal({ report, onClose }) {
                                         }}
                                     />
                                 </div>
-                                <p className="text-xs text-slate-500 mt-1">
+                                <p className="text-xs text-muted mt-1">
                                     {((paymentBreakdown.cash / metrics.totalSales) * 100).toFixed(1)}% del total
                                 </p>
                             </div>
                             <div className="glass-card-dark p-4 border-l-4 border-blue-500">
                                 <div className="flex items-center justify-between mb-2">
-                                    <span className="text-slate-400"><span className="print:hidden">💳</span> Tarjeta</span>
+                                    <span className="text-muted"><span className="print:hidden">💳</span> Tarjeta</span>
                                     <span className="text-2xl font-bold text-blue-400">
                                         {formatCurrency(paymentBreakdown.card)}
                                     </span>
                                 </div>
-                                <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                                <div className="h-2 bg-raised rounded-full overflow-hidden">
                                     <div
                                         className="h-full bg-blue-500 rounded-full"
                                         style={{
@@ -375,7 +375,7 @@ export default function ReportModal({ report, onClose }) {
                                         }}
                                     />
                                 </div>
-                                <p className="text-xs text-slate-500 mt-1">
+                                <p className="text-xs text-muted mt-1">
                                     {((paymentBreakdown.card / metrics.totalSales) * 100).toFixed(1)}% del total
                                 </p>
                             </div>
@@ -393,9 +393,9 @@ export default function ReportModal({ report, onClose }) {
                         {/* Top Products */}
                         <div className="mb-6 avoid-break">
                             <h3 className="subsection-title"><span className="print:hidden">🏆</span> Top 5 Productos Más Vendidos</h3>
-                            <div className="glass-card-dark divide-y divide-white/5">
+                            <div className="glass-card-dark divide-y divide-line">
                                 {topProducts.length === 0 ? (
-                                    <p className="p-6 text-center text-slate-500">
+                                    <p className="p-6 text-center text-muted">
                                         No hay datos de productos
                                     </p>
                                 ) : (
@@ -407,12 +407,12 @@ export default function ReportModal({ report, onClose }) {
                                                 </span>
                                                 <div>
                                                     <p className="font-medium">{product.productName}</p>
-                                                    <p className="text-xs text-slate-400">
+                                                    <p className="text-xs text-muted">
                                                         {product.quantitySold} unidades vendidas
                                                     </p>
                                                 </div>
                                             </div>
-                                            <span className="font-bold text-primary-400">
+                                            <span className="font-bold text-accent">
                                                 {formatCurrency(product.revenue)}
                                             </span>
                                         </div>
@@ -425,18 +425,18 @@ export default function ReportModal({ report, onClose }) {
                         <div className="avoid-break">
                             <h3 className="subsection-title"><span className="print:hidden">⚠️</span> Alertas de Stock Crítico</h3>
                             {stockAlerts.length === 0 ? (
-                                <div className="glass-card-dark p-4 text-center text-slate-500">
+                                <div className="glass-card-dark p-4 text-center text-muted">
                                     ✅ Sin alertas - todo en stock
                                 </div>
                             ) : (
-                                <div className="glass-card-dark divide-y divide-white/5">
+                                <div className="glass-card-dark divide-y divide-line">
                                     {stockAlerts.map((alert) => (
-                                        <div key={alert.productId} className="p-3 flex items-center justify-between bg-red-500/10">
+                                        <div key={alert.productId} className="p-3 flex items-center justify-between bg-bad-soft">
                                             <div className="flex items-center gap-3">
                                                 <span className="text-2xl print:hidden">🚨</span>
                                                 <div>
-                                                    <p className="font-medium text-red-300">{alert.productName}</p>
-                                                    <p className="text-xs text-red-400">
+                                                    <p className="font-medium text-bad">{alert.productName}</p>
+                                                    <p className="text-xs text-bad">
                                                         Stock actual: {alert.currentStock} · Última venta: {formatDateTime(alert.lastSoldAt)}
                                                     </p>
                                                 </div>

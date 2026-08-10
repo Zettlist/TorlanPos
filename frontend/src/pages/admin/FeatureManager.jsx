@@ -136,7 +136,7 @@ export default function FeatureManager() {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent"></div>
             </div>
         );
     }
@@ -148,7 +148,7 @@ export default function FeatureManager() {
                 {/* Header */}
                 <div className="mb-4">
                     <h1 className="text-2xl font-bold">Gestión de Funciones</h1>
-                    <p className="text-slate-400">{data.users.length} usuarios registrados</p>
+                    <p className="text-muted">{data.users.length} usuarios registrados</p>
                 </div>
 
                 {/* Users List */}
@@ -157,13 +157,13 @@ export default function FeatureManager() {
                         <button
                             key={u.id}
                             onClick={() => setSelectedUser(u)}
-                            className={`w-full glass-card p-4 text-left transition-all hover:border-primary-500/50 ${selectedUser?.id === u.id ? 'border-primary-500 bg-primary-500/10' : ''
+                            className={`w-full glass-card p-4 text-left transition-all hover:border-accent/25 ${selectedUser?.id === u.id ? 'border-accent bg-accent/10' : ''
                                 }`}
                         >
                             <div className="flex items-center gap-3">
                                 <div className={`w-12 h-12 rounded-full flex items-center justify-center font-semibold text-lg ${u.is_admin
                                     ? 'bg-gradient-to-br from-amber-500 to-orange-500'
-                                    : 'bg-gradient-to-br from-primary-500 to-accent-500'
+                                    : 'bg-accent'
                                     }`}>
                                     {u.username.charAt(0).toUpperCase()}
                                 </div>
@@ -171,20 +171,20 @@ export default function FeatureManager() {
                                     <p className="font-medium truncate">{u.username}</p>
                                     <div className="flex items-center gap-2">
                                         {u.is_admin ? (
-                                            <span className="px-2 py-0.5 bg-amber-500/20 text-amber-400 rounded text-xs font-medium">
+                                            <span className="px-2 py-0.5 bg-warn-soft text-warn rounded text-xs font-medium">
                                                 Admin
                                             </span>
                                         ) : (
-                                            <span className="px-2 py-0.5 bg-slate-500/20 text-slate-400 rounded text-xs font-medium">
+                                            <span className="px-2 py-0.5 bg-slate-500/20 text-muted rounded text-xs font-medium">
                                                 Usuario
                                             </span>
                                         )}
                                         {!u.has_setup_complete && (
-                                            <span className="text-xs text-slate-500">• Pendiente</span>
+                                            <span className="text-xs text-muted">• Pendiente</span>
                                         )}
                                     </div>
                                 </div>
-                                <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-5 h-5 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                 </svg>
                             </div>
@@ -197,22 +197,22 @@ export default function FeatureManager() {
             {selectedUser && (
                 <div className="flex-1 flex flex-col glass-card-dark animate-fade-in overflow-hidden">
                     {/* User Header */}
-                    <div className="p-6 border-b border-white/10">
+                    <div className="p-6 border-b border-line">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <div className={`w-16 h-16 rounded-full flex items-center justify-center font-bold text-2xl ${selectedUser.is_admin
                                     ? 'bg-gradient-to-br from-amber-500 to-orange-500'
-                                    : 'bg-gradient-to-br from-primary-500 to-accent-500'
+                                    : 'bg-accent'
                                     }`}>
                                     {selectedUser.username.charAt(0).toUpperCase()}
                                 </div>
                                 <div>
                                     <h2 className="text-xl font-bold">{selectedUser.username}</h2>
                                     <div className="flex items-center gap-2">
-                                        <span className="text-slate-400">
+                                        <span className="text-muted">
                                             {selectedUser.is_admin ? 'Administrador' : 'Usuario'}
                                         </span>
-                                        <span className="text-slate-500">•</span>
+                                        <span className="text-muted">•</span>
                                         <button
                                             onClick={async () => {
                                                 try {
@@ -236,7 +236,7 @@ export default function FeatureManager() {
                                                 }
                                             }}
                                             className={`px-2 py-0.5 rounded text-xs font-medium transition-all hover:scale-105 ${selectedUser.has_setup_complete
-                                                ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30'
+                                                ? 'bg-ok-soft text-ok hover:bg-ok-soft'
                                                 : 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30'
                                                 }`}
                                             title="Clic para cambiar estado"
@@ -251,7 +251,7 @@ export default function FeatureManager() {
                                     setSelectedUser(null);
                                     setUserStats(null);
                                 }}
-                                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                                className="p-2 hover:bg-raised rounded-lg transition-colors"
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -265,7 +265,7 @@ export default function FeatureManager() {
                         {/* User Stats Dashboard */}
                         <div>
                             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                                <svg className="w-5 h-5 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                                 </svg>
                                 Dashboard de Operaciones
@@ -273,29 +273,29 @@ export default function FeatureManager() {
 
                             {loadingStats ? (
                                 <div className="flex items-center justify-center py-12">
-                                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-primary-500"></div>
+                                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-accent"></div>
                                 </div>
                             ) : userStats ? (
                                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                                    <div className="bg-white/5 rounded-xl p-4">
-                                        <p className="text-xs text-slate-500 uppercase tracking-wider">Ventas Totales</p>
-                                        <p className="text-2xl font-bold text-emerald-400">${userStats.totalSales?.toFixed(2) || '0.00'}</p>
+                                    <div className="bg-raised rounded-control p-4">
+                                        <p className="text-xs text-muted uppercase tracking-wider">Ventas Totales</p>
+                                        <p className="text-2xl font-bold text-ok">${userStats.totalSales?.toFixed(2) || '0.00'}</p>
                                     </div>
-                                    <div className="bg-white/5 rounded-xl p-4">
-                                        <p className="text-xs text-slate-500 uppercase tracking-wider">Transacciones</p>
-                                        <p className="text-2xl font-bold text-primary-400">{userStats.totalTransactions || 0}</p>
+                                    <div className="bg-raised rounded-control p-4">
+                                        <p className="text-xs text-muted uppercase tracking-wider">Transacciones</p>
+                                        <p className="text-2xl font-bold text-accent">{userStats.totalTransactions || 0}</p>
                                     </div>
-                                    <div className="bg-white/5 rounded-xl p-4">
-                                        <p className="text-xs text-slate-500 uppercase tracking-wider">Ventas Hoy</p>
+                                    <div className="bg-raised rounded-control p-4">
+                                        <p className="text-xs text-muted uppercase tracking-wider">Ventas Hoy</p>
                                         <p className="text-2xl font-bold text-blue-400">${userStats.todaySales?.toFixed(2) || '0.00'}</p>
                                     </div>
-                                    <div className="bg-white/5 rounded-xl p-4">
-                                        <p className="text-xs text-slate-500 uppercase tracking-wider">Ticket Promedio</p>
-                                        <p className="text-2xl font-bold text-amber-400">${userStats.averageTicket?.toFixed(2) || '0.00'}</p>
+                                    <div className="bg-raised rounded-control p-4">
+                                        <p className="text-xs text-muted uppercase tracking-wider">Ticket Promedio</p>
+                                        <p className="text-2xl font-bold text-warn">${userStats.averageTicket?.toFixed(2) || '0.00'}</p>
                                     </div>
                                 </div>
                             ) : (
-                                <div className="bg-white/5 rounded-xl p-8 text-center text-slate-400">
+                                <div className="bg-raised rounded-control p-8 text-center text-muted">
                                     <p>Sin estadísticas disponibles</p>
                                 </div>
                             )}
@@ -304,7 +304,7 @@ export default function FeatureManager() {
                         {/* Features Toggle */}
                         <div>
                             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                                <svg className="w-5 h-5 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
                                 </svg>
                                 Funciones Habilitadas
@@ -318,31 +318,31 @@ export default function FeatureManager() {
                                     return (
                                         <div
                                             key={feature.id}
-                                            className="flex items-center justify-between bg-white/5 rounded-xl p-4"
+                                            className="flex items-center justify-between bg-raised rounded-control p-4"
                                         >
                                             <div className="flex items-center gap-3">
                                                 <div className={`p-2 rounded-lg ${isEnabled
-                                                    ? 'bg-primary-500/20 text-primary-400'
-                                                    : 'bg-slate-500/20 text-slate-400'
+                                                    ? 'bg-accent/20 text-accent'
+                                                    : 'bg-slate-500/20 text-muted'
                                                     }`}>
                                                     {getFeatureIcon(feature.name)}
                                                 </div>
                                                 <div>
                                                     <p className="font-medium">{feature.display_name}</p>
-                                                    <p className="text-sm text-slate-500">{feature.description}</p>
+                                                    <p className="text-sm text-muted">{feature.description}</p>
                                                 </div>
                                             </div>
                                             <button
                                                 onClick={() => toggleFeature(selectedUser.id, feature.id, feature.name, isEnabled)}
                                                 disabled={isUpdating}
-                                                className={`relative w-14 h-7 rounded-full transition-all duration-300 ${isEnabled ? 'bg-emerald-500' : 'bg-slate-600'
+                                                className={`relative w-14 h-7 rounded-full transition-all duration-300 ${isEnabled ? 'bg-emerald-500' : 'bg-raised'
                                                     }`}
                                             >
                                                 <div className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-all duration-300 ${isEnabled ? 'left-8' : 'left-1'
                                                     }`}>
                                                     {isUpdating && (
                                                         <div className="absolute inset-0 flex items-center justify-center">
-                                                            <div className="animate-spin rounded-full h-3 w-3 border-t-2 border-primary-500"></div>
+                                                            <div className="animate-spin rounded-full h-3 w-3 border-t-2 border-accent"></div>
                                                         </div>
                                                     )}
                                                 </div>
@@ -359,7 +359,7 @@ export default function FeatureManager() {
             {/* Empty State when no user selected */}
             {!selectedUser && data.users.length > 0 && (
                 <div className="flex-1 glass-card-dark flex items-center justify-center">
-                    <div className="text-center text-slate-400">
+                    <div className="text-center text-muted">
                         <svg className="w-20 h-20 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                         </svg>

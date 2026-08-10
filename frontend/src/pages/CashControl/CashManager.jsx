@@ -190,16 +190,16 @@ export default function CashManager() {
         }
     };
 
-    if (loading) return <div className="p-8 text-center text-slate-400">Cargando...</div>;
+    if (loading) return <div className="p-8 text-center text-muted">Cargando...</div>;
 
     return (
         <div className="space-y-6 animate-fade-in">
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-bold">Control de Caja</h1>
-                <div className="flex bg-white/5 rounded-lg p-1">
+                <div className="flex bg-raised rounded-lg p-1">
                     <button
                         onClick={() => setView('active')}
-                        className={`px-4 py-2 rounded-md text-sm transition-colors ${view === 'active' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white'
+                        className={`px-4 py-2 rounded-md text-sm transition-colors ${view === 'active' ? 'bg-accent text-white' : 'text-muted hover:text-white'
                             }`}
                     >
                         Mi Caja
@@ -207,7 +207,7 @@ export default function CashManager() {
                     {(isEmpresaAdmin() || isGlobalAdmin()) && (
                         <button
                             onClick={() => setView('manager_active')}
-                            className={`px-4 py-2 rounded-md text-sm transition-colors ${view === 'manager_active' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white'
+                            className={`px-4 py-2 rounded-md text-sm transition-colors ${view === 'manager_active' ? 'bg-accent text-white' : 'text-muted hover:text-white'
                                 }`}
                         >
                             Supervisión
@@ -215,7 +215,7 @@ export default function CashManager() {
                     )}
                     <button
                         onClick={() => setView('history')}
-                        className={`px-4 py-2 rounded-md text-sm transition-colors ${view === 'history' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white'
+                        className={`px-4 py-2 rounded-md text-sm transition-colors ${view === 'history' ? 'bg-accent text-white' : 'text-muted hover:text-white'
                             }`}
                     >
                         Historial
@@ -224,12 +224,12 @@ export default function CashManager() {
             </div>
 
             {error && (
-                <div className="p-4 bg-red-500/20 text-red-300 rounded-xl border border-red-500/30">
+                <div className="p-4 bg-bad-soft text-bad rounded-control border border-bad/30">
                     {error}
                 </div>
             )}
             {success && (
-                <div className="p-4 bg-emerald-500/20 text-emerald-300 rounded-xl border border-emerald-500/30">
+                <div className="p-4 bg-ok-soft text-ok rounded-control border border-emerald-500/30">
                     {success}
                 </div>
             )}
@@ -238,18 +238,18 @@ export default function CashManager() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     {!activeSession ? (
                         <div className="glass-card p-8 text-center space-y-6 md:col-span-2 max-w-lg mx-auto w-full">
-                            <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto">
-                                <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="w-16 h-16 bg-raised rounded-full flex items-center justify-center mx-auto">
+                                <svg className="w-8 h-8 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                                 </svg>
                             </div>
                             <div>
                                 <h2 className="text-xl font-bold mb-2">Caja Cerrada</h2>
-                                <p className="text-slate-400">Debes abrir caja para comenzar a registrar ventas en efectivo.</p>
+                                <p className="text-muted">Debes abrir caja para comenzar a registrar ventas en efectivo.</p>
                             </div>
                             <form onSubmit={handleOpenSession} className="text-left space-y-4">
                                 <div>
-                                    <label className="block text-sm text-slate-400 mb-1">Fondo Inicial ($)</label>
+                                    <label className="block text-sm text-muted mb-1">Fondo Inicial ($)</label>
                                     <input
                                         type="number"
                                         step="0.01"
@@ -271,30 +271,30 @@ export default function CashManager() {
                             {/* Stats Card */}
                             <div className="glass-card p-6 space-y-6">
                                 <div className="flex items-center justify-between">
-                                    <h2 className="text-lg font-semibold text-emerald-400 flex items-center gap-2">
+                                    <h2 className="text-lg font-semibold text-ok flex items-center gap-2">
                                         <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
                                         Caja Abierta
                                     </h2>
-                                    <span className="text-sm text-slate-400">
+                                    <span className="text-sm text-muted">
                                         {new Date(activeSession.opened_at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
                                     </span>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div className="p-4 bg-white/5 rounded-xl">
-                                        <p className="text-sm text-slate-400 mb-1">Fondo Inicial</p>
+                                    <div className="p-4 bg-raised rounded-control">
+                                        <p className="text-sm text-muted mb-1">Fondo Inicial</p>
                                         <p className="text-2xl font-bold">${Number(activeSession.opening_amount).toFixed(2)}</p>
                                     </div>
-                                    <div className="p-4 bg-white/5 rounded-xl">
-                                        <p className="text-sm text-slate-400 mb-1">Ventas (Efectivo)</p>
-                                        <p className="text-2xl font-bold text-emerald-400">
+                                    <div className="p-4 bg-raised rounded-control">
+                                        <p className="text-sm text-muted mb-1">Ventas (Efectivo)</p>
+                                        <p className="text-2xl font-bold text-ok">
                                             ${Number(activeSession.current_sales_total).toFixed(2)}
                                         </p>
-                                        <p className="text-xs text-slate-500 mt-1">Acumulado en sesión</p>
+                                        <p className="text-xs text-muted mt-1">Acumulado en sesión</p>
                                     </div>
                                 </div>
 
-                                <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+                                <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-control">
                                     <div className="flex justify-between items-center mb-1">
                                         <span className="text-blue-300 font-medium">Total Esperado en Caja</span>
                                         <span className="text-2xl font-bold text-blue-300">
@@ -310,7 +310,7 @@ export default function CashManager() {
                                 <h2 className="text-lg font-semibold mb-4">Corte de Caja (Cierre)</h2>
                                 <form onSubmit={handleCloseSession} className="space-y-4">
                                     <div>
-                                        <label className="block text-sm text-slate-400 mb-1">Efectivo Contado ($)</label>
+                                        <label className="block text-sm text-muted mb-1">Efectivo Contado ($)</label>
                                         <input
                                             type="number"
                                             step="0.01"
@@ -323,7 +323,7 @@ export default function CashManager() {
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm text-slate-400 mb-1">Notas (Opcional)</label>
+                                        <label className="block text-sm text-muted mb-1">Notas (Opcional)</label>
                                         <textarea
                                             value={closingNotes}
                                             onChange={e => setClosingNotes(e.target.value)}
@@ -338,7 +338,7 @@ export default function CashManager() {
                                             </svg>
                                             Realizar Corte y Cerrar
                                         </button>
-                                        <p className="text-xs text-center text-slate-500 mt-2">
+                                        <p className="text-xs text-center text-muted mt-2">
                                             Esta acción generará el reporte final del turno.
                                         </p>
                                     </div>
@@ -353,7 +353,7 @@ export default function CashManager() {
                 <div className="glass-card overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full">
-                            <thead className="bg-white/5">
+                            <thead className="bg-raised">
                                 <tr>
                                     <th className="table-header">Fecha</th>
                                     <th className="table-header">Empleado</th>
@@ -363,19 +363,19 @@ export default function CashManager() {
                                     <th className="table-header text-center">Estado</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-white/5">
+                            <tbody className="divide-y divide-line">
                                 {history.length === 0 ? (
                                     <tr>
-                                        <td colSpan="6" className="text-center py-8 text-slate-500">
+                                        <td colSpan="6" className="text-center py-8 text-muted">
                                             No hay historial disponible
                                         </td>
                                     </tr>
                                 ) : (
                                     history.map((session) => (
-                                        <tr key={session.id} className="hover:bg-white/5 transition-colors">
+                                        <tr key={session.id} className="hover:bg-raised transition-colors">
                                             <td className="table-cell">
                                                 {new Date(session.opened_at).toLocaleDateString('es-MX')}
-                                                <span className="block text-xs text-slate-500">
+                                                <span className="block text-xs text-muted">
                                                     {new Date(session.opened_at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
                                                 </span>
                                             </td>
@@ -393,21 +393,21 @@ export default function CashManager() {
                                             <td className="table-cell text-right">
                                                 {session.status === 'closed' ? (
                                                     session.difference !== undefined ? (
-                                                        <span className={session.difference === 0 ? 'text-slate-400' : session.difference > 0 ? 'text-blue-400' : 'text-red-400'}>
+                                                        <span className={session.difference === 0 ? 'text-muted' : session.difference > 0 ? 'text-blue-400' : 'text-bad'}>
                                                             {session.difference > 0 ? '+' : ''}{Number(session.difference).toFixed(2)}
                                                         </span>
                                                     ) : (
-                                                        session.has_discrepancy ? <span className="text-amber-400 text-xs">Revisar</span> : <span className="text-emerald-500 text-xs">OK</span>
+                                                        session.has_discrepancy ? <span className="text-warn text-xs">Revisar</span> : <span className="text-emerald-500 text-xs">OK</span>
                                                     )
                                                 ) : '-'}
                                             </td>
                                             <td className="table-center">
                                                 {session.status === 'open' ? (
-                                                    <span className="px-2 py-1 bg-emerald-500/20 text-emerald-400 rounded text-xs">
+                                                    <span className="px-2 py-1 bg-ok-soft text-ok rounded text-xs">
                                                         Abierta
                                                     </span>
                                                 ) : (
-                                                    <span className="px-2 py-1 bg-slate-700 text-slate-300 rounded text-xs">
+                                                    <span className="px-2 py-1 bg-raised text-ink rounded text-xs">
                                                         Cerrada
                                                     </span>
                                                 )}
@@ -424,19 +424,19 @@ export default function CashManager() {
             {view === 'manager_active' && (
                 <div className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="bg-emerald-500/10 border border-emerald-500/20 p-6 rounded-xl">
-                            <h3 className="text-emerald-400 font-semibold mb-1">Cajas Abiertas</h3>
-                            <p className="text-3xl font-bold text-white">{activeSessionsList.length}</p>
+                        <div className="bg-ok-soft border border-emerald-500/20 p-6 rounded-control">
+                            <h3 className="text-ok font-semibold mb-1">Cajas Abiertas</h3>
+                            <p className="text-3xl font-bold text-ink">{activeSessionsList.length}</p>
                         </div>
                     </div>
 
                     <div className="glass-card overflow-hidden">
-                        <div className="p-4 border-b border-white/5">
+                        <div className="p-4 border-b border-line">
                             <h3 className="font-semibold">Detalle de Sesiones Activas</h3>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full">
-                                <thead className="bg-white/5">
+                                <thead className="bg-raised">
                                     <tr>
                                         <th className="table-header">Empleado</th>
                                         <th className="table-header">Apertura</th>
@@ -447,16 +447,16 @@ export default function CashManager() {
                                         <th className="table-header text-center">Acciones</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-white/5">
+                                <tbody className="divide-y divide-line">
                                     {activeSessionsList.length === 0 ? (
                                         <tr>
-                                            <td colSpan="6" className="text-center py-8 text-slate-500">
+                                            <td colSpan="6" className="text-center py-8 text-muted">
                                                 No hay cajas abiertas actualmente
                                             </td>
                                         </tr>
                                     ) : (
                                         activeSessionsList.map((session) => (
-                                            <tr key={session.id} className="hover:bg-white/5 transition-colors">
+                                            <tr key={session.id} className="hover:bg-raised transition-colors">
                                                 <td className="table-cell font-medium">
                                                     {session.opened_by_username}
                                                 </td>
@@ -466,21 +466,21 @@ export default function CashManager() {
                                                 <td className="table-cell text-right">
                                                     ${Number(session.opening_amount).toFixed(2)}
                                                 </td>
-                                                <td className="table-cell text-right text-emerald-400">
+                                                <td className="table-cell text-right text-ok">
                                                     ${Number(session.current_sales_total).toFixed(2)}
                                                 </td>
                                                 <td className="table-cell text-right font-bold">
                                                     ${Number(session.current_expected).toFixed(2)}
                                                 </td>
                                                 <td className="table-center">
-                                                    <span className="px-2 py-1 bg-emerald-500/20 text-emerald-400 rounded text-xs animate-pulse">
+                                                    <span className="px-2 py-1 bg-ok-soft text-ok rounded text-xs animate-pulse">
                                                         En Curso
                                                     </span>
                                                 </td>
                                                 <td className="table-center">
                                                     <button
                                                         onClick={() => handleViewDetails(session.id)}
-                                                        className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                                                        className="p-2 text-muted hover:text-ink hover:bg-raised rounded-lg transition-colors"
                                                         title="Ver Detalles"
                                                     >
                                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -503,13 +503,13 @@ export default function CashManager() {
             {/* Details Modal */}
             {
                 detailsModalOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                        <div className="bg-[#1a1f37] border border-white/10 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl animate-scale-in">
-                            <div className="sticky top-0 bg-[#1a1f37] border-b border-white/10 p-4 flex items-center justify-between z-10">
-                                <h3 className="text-xl font-bold text-white">Detalle de Sesión</h3>
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 ">
+                        <div className="bg-[#1a1f37] border border-line rounded-panel w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl animate-scale-in">
+                            <div className="sticky top-0 bg-[#1a1f37] border-b border-line p-4 flex items-center justify-between z-10">
+                                <h3 className="text-xl font-bold text-ink">Detalle de Sesión</h3>
                                 <button
                                     onClick={() => setDetailsModalOpen(false)}
-                                    className="text-slate-400 hover:text-white transition-colors"
+                                    className="text-muted hover:text-ink transition-colors"
                                 >
                                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -520,54 +520,54 @@ export default function CashManager() {
                             <div className="p-6 space-y-6">
                                 {loadingDetails ? (
                                     <div className="text-center py-12">
-                                        <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-                                        <p className="text-slate-400">Cargando detalles...</p>
+                                        <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                                        <p className="text-muted">Cargando detalles...</p>
                                     </div>
                                 ) : selectedSessionDetails ? (
                                     <>
                                         {/* Header Info */}
                                         <div className="grid grid-cols-2 gap-4">
-                                            <div className="p-4 bg-white/5 rounded-xl">
-                                                <p className="text-sm text-slate-500">Empleado</p>
-                                                <p className="text-lg font-medium text-white">{selectedSessionDetails.session.opened_by_username}</p>
+                                            <div className="p-4 bg-raised rounded-control">
+                                                <p className="text-sm text-muted">Empleado</p>
+                                                <p className="text-lg font-medium text-ink">{selectedSessionDetails.session.opened_by_username}</p>
                                             </div>
-                                            <div className="p-4 bg-white/5 rounded-xl">
-                                                <p className="text-sm text-slate-500">Apertura</p>
-                                                <p className="text-lg font-medium text-white">
+                                            <div className="p-4 bg-raised rounded-control">
+                                                <p className="text-sm text-muted">Apertura</p>
+                                                <p className="text-lg font-medium text-ink">
                                                     {new Date(selectedSessionDetails.session.opened_at).toLocaleString('es-MX')}
                                                 </p>
                                             </div>
                                         </div>
 
                                         {/* Financial Summary */}
-                                        <div className="p-6 bg-slate-800/50 rounded-xl border border-white/5 space-y-4">
-                                            <h4 className="font-semibold text-emerald-400 mb-2">Resumen Financiero</h4>
-                                            <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                                                <span className="text-slate-400">Fondo Inicial</span>
+                                        <div className="p-6 bg-surface rounded-control border border-line space-y-4">
+                                            <h4 className="font-semibold text-ok mb-2">Resumen Financiero</h4>
+                                            <div className="flex justify-between items-center border-b border-line pb-2">
+                                                <span className="text-muted">Fondo Inicial</span>
                                                 <span className="font-mono text-lg">${Number(selectedSessionDetails.session.opening_amount).toFixed(2)}</span>
                                             </div>
 
                                             {/* Sales Breakdown */}
                                             <div className="space-y-2">
-                                                <p className="text-sm text-slate-500 font-medium">Ventas por Método:</p>
+                                                <p className="text-sm text-muted font-medium">Ventas por Método:</p>
                                                 {selectedSessionDetails.summary.payment_breakdown.map(item => (
                                                     <div key={item.payment_method} className="flex justify-between items-center pl-4">
-                                                        <span className="text-slate-300 capitalize">
+                                                        <span className="text-ink capitalize">
                                                             {item.payment_method === 'cash' ? 'Efectivo' :
                                                                 item.payment_method === 'card' ? 'Tarjeta' : item.payment_method}
                                                         </span>
-                                                        <span className="font-mono text-white">
+                                                        <span className="font-mono text-ink">
                                                             ${Number(item.total).toFixed(2)}
-                                                            <span className="text-xs text-slate-500 ml-2">({item.count} ops)</span>
+                                                            <span className="text-xs text-muted ml-2">({item.count} ops)</span>
                                                         </span>
                                                     </div>
                                                 ))}
                                                 {selectedSessionDetails.summary.payment_breakdown.length === 0 && (
-                                                    <p className="text-sm text-slate-500 italic pl-4">No hay ventas registradas</p>
+                                                    <p className="text-sm text-muted italic pl-4">No hay ventas registradas</p>
                                                 )}
                                             </div>
 
-                                            <div className="flex justify-between items-center border-t border-white/5 pt-2 mt-2">
+                                            <div className="flex justify-between items-center border-t border-line pt-2 mt-2">
                                                 <span className="text-blue-300 font-bold">Total Esperado en Caja (Efectivo)</span>
                                                 <span className="font-mono text-xl text-blue-300 font-bold">
                                                     ${Number(selectedSessionDetails.session.calculated_expected).toFixed(2)}
@@ -577,42 +577,42 @@ export default function CashManager() {
 
                                         {/* Withdrawals Section (Placeholder) */}
                                         {/* 
-                                    <div className="bg-red-500/5 border border-red-500/10 rounded-xl p-4">
-                                        <h4 className="font-semibold text-red-400 mb-2">Retiros de Caja</h4>
-                                        <p className="text-sm text-slate-500">No hay retiros registrados.</p>
+                                    <div className="bg-bad-soft border border-bad/30 rounded-control p-4">
+                                        <h4 className="font-semibold text-bad mb-2">Retiros de Caja</h4>
+                                        <p className="text-sm text-muted">No hay retiros registrados.</p>
                                     </div>
                                     */}
 
                                         {/* Recent Transactions */}
                                         <div>
-                                            <h4 className="font-semibold text-white mb-3">Últimas Transacciones</h4>
-                                            <div className="overflow-hidden rounded-lg border border-white/5">
+                                            <h4 className="font-semibold text-ink mb-3">Últimas Transacciones</h4>
+                                            <div className="overflow-hidden rounded-lg border border-line">
                                                 <table className="w-full text-sm">
-                                                    <thead className="bg-white/5">
+                                                    <thead className="bg-raised">
                                                         <tr>
-                                                            <th className="px-3 py-2 text-left text-slate-400">Hora</th>
-                                                            <th className="px-3 py-2 text-left text-slate-400">Método</th>
-                                                            <th className="px-3 py-2 text-right text-slate-400">Total</th>
-                                                            <th className="px-3 py-2 text-center text-slate-400">Acciones</th>
+                                                            <th className="px-3 py-2 text-left text-muted">Hora</th>
+                                                            <th className="px-3 py-2 text-left text-muted">Método</th>
+                                                            <th className="px-3 py-2 text-right text-muted">Total</th>
+                                                            <th className="px-3 py-2 text-center text-muted">Acciones</th>
                                                         </tr>
                                                     </thead>
-                                                    <tbody className="divide-y divide-white/5">
+                                                    <tbody className="divide-y divide-line">
                                                         {selectedSessionDetails.recent_sales.map(tx => (
-                                                            <tr key={tx.id} className="hover:bg-white/5">
-                                                                <td className="px-3 py-2 text-slate-300">
+                                                            <tr key={tx.id} className="hover:bg-raised">
+                                                                <td className="px-3 py-2 text-ink">
                                                                     {new Date(tx.created_at).toLocaleTimeString('es-MX')}
                                                                 </td>
-                                                                <td className="px-3 py-2 capitalize text-slate-300">
+                                                                <td className="px-3 py-2 capitalize text-ink">
                                                                     {tx.payment_method === 'cash' ? 'Efectivo' : 'Tarjeta'}
                                                                 </td>
-                                                                <td className="px-3 py-2 text-right font-mono text-white">
+                                                                <td className="px-3 py-2 text-right font-mono text-ink">
                                                                     ${Number(tx.total).toFixed(2)}
                                                                 </td>
                                                                 <td className="px-3 py-2 text-center">
                                                                     <button
                                                                         onClick={() => handleViewTicket(tx.id)}
                                                                         disabled={loadingTicket}
-                                                                        className="p-1 hover:bg-white/10 rounded text-slate-400 hover:text-white transition-colors"
+                                                                        className="p-1 hover:bg-raised rounded text-muted hover:text-ink transition-colors"
                                                                         title="Ver Ticket"
                                                                     >
                                                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -624,7 +624,7 @@ export default function CashManager() {
                                                         ))}
                                                         {selectedSessionDetails.recent_sales.length === 0 && (
                                                             <tr>
-                                                                <td colSpan="3" className="px-3 py-4 text-center text-slate-500">
+                                                                <td colSpan="3" className="px-3 py-4 text-center text-muted">
                                                                     Sin transacciones
                                                                 </td>
                                                             </tr>
@@ -635,16 +635,16 @@ export default function CashManager() {
                                         </div>
                                     </>
                                 ) : (
-                                    <div className="text-center text-red-400">
+                                    <div className="text-center text-bad">
                                         No se pudo cargar la información de la sesión.
                                     </div>
                                 )}
                             </div>
 
-                            <div className="p-4 border-t border-white/10 bg-[#1a1f37]/50 sticky bottom-0 text-right">
+                            <div className="p-4 border-t border-line bg-[#1a1f37]/50 sticky bottom-0 text-right">
                                 <button
                                     onClick={() => setDetailsModalOpen(false)}
-                                    className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
+                                    className="px-4 py-2 bg-raised hover:bg-raised text-ink rounded-lg transition-colors"
                                 >
                                     Cerrar
                                 </button>
@@ -657,11 +657,11 @@ export default function CashManager() {
             {/* Ticket Modal (Reusable) */}
             {
                 showTicket && (
-                    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 ">
                         <div className="bg-white text-gray-900 w-full max-w-sm rounded-lg shadow-2xl animate-scale-in overflow-hidden relative">
                             <button
                                 onClick={() => setShowTicket(false)}
-                                className="absolute top-2 right-2 p-1 text-gray-400 hover:text-gray-600 z-10"
+                                className="absolute top-2 right-2 p-1 text-muted hover:text-gray-600 z-10"
                             >
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -670,8 +670,8 @@ export default function CashManager() {
 
                             {!ticketData ? (
                                 <div className="p-8 text-center">
-                                    <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-                                    <p className="text-sm text-gray-500">Cargando ticket...</p>
+                                    <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                                    <p className="text-sm text-muted">Cargando ticket...</p>
                                 </div>
                             ) : (
                                 <>
@@ -679,7 +679,7 @@ export default function CashManager() {
                                     <div className="bg-gray-100 p-4 text-center border-b-2 border-dashed border-gray-300">
                                         <h2 className="text-xl font-bold">TORLAN POS</h2>
                                         <p className="text-sm text-gray-600">Ticket de Venta #{ticketData.id}</p>
-                                        <p className="text-xs text-gray-500 mt-1">
+                                        <p className="text-xs text-muted mt-1">
                                             {ticketData.date.toLocaleDateString('es-MX')} - {ticketData.date.toLocaleTimeString('es-MX')}
                                         </p>
                                     </div>
@@ -688,7 +688,7 @@ export default function CashManager() {
                                     <div className="p-4 border-b-2 border-dashed border-gray-300 max-h-[40vh] overflow-y-auto">
                                         <table className="w-full text-sm">
                                             <thead>
-                                                <tr className="text-gray-500 text-xs">
+                                                <tr className="text-muted text-xs">
                                                     <th className="text-left py-1">CANT.</th>
                                                     <th className="text-left py-1">PRODUCTO</th>
                                                     <th className="text-right py-1">PRECIO</th>
@@ -722,7 +722,7 @@ export default function CashManager() {
                                             </div>
                                         </div>
 
-                                        <div className="mt-4 pt-4 border-t border-gray-300 text-center text-xs text-gray-500">
+                                        <div className="mt-4 pt-4 border-t border-gray-300 text-center text-xs text-muted">
                                             <p>Atendió: {ticketData.cashier}</p>
                                             <p className="mt-2">¡Gracias por su compra!</p>
                                         </div>

@@ -9,26 +9,28 @@ function NavItem({ to, icon, label, end = false, onClick, badge }) {
             end={end}
             onClick={onClick}
             className={({ isActive }) =>
-                `group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150
+                `group flex items-center gap-3 px-3 py-2.5 rounded-control text-sm cursor-pointer
+                 border transition-colors duration-150
                 ${isActive
-                    ? 'bg-gradient-to-r from-primary-500/20 to-accent-500/10 text-white border border-primary-500/30 shadow-sm shadow-primary-500/10'
-                    : 'text-slate-400 hover:text-white hover:bg-white/[0.06] border border-transparent'
+                    ? 'bg-accent-soft text-accent border-accent/25 font-semibold'
+                    : 'text-muted hover:text-ink hover:bg-raised border-transparent font-medium'
                 }`
             }
         >
             {({ isActive }) => (
                 <>
-                    <span className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-colors
-                        ${isActive
-                            ? 'bg-gradient-to-br from-primary-500 to-accent-500 text-white shadow-md'
-                            : 'bg-white/5 text-slate-400 group-hover:bg-white/10 group-hover:text-white'
-                        }`}
-                    >
+                    {/* Barra de estado activo: el color no es el unico indicador. */}
+                    <span
+                        aria-hidden="true"
+                        className={`flex-shrink-0 w-0.5 h-6 rounded-full transition-colors
+                            ${isActive ? 'bg-accent' : 'bg-transparent'}`}
+                    />
+                    <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
                         {icon}
                     </span>
                     <span className="flex-1 truncate">{label}</span>
                     {badge !== undefined && badge > 0 && (
-                        <span className="flex-shrink-0 min-w-[20px] h-5 px-1.5 rounded-full bg-primary-500 text-white text-xs font-bold flex items-center justify-center">
+                        <span className="flex-shrink-0 min-w-[20px] h-5 px-1.5 rounded-full bg-accent text-accent-ink text-micro font-bold flex items-center justify-center tabular">
                             {badge > 99 ? '99+' : badge}
                         </span>
                     )}
@@ -40,14 +42,14 @@ function NavItem({ to, icon, label, end = false, onClick, badge }) {
 
 function SectionLabel({ children }) {
     return (
-        <p className="px-3 text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1 mt-2">
+        <p className="px-3 text-micro font-semibold text-muted uppercase mb-1 mt-3">
             {children}
         </p>
     );
 }
 
 function Divider() {
-    return <div className="h-px bg-white/[0.06] my-3" />;
+    return <div className="h-px bg-line my-3" />;
 }
 
 export default function Layout({ children }) {
@@ -65,9 +67,9 @@ export default function Layout({ children }) {
     const empresa = getEmpresa();
 
     const getRoleBadge = () => {
-        if (isGlobalAdmin()) return { label: 'TorlanAdmin', color: 'from-red-500 to-orange-500' };
-        if (isEmpresaAdmin()) return { label: 'Gerente', color: 'from-amber-500 to-orange-500' };
-        return { label: 'Empleado', color: 'from-primary-500 to-accent-500' };
+        if (isGlobalAdmin()) return { label: 'TorlanAdmin', color: 'bg-bad-soft text-bad' };
+        if (isEmpresaAdmin()) return { label: 'Gerente', color: 'bg-warn-soft text-warn' };
+        return { label: 'Empleado', color: 'bg-raised text-muted' };
     };
     const roleBadge = getRoleBadge();
 
@@ -94,14 +96,15 @@ export default function Layout({ children }) {
     };
 
     return (
-        <div className="min-h-screen bg-slate-900 relative">
+        <div className="min-h-screen bg-base relative">
             {/* Mobile Menu Button */}
             <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="md:hidden fixed top-4 left-4 z-50 p-3 bg-gradient-to-r from-primary-500 to-accent-500 rounded-xl shadow-xl touch-target"
-                aria-label="Toggle menu"
+                className="md:hidden fixed top-4 left-4 z-50 p-3 bg-accent rounded-control shadow-pop touch-target cursor-pointer"
+                aria-label="Abrir menú de navegación"
+                aria-expanded={mobileMenuOpen}
             >
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 text-accent-ink" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     {mobileMenuOpen
                         ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -111,7 +114,7 @@ export default function Layout({ children }) {
 
             {/* Mobile Overlay */}
             {mobileMenuOpen && (
-                <div className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-30" onClick={close} />
+                <div className="md:hidden fixed inset-0 bg-ink/40 z-30" onClick={close} />
             )}
 
             {/* Sidebar */}
@@ -122,22 +125,22 @@ export default function Layout({ children }) {
                 ${!mobileMenuOpen ? 'pointer-events-none md:pointer-events-auto' : 'pointer-events-auto'}
             `}>
                 <aside
-                    className="w-full h-full flex flex-col overflow-hidden rounded-2xl bg-slate-800/80 backdrop-blur-xl border border-white/[0.08] shadow-2xl"
+                    className="w-full h-full flex flex-col overflow-hidden rounded-panel bg-surface border border-line shadow-panel"
                     onClick={(e) => e.stopPropagation()}
                     style={{ pointerEvents: 'auto' }}
                 >
-                    {/* Logo */}
-                    <div className="flex items-center gap-3 px-4 py-4 border-b border-white/[0.06]">
-                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center bg-gradient-to-br flex-shrink-0
-                            ${isGlobalAdmin() ? 'from-red-500 to-orange-500' : 'from-primary-500 to-accent-500'}`}
+                    {/* Marca */}
+                    <div className="flex items-center gap-3 px-4 py-4 border-b border-line">
+                        <div className={`w-9 h-9 rounded-control flex items-center justify-center flex-shrink-0
+                            ${isGlobalAdmin() ? 'bg-bad' : 'bg-ink'}`}
                         >
-                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-5 h-5 text-ink" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                             </svg>
                         </div>
                         <div className="min-w-0">
-                            <h1 className="font-bold text-base leading-tight">Torlan POS</h1>
-                            <p className="text-[11px] text-slate-500 leading-tight">
+                            <h1 className="font-bold text-base leading-tight text-ink">Torlan POS</h1>
+                            <p className="text-xs text-muted leading-tight truncate">
                                 {isGlobalAdmin() ? 'Panel Admin' : empresa?.nombre || 'Sistema de Ventas'}
                             </p>
                         </div>
@@ -203,22 +206,23 @@ export default function Layout({ children }) {
                         )}
                     </nav>
 
-                    {/* Footer: user */}
-                    <div className="border-t border-white/[0.06] p-3 flex-shrink-0">
-                        <div className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-white/5 transition-colors mb-1">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm bg-gradient-to-br flex-shrink-0 ${roleBadge.color}`}>
+                    {/* Pie: usuario */}
+                    <div className="border-t border-line p-3 flex-shrink-0">
+                        <div className="flex items-center gap-3 px-2 py-2 rounded-control mb-1">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm flex-shrink-0 ${roleBadge.color}`}>
                                 {user?.username?.charAt(0)?.toUpperCase() || '?'}
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="font-medium text-sm truncate leading-tight">{user?.username}</p>
-                                <p className="text-[11px] text-slate-500 leading-tight">{roleBadge.label}</p>
+                                <p className="font-medium text-sm truncate leading-tight text-ink">{user?.username}</p>
+                                <p className="text-xs text-muted leading-tight">{roleBadge.label}</p>
                             </div>
                         </div>
                         <button
                             onClick={handleLogout}
-                            className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors font-medium"
+                            className="w-full flex items-center gap-3 px-3 py-2 rounded-control text-sm text-muted
+ hover:text-bad hover:bg-bad-soft transition-colors font-medium cursor-pointer"
                         >
-                            <span className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center flex-shrink-0">
+                            <span className="w-5 h-5 flex items-center justify-center flex-shrink-0">
                                 {icons.logout}
                             </span>
                             Cerrar Sesión
@@ -232,11 +236,12 @@ export default function Layout({ children }) {
                 <div className="max-w-7xl mx-auto">
                     {/* Billing Alert */}
                     {user?.billing_status?.alert_level !== 'none' && user?.billing_status?.message && (
-                        <div className={`mb-6 p-4 rounded-lg border flex items-center gap-3 shadow-lg animate-fade-in
+                        <div className={`mb-6 p-4 rounded-panel border flex items-center gap-3 shadow-panel animate-fade-in
                             ${user.billing_status.alert_level === 'blocking' || user.billing_status.alert_level === 'danger'
-                                ? 'bg-red-500/20 border-red-500/50 text-red-200'
-                                : 'bg-yellow-500/20 border-yellow-500/50 text-yellow-200'
+                                ? 'bg-bad-soft border-bad/30 text-bad'
+                                : 'bg-warn-soft border-warn/30 text-warn'
                             }`}
+                            role="alert"
                         >
                             <svg className="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -248,7 +253,7 @@ export default function Layout({ children }) {
                                 <p>{user.billing_status.message}</p>
                             </div>
                             {user.billing_status.should_block && (
-                                <button className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg shadow-md transition-colors text-sm font-bold">
+                                <button className="btn-danger flex-shrink-0">
                                     Contactar Soporte
                                 </button>
                             )}
@@ -257,20 +262,20 @@ export default function Layout({ children }) {
 
                     {/* Blocking Overlay */}
                     {user?.billing_status?.should_block && (
-                        <div className="fixed inset-0 z-[100] bg-slate-900/95 backdrop-blur-md flex items-center justify-center p-4">
-                            <div className="max-w-md w-full text-center space-y-6 animate-bounce-in">
-                                <div className="w-24 h-24 bg-red-500/20 rounded-full flex items-center justify-center mx-auto ring-4 ring-red-500/10">
-                                    <svg className="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="fixed inset-0 z-[100] bg-base flex items-center justify-center p-4">
+                            <div className="max-w-md w-full text-center space-y-6 animate-fade-in">
+                                <div className="w-24 h-24 bg-bad-soft rounded-full flex items-center justify-center mx-auto">
+                                    <svg className="w-12 h-12 text-bad" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                                     </svg>
                                 </div>
                                 <div>
-                                    <h1 className="text-3xl font-bold text-white mb-2">Cuenta Suspendida</h1>
-                                    <p className="text-slate-400 text-lg">{user.billing_status.message}</p>
+                                    <h1 className="text-3xl font-bold text-ink mb-2">Cuenta Suspendida</h1>
+                                    <p className="text-muted text-lg">{user.billing_status.message}</p>
                                 </div>
-                                <div className="p-4 bg-white/5 rounded-xl border border-white/10 text-left">
-                                    <p className="text-sm text-slate-400 mb-2">Razón:</p>
-                                    <p className="text-white font-medium">Pago vencido / Falta de pago</p>
+                                <div className="panel p-4 text-left">
+                                    <p className="text-sm text-muted mb-2">Razón:</p>
+                                    <p className="text-ink font-medium">Pago vencido / Falta de pago</p>
                                 </div>
                                 <button onClick={handleLogout} className="btn-secondary w-full">
                                     Cerrar Sesión

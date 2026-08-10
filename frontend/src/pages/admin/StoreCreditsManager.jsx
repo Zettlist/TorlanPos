@@ -3,10 +3,10 @@ import { API_URL } from '../../config';
 import { useAuth } from '../../context/AuthContext';
 
 const STATUS_CONFIG = {
-    active:   { label: 'Activo',    bg: 'bg-emerald-500/20', text: 'text-emerald-400', border: 'border-emerald-500/30' },
-    used:     { label: 'Agotado',   bg: 'bg-slate-500/20',   text: 'text-slate-400',   border: 'border-slate-500/30' },
-    expired:  { label: 'Expirado',  bg: 'bg-amber-500/20',   text: 'text-amber-400',   border: 'border-amber-500/30' },
-    disabled: { label: 'Inactivo',  bg: 'bg-red-500/20',     text: 'text-red-400',     border: 'border-red-500/30' },
+    active:   { label: 'Activo',    bg: 'bg-ok-soft', text: 'text-ok', border: 'border-emerald-500/30' },
+    used:     { label: 'Agotado',   bg: 'bg-slate-500/20',   text: 'text-muted',   border: 'border-slate-500/30' },
+    expired:  { label: 'Expirado',  bg: 'bg-warn-soft',   text: 'text-warn',   border: 'border-amber-500/30' },
+    disabled: { label: 'Inactivo',  bg: 'bg-bad-soft',     text: 'text-bad',     border: 'border-bad/30' },
 };
 
 function StatusBadge({ status }) {
@@ -29,35 +29,35 @@ function UsesModal({ credit, token, onClose }) {
     }, [credit.id]);
 
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
             <div className="glass-card p-6 w-full max-w-lg animate-slide-up" onClick={e => e.stopPropagation()}>
                 <div className="flex items-center justify-between mb-5">
                     <div>
                         <h3 className="text-lg font-bold">Historial de uso</h3>
-                        <p className="text-sm text-slate-400 font-mono">{credit.code}</p>
+                        <p className="text-sm text-muted font-mono">{credit.code}</p>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+                    <button onClick={onClose} className="p-2 hover:bg-raised rounded-lg transition-colors">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
                 </div>
                 {loading ? (
-                    <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-500" /></div>
+                    <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-accent" /></div>
                 ) : uses.length === 0 ? (
-                    <p className="text-center text-slate-400 py-8">Sin usos registrados</p>
+                    <p className="text-center text-muted py-8">Sin usos registrados</p>
                 ) : (
                     <div className="space-y-2">
                         {uses.map(u => (
-                            <div key={u.id} className="flex items-center justify-between bg-white/5 rounded-xl px-4 py-3">
+                            <div key={u.id} className="flex items-center justify-between bg-raised rounded-control px-4 py-3">
                                 <div>
-                                    <p className="text-sm font-semibold text-red-400">−${Number(u.amount_used).toFixed(2)} MXN</p>
-                                    <p className="text-xs text-slate-500 mt-0.5">
+                                    <p className="text-sm font-semibold text-bad">−${Number(u.amount_used).toFixed(2)} MXN</p>
+                                    <p className="text-xs text-muted mt-0.5">
                                         Saldo: ${Number(u.balance_before).toFixed(2)} → ${Number(u.balance_after).toFixed(2)}
                                         {u.sale_id && <span className="ml-2">· Venta #{u.sale_id}</span>}
                                     </p>
                                 </div>
-                                <p className="text-xs text-slate-400">
+                                <p className="text-xs text-muted">
                                     {new Date(u.used_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}
                                 </p>
                             </div>
@@ -173,7 +173,7 @@ export default function StoreCreditsManager() {
 
     if (loading) return (
         <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500" />
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent" />
         </div>
     );
 
@@ -184,13 +184,13 @@ export default function StoreCreditsManager() {
                 <div>
                     <h1 className="text-2xl font-bold flex items-center gap-2">
                         <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
-                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-4 h-4 text-ink" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                             </svg>
                         </span>
                         Créditos de Tienda
                     </h1>
-                    <p className="text-slate-400 text-sm mt-1">{credits.length} códigos · ${totalActive.toFixed(2)} MXN en circulación</p>
+                    <p className="text-muted text-sm mt-1">{credits.length} códigos · ${totalActive.toFixed(2)} MXN en circulación</p>
                 </div>
                 <button onClick={() => { resetForm(); setShowForm(true); }} className="btn-primary flex items-center gap-2">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -208,22 +208,22 @@ export default function StoreCreditsManager() {
                     { label: 'Expirados', count: credits.filter(c => c.status === 'expired').length,  color: 'from-amber-400 to-orange-400' },
                     { label: 'Inactivos', count: credits.filter(c => c.status === 'disabled').length, color: 'from-red-400 to-pink-400' },
                 ].map(({ label, count, color }) => (
-                    <div key={label} className="glass-card-dark rounded-xl p-4 text-center">
+                    <div key={label} className="glass-card-dark rounded-control p-4 text-center">
                         <p className={`text-2xl font-bold bg-gradient-to-r ${color} bg-clip-text text-transparent`}>{count}</p>
-                        <p className="text-xs text-slate-400 mt-1">{label}</p>
+                        <p className="text-xs text-muted mt-1">{label}</p>
                     </div>
                 ))}
             </div>
 
             {/* Alerts */}
-            {success && <div className="p-4 bg-emerald-500/20 border border-emerald-500/30 rounded-xl text-emerald-300 text-sm">{success}</div>}
-            {error && <div className="p-4 bg-red-500/20 border border-red-500/30 rounded-xl text-red-300 text-sm">{error}</div>}
+            {success && <div className="p-4 bg-ok-soft border border-emerald-500/30 rounded-control text-ok text-sm">{success}</div>}
+            {error && <div className="p-4 bg-bad-soft border border-bad/30 rounded-control text-bad text-sm">{error}</div>}
 
             {/* Table */}
             <div className="glass-card overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full">
-                        <thead className="bg-white/5">
+                        <thead className="bg-raised">
                             <tr>
                                 <th className="table-header">Código</th>
                                 <th className="table-header">Saldo</th>
@@ -235,44 +235,44 @@ export default function StoreCreditsManager() {
                                 <th className="table-header text-right">Acciones</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-white/5">
+                        <tbody className="divide-y divide-line">
                             {credits.length === 0 ? (
                                 <tr>
-                                    <td colSpan={8} className="table-cell text-center text-slate-400 py-12">
+                                    <td colSpan={8} className="table-cell text-center text-muted py-12">
                                         No hay códigos de crédito creados aún
                                     </td>
                                 </tr>
                             ) : credits.map(c => (
-                                <tr key={c.id} className="hover:bg-white/5 transition-colors">
+                                <tr key={c.id} className="hover:bg-raised transition-colors">
                                     <td className="table-cell">
-                                        <span className="font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20 text-xs">
+                                        <span className="font-mono font-bold text-ok bg-ok-soft px-2 py-1 rounded border border-emerald-500/20 text-xs">
                                             {c.code}
                                         </span>
                                     </td>
-                                    <td className="table-cell font-bold text-white">
+                                    <td className="table-cell font-bold text-ink">
                                         ${Number(c.balance).toFixed(2)}
                                     </td>
-                                    <td className="table-cell text-slate-400 text-sm">
+                                    <td className="table-cell text-muted text-sm">
                                         ${Number(c.original_balance).toFixed(2)}
                                     </td>
                                     <td className="table-cell">
                                         <StatusBadge status={c.status} />
                                     </td>
-                                    <td className="table-cell text-slate-300 text-sm">
-                                        {c.cliente_nombre ? `${c.cliente_nombre} ${c.cliente_apellido}` : <span className="text-slate-500">—</span>}
+                                    <td className="table-cell text-ink text-sm">
+                                        {c.cliente_nombre ? `${c.cliente_nombre} ${c.cliente_apellido}` : <span className="text-muted">—</span>}
                                     </td>
-                                    <td className="table-cell text-slate-400 text-sm">
-                                        {c.expiration_date ? new Date(c.expiration_date).toLocaleDateString('es-MX') : <span className="text-slate-500">Nunca</span>}
+                                    <td className="table-cell text-muted text-sm">
+                                        {c.expiration_date ? new Date(c.expiration_date).toLocaleDateString('es-MX') : <span className="text-muted">Nunca</span>}
                                     </td>
-                                    <td className="table-cell text-slate-400 text-sm max-w-[140px] truncate">
-                                        {c.notes || <span className="text-slate-600">—</span>}
+                                    <td className="table-cell text-muted text-sm max-w-[140px] truncate">
+                                        {c.notes || <span className="text-muted">—</span>}
                                     </td>
                                     <td className="table-cell text-right">
                                         <div className="flex justify-end gap-1">
                                             <button
                                                 onClick={() => setUsesModal(c)}
                                                 title="Ver historial"
-                                                className="p-2 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white"
+                                                className="p-2 hover:bg-raised rounded-lg transition-colors text-muted hover:text-ink"
                                             >
                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -281,7 +281,7 @@ export default function StoreCreditsManager() {
                                             <button
                                                 onClick={() => openEdit(c)}
                                                 title="Editar"
-                                                className="p-2 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white"
+                                                className="p-2 hover:bg-raised rounded-lg transition-colors text-muted hover:text-ink"
                                             >
                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -290,7 +290,7 @@ export default function StoreCreditsManager() {
                                             <button
                                                 onClick={() => setDeleteConfirm(c)}
                                                 title="Eliminar"
-                                                className="p-2 hover:bg-red-500/20 rounded-lg transition-colors text-slate-400 hover:text-red-400"
+                                                className="p-2 hover:bg-bad-soft rounded-lg transition-colors text-muted hover:text-bad"
                                             >
                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -307,13 +307,13 @@ export default function StoreCreditsManager() {
 
             {/* Form Modal */}
             {showForm && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={resetForm}>
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={resetForm}>
                     <div className="glass-card p-6 w-full max-w-md animate-slide-up" onClick={e => e.stopPropagation()}>
                         <h2 className="text-xl font-semibold mb-6">{editing ? 'Editar Crédito' : 'Nuevo Crédito de Tienda'}</h2>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             {!editing && (
                                 <div>
-                                    <label className="block text-sm text-slate-400 mb-1">Código (opcional — se genera automáticamente)</label>
+                                    <label className="block text-sm text-muted mb-1">Código (opcional — se genera automáticamente)</label>
                                     <input
                                         type="text"
                                         value={form.code}
@@ -325,7 +325,7 @@ export default function StoreCreditsManager() {
                                 </div>
                             )}
                             <div>
-                                <label className="block text-sm text-slate-400 mb-1">Saldo (MXN)</label>
+                                <label className="block text-sm text-muted mb-1">Saldo (MXN)</label>
                                 <input
                                     type="number"
                                     value={form.balance}
@@ -339,7 +339,7 @@ export default function StoreCreditsManager() {
                             </div>
                             {editing && (
                                 <div>
-                                    <label className="block text-sm text-slate-400 mb-1">Estado</label>
+                                    <label className="block text-sm text-muted mb-1">Estado</label>
                                     <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })} className="input-glass">
                                         <option value="active">Activo</option>
                                         <option value="disabled">Inactivo</option>
@@ -349,7 +349,7 @@ export default function StoreCreditsManager() {
                             )}
                             {/* Asignar a cliente por número */}
                             <div>
-                                <label className="block text-sm text-slate-400 mb-1">Número de Cliente (Opcional)</label>
+                                <label className="block text-sm text-muted mb-1">Número de Cliente (Opcional)</label>
                                 <input
                                     type="text"
                                     value={form.cliente_search}
@@ -364,23 +364,23 @@ export default function StoreCreditsManager() {
                                     autoComplete="off"
                                 />
                                 {clienteLookup && (
-                                    <div className="mt-2 flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/30 rounded-xl px-3 py-2">
+                                    <div className="mt-2 flex items-center gap-2 bg-ok-soft border border-emerald-500/30 rounded-control px-3 py-2">
                                         <div className="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-xs font-bold flex-shrink-0">
                                             {clienteLookup.nombre.charAt(0).toUpperCase()}
                                         </div>
                                         <div>
-                                            <p className="text-sm font-medium text-white">{clienteLookup.nombre} {clienteLookup.apellido}</p>
-                                            <p className="text-xs text-slate-400">{clienteLookup.email}</p>
+                                            <p className="text-sm font-medium text-ink">{clienteLookup.nombre} {clienteLookup.apellido}</p>
+                                            <p className="text-xs text-muted">{clienteLookup.email}</p>
                                         </div>
                                     </div>
                                 )}
                                 {clienteLookupError && (
-                                    <p className="mt-1.5 text-xs text-red-400">{clienteLookupError}</p>
+                                    <p className="mt-1.5 text-xs text-bad">{clienteLookupError}</p>
                                 )}
                             </div>
 
                             <div>
-                                <label className="block text-sm text-slate-400 mb-1">Fecha de Expiración (Opcional)</label>
+                                <label className="block text-sm text-muted mb-1">Fecha de Expiración (Opcional)</label>
                                 <input
                                     type="date"
                                     value={form.expiration_date}
@@ -389,7 +389,7 @@ export default function StoreCreditsManager() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm text-slate-400 mb-1">Notas (Opcional)</label>
+                                <label className="block text-sm text-muted mb-1">Notas (Opcional)</label>
                                 <input
                                     type="text"
                                     value={form.notes}
@@ -398,7 +398,7 @@ export default function StoreCreditsManager() {
                                     placeholder="Ej. Regalo para cliente VIP"
                                 />
                             </div>
-                            {error && <p className="text-red-400 text-sm">{error}</p>}
+                            {error && <p className="text-bad text-sm">{error}</p>}
                             <div className="flex gap-3 pt-2">
                                 <button type="button" onClick={resetForm} className="flex-1 btn-secondary">Cancelar</button>
                                 <button type="submit" className="flex-1 btn-primary">{editing ? 'Guardar Cambios' : 'Crear Crédito'}</button>
@@ -410,18 +410,18 @@ export default function StoreCreditsManager() {
 
             {/* Delete Confirm */}
             {deleteConfirm && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
                     <div className="glass-card p-6 w-full max-w-md animate-slide-up">
                         <div className="flex items-center gap-4 mb-4">
-                            <div className="p-3 bg-red-500/20 rounded-full">
-                                <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="p-3 bg-bad-soft rounded-full">
+                                <svg className="w-8 h-8 text-bad" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                 </svg>
                             </div>
                             <h3 className="text-lg font-semibold">¿Eliminar crédito?</h3>
                         </div>
-                        <p className="text-slate-300 mb-6">
-                            Vas a eliminar el código <span className="font-mono font-bold text-white">{deleteConfirm.code}</span> con saldo de <span className="font-bold text-emerald-400">${Number(deleteConfirm.balance).toFixed(2)} MXN</span>. Esta acción no se puede deshacer.
+                        <p className="text-ink mb-6">
+                            Vas a eliminar el código <span className="font-mono font-bold text-ink">{deleteConfirm.code}</span> con saldo de <span className="font-bold text-ok">${Number(deleteConfirm.balance).toFixed(2)} MXN</span>. Esta acción no se puede deshacer.
                         </p>
                         <div className="flex gap-3">
                             <button onClick={() => setDeleteConfirm(null)} className="flex-1 btn-secondary">Cancelar</button>

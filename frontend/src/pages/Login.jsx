@@ -2,6 +2,15 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
+/**
+ * Login — vocabulario impreso "Bisonte".
+ *
+ * El resto del POS usa la direccion "Mostrador": neutra, de alto contraste y
+ * sin adorno, porque se opera contra reloj. Aqui nadie esta cobrando, asi que
+ * es donde la marca puede aparecer sin costar velocidad: tinta plana sobre
+ * papel, trama de semitono y sombra desplazada como registro de impresion mal
+ * alineado — el lenguaje del manga que la tienda vende.
+ */
 export default function Login() {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
@@ -14,7 +23,6 @@ export default function Login() {
         e.preventDefault();
         setError('');
         setLoading(true);
-
         try {
             await login(username, password);
             navigate('/');
@@ -26,90 +34,82 @@ export default function Login() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-4">
-            {/* Background decoration */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-1/4 -left-20 w-96 h-96 bg-primary-500/20 rounded-full blur-3xl"></div>
-                <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-accent-500/20 rounded-full blur-3xl"></div>
-            </div>
+        <div className="min-h-screen paper-surface flex items-center justify-center p-4">
+            <div className="w-full max-w-md">
 
-            <div className="w-full max-w-md relative">
-                {/* Logo and Title */}
-                <div className="text-center mb-8 animate-fade-in">
-                    <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-primary-500 to-accent-500 shadow-2xl shadow-primary-500/30 mb-6">
-                        <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                        </svg>
+                <header className="mb-8">
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-paper-ink flex items-center justify-center flex-shrink-0">
+                            <svg className="w-7 h-7 text-paper" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h1 className="paper-title text-3xl leading-none">Torlan POS</h1>
+                            <p className="text-sm text-paper-ink/70 mt-1">Sistema de punto de venta</p>
+                        </div>
                     </div>
-                    <h1 className="text-4xl font-bold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
-                        Torlan POS
-                    </h1>
-                    <p className="text-slate-400 mt-2">Sistema de Punto de Venta</p>
-                </div>
+                    <div className="halftone mt-5" aria-hidden="true" />
+                </header>
 
-                {/* Login Form */}
-                <div className="glass-card p-8 animate-slide-up">
-                    <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="paper-panel p-7">
+                    <form onSubmit={handleSubmit} className="space-y-5" noValidate>
                         {error && (
-                            <div className="p-4 bg-red-500/20 border border-red-500/30 rounded-xl text-red-300 text-sm animate-fade-in">
+                            <div
+                                role="alert"
+                                className="p-3 border-2 border-paper-spot text-paper-spot text-sm font-medium"
+                            >
                                 {error}
                             </div>
                         )}
 
                         <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-2">
-                                Usuario o No. Empleado
+                            <label htmlFor="login-user" className="block text-micro font-bold uppercase text-paper-ink mb-2">
+                                Usuario o No. de empleado
                             </label>
                             <input
+                                id="login-user"
                                 type="text"
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}
-                                className="input-glass"
+                                className="w-full min-h-touch px-4 py-3 bg-white text-paper-ink
+                                           border-2 border-paper-rule rounded-none
+                                           placeholder-paper-ink/40
+                                           focus:outline-none focus:border-paper-spot"
                                 placeholder="Ingresa tu usuario"
                                 required
                                 autoFocus
+                                autoComplete="username"
                             />
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-2">
+                            <label htmlFor="login-pass" className="block text-micro font-bold uppercase text-paper-ink mb-2">
                                 Contraseña
                             </label>
                             <input
+                                id="login-pass"
                                 type="password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                className="input-glass"
+                                className="w-full min-h-touch px-4 py-3 bg-white text-paper-ink
+                                           border-2 border-paper-rule rounded-none
+                                           placeholder-paper-ink/40
+                                           focus:outline-none focus:border-paper-spot"
                                 placeholder="••••••••"
                                 required
+                                autoComplete="current-password"
                             />
                         </div>
 
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="w-full btn-primary flex items-center justify-center gap-2"
-                        >
-                            {loading ? (
-                                <>
-                                    <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
-                                    Iniciando sesión...
-                                </>
-                            ) : (
-                                <>
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-                                    </svg>
-                                    Iniciar Sesión
-                                </>
-                            )}
+                        <button type="submit" disabled={loading} className="paper-btn w-full gap-2 disabled:opacity-50">
+                            {loading ? 'Entrando…' : 'Entrar'}
                         </button>
                     </form>
                 </div>
 
-                {/* Footer */}
-                <p className="text-center text-slate-500 text-sm mt-6">
-                    © 2025 Torlan POS. Todos los derechos reservados.
+                <p className="text-center text-paper-ink/60 text-xs mt-6">
+                    © 2026 Torlan POS
                 </p>
             </div>
         </div>

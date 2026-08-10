@@ -3,12 +3,12 @@ import { useAuth } from '../context/AuthContext';
 import { API_URL } from '../config';
 
 const STATUS_CONFIG = {
-    pendiente:  { label: 'Pendiente',  bg: 'bg-amber-500/20',   text: 'text-amber-400',   border: 'border-amber-500/30',   dot: 'bg-amber-400'   },
-    confirmado: { label: 'Confirmado', bg: 'bg-emerald-500/20', text: 'text-emerald-400', border: 'border-emerald-500/30', dot: 'bg-emerald-400' },
+    pendiente:  { label: 'Pendiente',  bg: 'bg-warn-soft',   text: 'text-warn',   border: 'border-amber-500/30',   dot: 'bg-amber-400'   },
+    confirmado: { label: 'Confirmado', bg: 'bg-ok-soft', text: 'text-ok', border: 'border-emerald-500/30', dot: 'bg-emerald-400' },
     envio:      { label: 'En Envío',   bg: 'bg-blue-500/20',    text: 'text-blue-400',    border: 'border-blue-500/30',    dot: 'bg-blue-400'    },
     entregado:  { label: 'Entregado',  bg: 'bg-teal-500/20',    text: 'text-teal-400',    border: 'border-teal-500/30',    dot: 'bg-teal-400'    },
     reclamo:    { label: 'Reclamo',    bg: 'bg-orange-500/20',  text: 'text-orange-400',  border: 'border-orange-500/30',  dot: 'bg-orange-400'  },
-    cancelado:  { label: 'Cancelado',  bg: 'bg-red-500/20',     text: 'text-red-400',     border: 'border-red-500/30',     dot: 'bg-red-400'     },
+    cancelado:  { label: 'Cancelado',  bg: 'bg-bad-soft',     text: 'text-bad',     border: 'border-bad/30',     dot: 'bg-red-400'     },
 };
 
 const SHIPPING_CONFIG = {
@@ -18,7 +18,7 @@ const SHIPPING_CONFIG = {
 
 const CLAIM_CONFIG = {
     disputa:    { label: 'En disputa',  icon: '⚠️', bg: 'bg-orange-500/15', text: 'text-orange-300', border: 'border-orange-500/20' },
-    resolucion: { label: 'Resuelto',    icon: '✅', bg: 'bg-emerald-500/15', text: 'text-emerald-300', border: 'border-emerald-500/20' },
+    resolucion: { label: 'Resuelto',    icon: '✅', bg: 'bg-ok-soft', text: 'text-ok', border: 'border-emerald-500/20' },
 };
 
 function StatusBadge({ status }) {
@@ -58,7 +58,7 @@ function ProcessTypeBadge({ processType, status }) {
         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border ${
             isAuto
                 ? 'bg-violet-500/15 text-violet-400 border-violet-500/30'
-                : 'bg-slate-500/15 text-slate-400 border-slate-500/30'
+                : 'bg-slate-500/15 text-muted border-slate-500/30'
         }`}>
             {isAuto ? (
                 <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -249,24 +249,24 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
         setGeneratingLabel(false);
     };
 
-    const Spinner = () => <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />;
+    const Spinner = () => <div className="w-4 h-4 border-2 border-line border-t-white rounded-full animate-spin" />;
 
     return (
         <div
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
             onClick={!acting ? onClose : undefined}
         >
             <div
-                className="bg-slate-800 border border-white/10 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl"
+                className="bg-surface border border-line rounded-panel w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="flex items-start justify-between p-6 border-b border-white/10">
+                <div className="flex items-start justify-between p-6 border-b border-line">
                     <div>
                         <div className="flex items-center gap-3 mb-1 flex-wrap">
                             <h2 className="text-xl font-bold">Pedido #{order.id}</h2>
                             {order.payment_intent_id && (
-                                <span className="text-xs font-mono text-slate-400 bg-white/5 px-2 py-0.5 rounded">
+                                <span className="text-xs font-mono text-muted bg-raised px-2 py-0.5 rounded">
                                     Orden BS-{order.payment_intent_id.slice(-8).toUpperCase()}
                                 </span>
                             )}
@@ -278,20 +278,20 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                                 <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border ${
                                     order.shipping_method === 'envia'
                                         ? 'bg-cyan-500/15 text-cyan-300 border-cyan-500/20'
-                                        : 'bg-amber-500/15 text-amber-300 border-amber-500/20'
+                                        : 'bg-warn-soft text-warn border-amber-500/20'
                                 }`}>
                                     {order.shipping_method === 'envia' ? '📦 Envia.com' : '🦬 Envío Bisonte'}
                                 </span>
                             )}
                         </div>
-                        <p className="text-sm text-slate-400">
+                        <p className="text-sm text-muted">
                             {new Date(order.created_at).toLocaleDateString('es-MX', {
                                 day: '2-digit', month: 'long', year: 'numeric',
                                 hour: '2-digit', minute: '2-digit'
                             })}
                         </p>
                     </div>
-                    <button onClick={onClose} disabled={acting} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+                    <button onClick={onClose} disabled={acting} className="p-2 hover:bg-raised rounded-lg transition-colors">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
@@ -303,7 +303,7 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                     {/* Confirm result banner */}
                     {resultado && (
                         resultado.stockInsuficiente ? (
-                            <div className="rounded-xl p-4 border bg-amber-500/10 border-amber-500/30 text-amber-300">
+                            <div className="rounded-control p-4 border bg-warn-soft border-amber-500/30 text-warn">
                                 <p className="font-semibold">⚠️ Stock insuficiente — no se confirmó</p>
                                 <p className="text-sm mt-1 opacity-80">{resultado.motivo}</p>
                                 {resultado.advertencias?.length > 0 && (
@@ -316,14 +316,14 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                                 <p className="text-xs mt-3 opacity-60">Cancela el pedido manualmente y contacta al cliente.</p>
                             </div>
                         ) : (
-                            <div className={`rounded-xl p-4 border ${resultado.ok
-                                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                                : 'bg-red-500/10 border-red-500/30 text-red-300'}`}
+                            <div className={`rounded-control p-4 border ${resultado.ok
+                                ? 'bg-ok-soft border-emerald-500/30 text-ok'
+                                : 'bg-bad-soft border-bad/30 text-bad'}`}
                             >
                                 <p className="font-semibold">{resultado.ok ? '✅ Pedido confirmado' : '❌ Pedido cancelado automáticamente'}</p>
                                 {resultado.motivo && <p className="text-sm mt-1 opacity-80">{resultado.motivo}</p>}
                                 {resultado.labelError && (
-                                    <p className="text-xs mt-2 bg-amber-500/20 border border-amber-500/30 text-amber-300 rounded-lg px-3 py-2">
+                                    <p className="text-xs mt-2 bg-warn-soft border border-amber-500/30 text-warn rounded-lg px-3 py-2">
                                         ⚠️ Guía Envia.com no pudo generarse: {typeof resultado.labelError === 'string' ? resultado.labelError : JSON.stringify(resultado.labelError)}. Puedes generarla desde el pedido confirmado.
                                     </p>
                                 )}
@@ -333,9 +333,9 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
 
                     {/* Tracking number — shown for any status when available */}
                     {order.tracking_number && (
-                        <div className="bg-violet-500/10 border border-violet-500/20 rounded-xl p-4">
+                        <div className="bg-violet-500/10 border border-violet-500/20 rounded-control p-4">
                             <p className="text-xs text-violet-400 uppercase tracking-wider mb-1">Número de Guía</p>
-                            <p className="font-mono text-lg font-bold text-white">{order.tracking_number}</p>
+                            <p className="font-mono text-lg font-bold text-ink">{order.tracking_number}</p>
                             {order.envia_label_data && (
                                 (() => {
                                     try {
@@ -354,26 +354,26 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
 
                     {/* Claim info (when in reclamo) */}
                     {isReclamo && (
-                        <div className={`rounded-xl p-4 border ${
+                        <div className={`rounded-control p-4 border ${
                             order.claim_status === 'resolucion'
-                                ? 'bg-emerald-500/10 border-emerald-500/20'
+                                ? 'bg-ok-soft border-emerald-500/20'
                                 : 'bg-orange-500/10 border-orange-500/20'
                         }`}>
-                            <p className="text-xs uppercase tracking-wider mb-2 text-slate-400">Reclamo</p>
+                            <p className="text-xs uppercase tracking-wider mb-2 text-muted">Reclamo</p>
                             <SubStatusBadge claimStatus={order.claim_status} />
                             {order.claim_notes && (
-                                <p className="text-sm text-slate-300 mt-2 leading-relaxed">{order.claim_notes}</p>
+                                <p className="text-sm text-ink mt-2 leading-relaxed">{order.claim_notes}</p>
                             )}
                         </div>
                     )}
 
                     {/* Delivered date */}
                     {isEntregado && order.delivered_at && (
-                        <div className="bg-teal-500/10 border border-teal-500/20 rounded-xl p-4 flex items-center gap-3">
+                        <div className="bg-teal-500/10 border border-teal-500/20 rounded-control p-4 flex items-center gap-3">
                             <span className="text-2xl">🎉</span>
                             <div>
                                 <p className="text-xs text-teal-400 uppercase tracking-wider">Entregado</p>
-                                <p className="text-sm text-slate-300">
+                                <p className="text-sm text-ink">
                                     {new Date(order.delivered_at).toLocaleDateString('es-MX', {
                                         day: '2-digit', month: 'long', year: 'numeric',
                                         hour: '2-digit', minute: '2-digit'
@@ -384,34 +384,34 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                     )}
 
                     {/* Cliente */}
-                    <div className="bg-white/5 rounded-xl p-4">
-                        <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Cliente</p>
+                    <div className="bg-raised rounded-control p-4">
+                        <p className="text-xs text-muted uppercase tracking-wider mb-3">Cliente</p>
                         <div className="flex items-center gap-3 mb-3">
                             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center font-semibold text-sm flex-shrink-0">
                                 {order.nombre?.charAt(0)?.toUpperCase() ?? '?'}
                             </div>
                             <div>
                                 <p className="font-medium">{order.nombre} {order.apellido}</p>
-                                {order.client_code && <p className="text-xs text-slate-500 font-mono mt-0.5">{order.client_code}</p>}
+                                {order.client_code && <p className="text-xs text-muted font-mono mt-0.5">{order.client_code}</p>}
                             </div>
                         </div>
-                        <div className="space-y-2 pt-3 border-t border-white/10">
-                            <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Contacto</p>
+                        <div className="space-y-2 pt-3 border-t border-line">
+                            <p className="text-xs text-muted uppercase tracking-wider mb-2">Contacto</p>
                             <a href={`mailto:${order.email}`} className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 transition-colors group">
-                                <svg className="w-4 h-4 text-slate-500 group-hover:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-4 h-4 text-muted group-hover:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                                 </svg>
                                 {order.email}
                             </a>
                             {order.telefono ? (
                                 <a href={`tel:${order.telefono}`} className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 transition-colors group">
-                                    <svg className="w-4 h-4 text-slate-500 group-hover:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className="w-4 h-4 text-muted group-hover:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                                     </svg>
                                     {order.telefono}
                                 </a>
                             ) : (
-                                <p className="flex items-center gap-2 text-sm text-slate-500 italic">
+                                <p className="flex items-center gap-2 text-sm text-muted italic">
                                     <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                                     </svg>
@@ -423,18 +423,18 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
 
                     {/* Dirección */}
                     {order.calle && (
-                        <div className="bg-white/5 rounded-xl p-4">
-                            <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Dirección de Entrega</p>
+                        <div className="bg-raised rounded-control p-4">
+                            <p className="text-xs text-muted uppercase tracking-wider mb-3">Dirección de Entrega</p>
                             <div className="flex gap-3">
-                                <svg className="w-5 h-5 text-slate-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-5 h-5 text-muted flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                 </svg>
                                 <div className="text-sm space-y-0.5">
                                     {order.nombre_recibe && <p className="font-medium">{order.nombre_recibe}</p>}
-                                    <p className="text-slate-300">{order.calle} {order.numero}</p>
-                                    <p className="text-slate-400">{order.colonia}, {order.municipio}</p>
-                                    <p className="text-slate-400">{order.estado_entrega} CP {order.cp}</p>
+                                    <p className="text-ink">{order.calle} {order.numero}</p>
+                                    <p className="text-muted">{order.colonia}, {order.municipio}</p>
+                                    <p className="text-muted">{order.estado_entrega} CP {order.cp}</p>
                                 </div>
                             </div>
                         </div>
@@ -442,17 +442,17 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
 
                     {/* Productos */}
                     <div>
-                        <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Productos</p>
+                        <p className="text-xs text-muted uppercase tracking-wider mb-3">Productos</p>
                         <div className="space-y-2">
                             {order.items?.map((item) => {
                                 const stockInsuficiente = isPendiente && item.alcanza === false;
                                 return (
-                                    <div key={item.id} className={`flex items-center gap-3 rounded-xl p-3 ${stockInsuficiente ? 'bg-red-500/10 border border-red-500/20' : 'bg-white/5'}`}>
+                                    <div key={item.id} className={`flex items-center gap-3 rounded-control p-3 ${stockInsuficiente ? 'bg-bad-soft border border-bad/30' : 'bg-raised'}`}>
                                         {item.image_url ? (
-                                            <img src={item.image_url} alt={item.name} className="w-12 h-12 rounded-lg object-cover flex-shrink-0 bg-white/10" />
+                                            <img src={item.image_url} alt={item.name} className="w-12 h-12 rounded-lg object-cover flex-shrink-0 bg-raised" />
                                         ) : (
-                                            <div className="w-12 h-12 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
-                                                <svg className="w-6 h-6 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <div className="w-12 h-12 rounded-lg bg-raised flex items-center justify-center flex-shrink-0">
+                                                <svg className="w-6 h-6 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                                                 </svg>
                                             </div>
@@ -460,14 +460,14 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                                         <div className="flex-1 min-w-0">
                                             <p className="font-medium text-sm truncate">{item.name}</p>
                                             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                                                <span className="text-xs text-slate-400">x{item.quantity}</span>
+                                                <span className="text-xs text-muted">x{item.quantity}</span>
                                                 {isPendiente && (
                                                     <>
-                                                        <span className={`text-xs px-1.5 py-0.5 rounded ${!item.alcanza ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                                                        <span className={`text-xs px-1.5 py-0.5 rounded ${!item.alcanza ? 'bg-bad-soft text-bad' : 'bg-ok-soft text-ok'}`}>
                                                             Disponible: {item.disponible ?? item.stock}
                                                         </span>
                                                         {item.reservado_anteriores > 0 && (
-                                                            <span className="text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400">
+                                                            <span className="text-xs px-1.5 py-0.5 rounded bg-warn-soft text-warn">
                                                                 {item.reservado_anteriores} reservado(s) por órdenes anteriores
                                                             </span>
                                                         )}
@@ -477,7 +477,7 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                                         </div>
                                         <div className="text-right flex-shrink-0">
                                             <p className="font-semibold text-sm">${(item.price * item.quantity).toFixed(2)}</p>
-                                            <p className="text-xs text-slate-500">${Number(item.price).toFixed(2)} c/u</p>
+                                            <p className="text-xs text-muted">${Number(item.price).toFixed(2)} c/u</p>
                                         </div>
                                     </div>
                                 );
@@ -486,21 +486,21 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                     </div>
 
                     {/* Desglose */}
-                    <div className="bg-white/5 rounded-xl p-4 space-y-2 text-sm">
-                        <div className="flex justify-between text-slate-400">
+                    <div className="bg-raised rounded-control p-4 space-y-2 text-sm">
+                        <div className="flex justify-between text-muted">
                             <span>Subtotal</span><span>${Number(order.subtotal).toFixed(2)}</span>
                         </div>
                         {Number(order.discount) > 0 && (
-                            <div className="flex justify-between text-emerald-400">
+                            <div className="flex justify-between text-ok">
                                 <span>Descuento</span><span>-${Number(order.discount).toFixed(2)}</span>
                             </div>
                         )}
                         {Number(order.surcharge) > 0 && (
-                            <div className="flex justify-between text-slate-400">
+                            <div className="flex justify-between text-muted">
                                 <span>Envío</span><span>${Number(order.surcharge).toFixed(2)}</span>
                             </div>
                         )}
-                        <div className="flex justify-between font-bold text-base pt-2 border-t border-white/10">
+                        <div className="flex justify-between font-bold text-base pt-2 border-t border-line">
                             <span>Total</span><span>${Number(order.total).toFixed(2)}</span>
                         </div>
                     </div>
@@ -512,16 +512,16 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                         <div className="space-y-3">
                             {/* Envia.com: info — guía se genera automáticamente al confirmar existencia */}
                             {isEnvia && (
-                                <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-xl p-4 flex items-start gap-3">
+                                <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-control p-4 flex items-start gap-3">
                                     <span className="text-lg flex-shrink-0">📦</span>
                                     <div>
                                         <p className="text-xs text-cyan-400 font-semibold uppercase tracking-wider">Envío Envia.com</p>
-                                        <p className="text-xs text-slate-400 mt-0.5">La guía se genera automáticamente al confirmar existencia.</p>
+                                        <p className="text-xs text-muted mt-0.5">La guía se genera automáticamente al confirmar existencia.</p>
                                     </div>
                                 </div>
                             )}
                             {cancelError && (
-                                <div className="rounded-xl p-3 border bg-red-500/10 border-red-500/30 text-red-300 text-sm">
+                                <div className="rounded-control p-3 border bg-bad-soft border-bad/30 text-bad text-sm">
                                     <p className="font-semibold">❌ Error al cancelar</p>
                                     <p className="mt-1 opacity-80">{cancelError}</p>
                                 </div>
@@ -530,7 +530,7 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                                 <button
                                     onClick={handleConfirm}
                                     disabled={acting}
-                                    className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
+                                    className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-control font-semibold transition-colors flex items-center justify-center gap-2"
                                 >
                                     {acting ? <Spinner /> : (
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -542,7 +542,7 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                                 <button
                                     onClick={handleCancel}
                                     disabled={acting}
-                                    className="px-5 py-3 bg-white/5 hover:bg-red-500/20 disabled:opacity-50 text-red-400 hover:text-red-300 border border-white/10 rounded-xl font-semibold transition-colors"
+                                    className="px-5 py-3 bg-raised hover:bg-bad-soft disabled:opacity-50 text-bad hover:text-bad border border-line rounded-control font-semibold transition-colors"
                                 >
                                     {cancelError ? 'Reintentar' : 'Cancelar'}
                                 </button>
@@ -555,17 +555,17 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                         <div className="space-y-3">
                             {/* Envia.com — fallback si la guía no se generó al confirmar */}
                             {isEnvia && !order.tracking_number && (
-                                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 space-y-3">
-                                    <p className="text-xs text-amber-400 font-semibold">⚠️ Guía no generada — hubo un error al confirmar</p>
+                                <div className="bg-warn-soft border border-amber-500/20 rounded-control p-4 space-y-3">
+                                    <p className="text-xs text-warn font-semibold">⚠️ Guía no generada — hubo un error al confirmar</p>
                                     {labelError && (
-                                        <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+                                        <p className="text-xs text-bad bg-bad-soft border border-bad/30 rounded-lg px-3 py-2">
                                             {typeof labelError === 'string' ? labelError : JSON.stringify(labelError)}
                                         </p>
                                     )}
                                     <button
                                         onClick={handleGenerateLabel}
                                         disabled={generatingLabel || acting}
-                                        className="w-full py-2.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white rounded-xl font-semibold text-sm transition-colors flex items-center justify-center gap-2"
+                                        className="w-full py-2.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white rounded-control font-semibold text-sm transition-colors flex items-center justify-center gap-2"
                                     >
                                         {generatingLabel ? <Spinner /> : '🏷️'}
                                         {generatingLabel ? 'Generando...' : 'Generar Guía Envia.com'}
@@ -574,9 +574,9 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                             )}
                             {/* Envia.com — guía lista, esperar webhook de paquetería */}
                             {isEnvia && order.tracking_number && (
-                                <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-xl p-4">
+                                <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-control p-4">
                                     <p className="text-xs text-cyan-300 font-semibold mb-1">📦 Guía generada — en espera de recolección</p>
-                                    <p className="text-xs text-slate-400">El estado avanzará automáticamente cuando la paquetería registre el movimiento.</p>
+                                    <p className="text-xs text-muted">El estado avanzará automáticamente cuando la paquetería registre el movimiento.</p>
                                 </div>
                             )}
                             {!isEnvia && !showShipForm ? (
@@ -584,7 +584,7 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                                     <button
                                         onClick={() => setShowShipForm(true)}
                                         disabled={acting}
-                                        className="flex-1 py-3 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
+                                        className="flex-1 py-3 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white rounded-control font-semibold transition-colors flex items-center justify-center gap-2"
                                     >
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
@@ -593,7 +593,7 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                                     </button>
                                 </div>
                             ) : !isEnvia && (
-                                <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 space-y-4">
+                                <div className="bg-blue-500/10 border border-blue-500/20 rounded-control p-4 space-y-4">
                                     <p className="text-sm font-semibold text-blue-300">Preparar Envío</p>
                                     {/* Sub-status */}
                                     <div className="grid grid-cols-2 gap-2">
@@ -604,20 +604,20 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                                             <button
                                                 key={value}
                                                 onClick={() => setShipData(prev => ({ ...prev, shipping_status: value }))}
-                                                className={`p-3 rounded-xl border text-left transition-all ${
+                                                className={`p-3 rounded-control border text-left transition-all ${
                                                     shipData.shipping_status === value
                                                         ? 'border-blue-500 bg-blue-500/20'
-                                                        : 'border-white/10 bg-white/5 hover:border-white/20'
+                                                        : 'border-line bg-raised hover:border-line-strong'
                                                 }`}
                                             >
                                                 <p className="text-sm font-medium">{label}</p>
-                                                <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
+                                                <p className="text-xs text-muted mt-0.5">{desc}</p>
                                             </button>
                                         ))}
                                     </div>
                                     {/* Tracking */}
                                     <div>
-                                        <label className="text-xs text-slate-400 mb-1 block">
+                                        <label className="text-xs text-muted mb-1 block">
                                             Número de Guía {shipData.shipping_status === 'en_espera' ? '(opcional)' : ''}
                                         </label>
                                         <input
@@ -625,17 +625,17 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                                             value={shipData.tracking_number}
                                             onChange={(e) => setShipData(prev => ({ ...prev, tracking_number: e.target.value }))}
                                             placeholder="Ej. 1Z999AA10123456784"
-                                            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm font-mono focus:outline-none focus:border-blue-500/50"
+                                            className="w-full px-3 py-2 bg-raised border border-line rounded-lg text-sm font-mono focus:outline-none focus:border-blue-500/50"
                                         />
                                     </div>
                                     {shipError && (
-                                        <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{shipError}</p>
+                                        <p className="text-xs text-bad bg-bad-soft border border-bad/30 rounded-lg px-3 py-2">{shipError}</p>
                                     )}
                                     <div className="flex gap-2">
                                         <button
                                             onClick={handleShip}
                                             disabled={acting}
-                                            className="flex-1 py-2.5 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white rounded-xl font-semibold text-sm transition-colors flex items-center justify-center gap-2"
+                                            className="flex-1 py-2.5 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white rounded-control font-semibold text-sm transition-colors flex items-center justify-center gap-2"
                                         >
                                             {acting ? <Spinner /> : null}
                                             {shipData.shipping_status === 'despachado' ? '🚚 Confirmar Despacho' : '📦 Confirmar En Espera'}
@@ -643,7 +643,7 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                                         <button
                                             onClick={() => { setShowShipForm(false); setShipError(null); }}
                                             disabled={acting}
-                                            className="px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm transition-colors"
+                                            className="px-4 py-2.5 bg-raised hover:bg-raised border border-line rounded-control text-sm transition-colors"
                                         >
                                             Cancelar
                                         </button>
@@ -660,30 +660,30 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                                 <button
                                     onClick={() => { setShowShipForm(true); setShipData(prev => ({ ...prev, shipping_status: 'despachado' })); }}
                                     disabled={acting}
-                                    className="w-full py-3 bg-violet-500 hover:bg-violet-600 disabled:opacity-50 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
+                                    className="w-full py-3 bg-violet-500 hover:bg-violet-600 disabled:opacity-50 text-ink rounded-control font-semibold transition-colors flex items-center justify-center gap-2"
                                 >
                                     <span>🚚</span> Marcar como Despachado
                                 </button>
                             )}
 
                             {order.shipping_status === 'en_espera' && showShipForm && (
-                                <div className="bg-violet-500/10 border border-violet-500/20 rounded-xl p-4 space-y-3">
+                                <div className="bg-violet-500/10 border border-violet-500/20 rounded-control p-4 space-y-3">
                                     <p className="text-sm font-semibold text-violet-300">🚚 Marcar como Despachado</p>
                                     <div>
-                                        <label className="text-xs text-slate-400 mb-1 block">Número de Guía (opcional)</label>
+                                        <label className="text-xs text-muted mb-1 block">Número de Guía (opcional)</label>
                                         <input
                                             type="text"
                                             value={shipData.tracking_number}
                                             onChange={(e) => setShipData(prev => ({ ...prev, tracking_number: e.target.value }))}
                                             placeholder="Ej. 1Z999AA10123456784"
-                                            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm font-mono focus:outline-none focus:border-violet-500/50"
+                                            className="w-full px-3 py-2 bg-raised border border-line rounded-lg text-sm font-mono focus:outline-none focus:border-violet-500/50"
                                         />
                                     </div>
                                     <div className="flex gap-2">
                                         <button
                                             onClick={handleMarkDespachado}
                                             disabled={acting}
-                                            className="flex-1 py-2.5 bg-violet-500 hover:bg-violet-600 disabled:opacity-50 text-white rounded-xl font-semibold text-sm transition-colors flex items-center justify-center gap-2"
+                                            className="flex-1 py-2.5 bg-violet-500 hover:bg-violet-600 disabled:opacity-50 text-ink rounded-control font-semibold text-sm transition-colors flex items-center justify-center gap-2"
                                         >
                                             {acting ? <Spinner /> : null}
                                             Confirmar Despacho
@@ -691,7 +691,7 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                                         <button
                                             onClick={() => setShowShipForm(false)}
                                             disabled={acting}
-                                            className="px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm transition-colors"
+                                            className="px-4 py-2.5 bg-raised hover:bg-raised border border-line rounded-control text-sm transition-colors"
                                         >
                                             Cancelar
                                         </button>
@@ -704,7 +704,7 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                                     <button
                                         onClick={handleDeliver}
                                         disabled={acting}
-                                        className="flex-1 py-3 bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
+                                        className="flex-1 py-3 bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-ink rounded-control font-semibold transition-colors flex items-center justify-center gap-2"
                                     >
                                         {acting ? <Spinner /> : <span>🎉</span>}
                                         Marcar Entregado
@@ -712,7 +712,7 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                                     <button
                                         onClick={() => { setShowClaimForm(true); setClaimData({ claim_status: 'disputa', claim_type: 'cliente', claim_notes: '' }); }}
                                         disabled={acting}
-                                        className="px-5 py-3 bg-orange-500/20 hover:bg-orange-500/30 disabled:opacity-50 text-orange-400 border border-orange-500/30 rounded-xl font-semibold transition-colors"
+                                        className="px-5 py-3 bg-orange-500/20 hover:bg-orange-500/30 disabled:opacity-50 text-orange-400 border border-orange-500/30 rounded-control font-semibold transition-colors"
                                     >
                                         Reclamo
                                     </button>
@@ -726,7 +726,7 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                         <button
                             onClick={() => { setShowClaimForm(true); setClaimData({ claim_status: 'disputa', claim_type: 'cliente', claim_notes: '' }); }}
                             disabled={acting}
-                            className="w-full py-3 bg-orange-500/20 hover:bg-orange-500/30 disabled:opacity-50 text-orange-400 border border-orange-500/30 rounded-xl font-semibold transition-colors"
+                            className="w-full py-3 bg-orange-500/20 hover:bg-orange-500/30 disabled:opacity-50 text-orange-400 border border-orange-500/30 rounded-control font-semibold transition-colors"
                         >
                             ⚠️ Abrir Reclamo
                         </button>
@@ -734,12 +734,12 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
 
                     {/* Claim form (shared for envio + entregado) */}
                     {(isEnvio || isEntregado) && showClaimForm && (
-                        <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-4 space-y-4">
+                        <div className="bg-orange-500/10 border border-orange-500/20 rounded-control p-4 space-y-4">
                             <p className="text-sm font-semibold text-orange-300">⚠️ Abrir Reclamo</p>
 
                             {/* Tipo de reclamo */}
                             <div>
-                                <label className="text-xs text-slate-400 mb-2 block uppercase tracking-wider">Tipo</label>
+                                <label className="text-xs text-muted mb-2 block uppercase tracking-wider">Tipo</label>
                                 <div className="grid grid-cols-2 gap-2">
                                     {[
                                         { value: 'cliente',    label: '👤 Reclamo Cliente',       desc: 'Devolución, daño al recibir, error de staff' },
@@ -748,14 +748,14 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                                         <button
                                             key={value}
                                             onClick={() => setClaimData(prev => ({ ...prev, claim_type: value }))}
-                                            className={`p-3 rounded-xl border text-left transition-all ${
+                                            className={`p-3 rounded-control border text-left transition-all ${
                                                 claimData.claim_type === value
                                                     ? 'border-orange-500 bg-orange-500/20'
-                                                    : 'border-white/10 bg-white/5 hover:border-white/20'
+                                                    : 'border-line bg-raised hover:border-line-strong'
                                             }`}
                                         >
                                             <p className="text-sm font-medium">{label}</p>
-                                            <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
+                                            <p className="text-xs text-muted mt-0.5">{desc}</p>
                                         </button>
                                     ))}
                                 </div>
@@ -763,7 +763,7 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
 
                             {/* Estado */}
                             <div>
-                                <label className="text-xs text-slate-400 mb-2 block uppercase tracking-wider">Estado</label>
+                                <label className="text-xs text-muted mb-2 block uppercase tracking-wider">Estado</label>
                                 <div className="grid grid-cols-2 gap-2">
                                     {[
                                         { value: 'disputa',    label: '⚠️ En disputa',   desc: 'En proceso de resolución' },
@@ -772,34 +772,34 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                                         <button
                                             key={value}
                                             onClick={() => setClaimData(prev => ({ ...prev, claim_status: value }))}
-                                            className={`p-3 rounded-xl border text-left transition-all ${
+                                            className={`p-3 rounded-control border text-left transition-all ${
                                                 claimData.claim_status === value
                                                     ? 'border-orange-500 bg-orange-500/20'
-                                                    : 'border-white/10 bg-white/5 hover:border-white/20'
+                                                    : 'border-line bg-raised hover:border-line-strong'
                                             }`}
                                         >
                                             <p className="text-sm font-medium">{label}</p>
-                                            <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
+                                            <p className="text-xs text-muted mt-0.5">{desc}</p>
                                         </button>
                                     ))}
                                 </div>
                             </div>
 
                             <div>
-                                <label className="text-xs text-slate-400 mb-1 block">Notas del reclamo (opcional)</label>
+                                <label className="text-xs text-muted mb-1 block">Notas del reclamo (opcional)</label>
                                 <textarea
                                     value={claimData.claim_notes}
                                     onChange={(e) => setClaimData(prev => ({ ...prev, claim_notes: e.target.value }))}
                                     placeholder="Describe el problema o la resolución..."
                                     rows={3}
-                                    className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-orange-500/50 resize-none"
+                                    className="w-full px-3 py-2 bg-raised border border-line rounded-lg text-sm focus:outline-none focus:border-orange-500/50 resize-none"
                                 />
                             </div>
                             <div className="flex gap-2">
                                 <button
                                     onClick={handleClaim}
                                     disabled={acting}
-                                    className="flex-1 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl font-semibold text-sm transition-colors flex items-center justify-center gap-2"
+                                    className="flex-1 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-control font-semibold text-sm transition-colors flex items-center justify-center gap-2"
                                 >
                                     {acting ? <Spinner /> : null}
                                     Registrar Reclamo
@@ -807,7 +807,7 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                                 <button
                                     onClick={() => setShowClaimForm(false)}
                                     disabled={acting}
-                                    className="px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm transition-colors"
+                                    className="px-4 py-2.5 bg-raised hover:bg-raised border border-line rounded-control text-sm transition-colors"
                                 >
                                     Cancelar
                                 </button>
@@ -821,7 +821,7 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                             <button
                                 onClick={handleResolve}
                                 disabled={acting}
-                                className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
+                                className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-control font-semibold transition-colors flex items-center justify-center gap-2"
                             >
                                 {acting ? <Spinner /> : <span>✅</span>}
                                 Marcar como Resuelto
@@ -829,7 +829,7 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                             <button
                                 onClick={() => { setShowClaimForm(true); setClaimData({ claim_status: order.claim_status, claim_notes: order.claim_notes || '' }); }}
                                 disabled={acting}
-                                className="w-full py-2 text-xs text-slate-500 hover:text-slate-300 transition-colors"
+                                className="w-full py-2 text-xs text-muted hover:text-ink transition-colors"
                             >
                                 Editar notas del reclamo
                             </button>
@@ -838,7 +838,7 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
 
                     {/* Reclamo edit form */}
                     {isReclamo && showClaimForm && (
-                        <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-4 space-y-4">
+                        <div className="bg-orange-500/10 border border-orange-500/20 rounded-control p-4 space-y-4">
                             <p className="text-sm font-semibold text-orange-300">Editar Reclamo</p>
                             <div className="grid grid-cols-2 gap-2">
                                 {[
@@ -848,31 +848,31 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                                     <button
                                         key={value}
                                         onClick={() => setClaimData(prev => ({ ...prev, claim_status: value }))}
-                                        className={`p-3 rounded-xl border text-left transition-all ${
+                                        className={`p-3 rounded-control border text-left transition-all ${
                                             claimData.claim_status === value
                                                 ? 'border-orange-500 bg-orange-500/20'
-                                                : 'border-white/10 bg-white/5 hover:border-white/20'
+                                                : 'border-line bg-raised hover:border-line-strong'
                                         }`}
                                     >
                                         <p className="text-sm font-medium">{label}</p>
-                                        <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
+                                        <p className="text-xs text-muted mt-0.5">{desc}</p>
                                     </button>
                                 ))}
                             </div>
                             <div>
-                                <label className="text-xs text-slate-400 mb-1 block">Notas</label>
+                                <label className="text-xs text-muted mb-1 block">Notas</label>
                                 <textarea
                                     value={claimData.claim_notes}
                                     onChange={(e) => setClaimData(prev => ({ ...prev, claim_notes: e.target.value }))}
                                     rows={3}
-                                    className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-orange-500/50 resize-none"
+                                    className="w-full px-3 py-2 bg-raised border border-line rounded-lg text-sm focus:outline-none focus:border-orange-500/50 resize-none"
                                 />
                             </div>
                             <div className="flex gap-2">
                                 <button
                                     onClick={handleClaim}
                                     disabled={acting}
-                                    className="flex-1 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl font-semibold text-sm transition-colors flex items-center justify-center gap-2"
+                                    className="flex-1 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-control font-semibold text-sm transition-colors flex items-center justify-center gap-2"
                                 >
                                     {acting ? <Spinner /> : null}
                                     Guardar
@@ -880,7 +880,7 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                                 <button
                                     onClick={() => setShowClaimForm(false)}
                                     disabled={acting}
-                                    className="px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm transition-colors"
+                                    className="px-4 py-2.5 bg-raised hover:bg-raised border border-line rounded-control text-sm transition-colors"
                                 >
                                     Cancelar
                                 </button>
@@ -890,11 +890,11 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
 
                     {/* ZONA DE PELIGRO — Cancelar y reembolsar (post-confirmado) */}
                     {needsRefund && !showRefundConfirm && !resultado && !showShipForm && !showClaimForm && (
-                        <div className="pt-2 border-t border-white/5">
+                        <div className="pt-2 border-t border-line">
                             <button
                                 onClick={() => setShowRefundConfirm(true)}
                                 disabled={acting}
-                                className="w-full py-2.5 text-xs text-red-500/70 hover:text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 rounded-xl transition-all disabled:opacity-30"
+                                className="w-full py-2.5 text-xs text-red-500/70 hover:text-bad hover:bg-bad-soft border border-transparent hover:border-bad/30 rounded-control transition-all disabled:opacity-30"
                             >
                                 💳 Cancelar pedido y reembolsar al cliente
                             </button>
@@ -903,14 +903,14 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
 
                     {/* Confirmación de reembolso */}
                     {showRefundConfirm && (
-                        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 space-y-3">
+                        <div className="bg-bad-soft border border-bad/30 rounded-control p-4 space-y-3">
                             <div className="flex items-start gap-3">
                                 <span className="text-2xl flex-shrink-0">⚠️</span>
                                 <div>
-                                    <p className="font-semibold text-red-300">¿Cancelar y reembolsar?</p>
-                                    <p className="text-xs text-slate-400 mt-1">
+                                    <p className="font-semibold text-bad">¿Cancelar y reembolsar?</p>
+                                    <p className="text-xs text-muted mt-1">
                                         Se procesará un reembolso completo de{' '}
-                                        <strong className="text-white">${Number(order.total).toFixed(2)}</strong>{' '}
+                                        <strong className="text-ink">${Number(order.total).toFixed(2)}</strong>{' '}
                                         vía Stripe. Esta acción no se puede deshacer.
                                     </p>
                                 </div>
@@ -919,7 +919,7 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                                 <button
                                     onClick={handleRefund}
                                     disabled={acting}
-                                    className="flex-1 py-2.5 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white rounded-xl font-semibold text-sm transition-colors flex items-center justify-center gap-2"
+                                    className="flex-1 py-2.5 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white rounded-control font-semibold text-sm transition-colors flex items-center justify-center gap-2"
                                 >
                                     {acting ? <Spinner /> : null}
                                     Confirmar Reembolso
@@ -927,7 +927,7 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                                 <button
                                     onClick={() => setShowRefundConfirm(false)}
                                     disabled={acting}
-                                    className="px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm transition-colors"
+                                    className="px-4 py-2.5 bg-raised hover:bg-raised border border-line rounded-control text-sm transition-colors"
                                 >
                                     No, volver
                                 </button>
@@ -953,13 +953,13 @@ const STAT_ITEMS = [
 ];
 
 const FILTERS = [
-    { value: 'pendiente',  label: 'Pendientes',  activeBg: 'bg-amber-500/20 border-amber-500/40'   },
-    { value: 'confirmado', label: 'Confirmados', activeBg: 'bg-emerald-500/20 border-emerald-500/40' },
+    { value: 'pendiente',  label: 'Pendientes',  activeBg: 'bg-warn-soft border-amber-500/40'   },
+    { value: 'confirmado', label: 'Confirmados', activeBg: 'bg-ok-soft border-emerald-500/40' },
     { value: 'envio',      label: 'Envío',        activeBg: 'bg-blue-500/20 border-blue-500/40'     },
     { value: 'entregado',  label: 'Entregados',  activeBg: 'bg-teal-500/20 border-teal-500/40'     },
     { value: 'reclamo',    label: 'Reclamos',     activeBg: 'bg-orange-500/20 border-orange-500/40' },
-    { value: 'cancelado',  label: 'Cancelados',  activeBg: 'bg-red-500/20 border-red-500/40'       },
-    { value: '',           label: 'Todos',        activeBg: 'bg-primary-500/20 border-primary-500/40' },
+    { value: 'cancelado',  label: 'Cancelados',  activeBg: 'bg-bad-soft border-bad/30'       },
+    { value: '',           label: 'Todos',        activeBg: 'bg-accent/20 border-accent/25' },
 ];
 
 export default function WebOrders() {
@@ -1078,7 +1078,7 @@ export default function WebOrders() {
                 <div>
                     <h1 className="text-2xl font-bold flex items-center gap-2">
                         <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
-                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-5 h-5 text-ink" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                             </svg>
                         </span>
@@ -1094,11 +1094,11 @@ export default function WebOrders() {
                             </span>
                         )}
                     </h1>
-                    <p className="text-sm text-slate-400 mt-1">Pedidos desde Bisonte Shop</p>
+                    <p className="text-sm text-muted mt-1">Pedidos desde Bisonte Shop</p>
                 </div>
                 <button
                     onClick={() => { fetchOrders(); fetchCounts(); }}
-                    className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 bg-raised hover:bg-raised border border-line rounded-control text-sm transition-colors"
                 >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -1113,12 +1113,12 @@ export default function WebOrders() {
                     <button
                         key={key}
                         onClick={() => setFilter(key)}
-                        className={`glass-card-dark rounded-xl p-3 text-center transition-all border ${filter === key ? 'border-white/20 bg-white/[0.07]' : 'border-transparent hover:border-white/10'}`}
+                        className={`glass-card-dark rounded-control p-3 text-center transition-all border ${filter === key ? 'border-line bg-raised' : 'border-transparent hover:border-line-strong'}`}
                     >
                         <p className={`text-2xl font-bold bg-gradient-to-r ${color} bg-clip-text text-transparent`}>
                             {counts[key] ?? 0}
                         </p>
-                        <p className="text-[11px] text-slate-400 mt-0.5">{label}</p>
+                        <p className="text-[11px] text-muted mt-0.5">{label}</p>
                     </button>
                 ))}
             </div>
@@ -1132,7 +1132,7 @@ export default function WebOrders() {
                         className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors border ${
                             filter === value
                                 ? `${activeBg} text-white`
-                                : 'bg-white/5 text-slate-400 border-white/10 hover:border-white/20'
+                                : 'bg-raised text-muted border-line hover:border-line-strong'
                         }`}
                     >
                         {label}
@@ -1153,17 +1153,17 @@ export default function WebOrders() {
             {/* Lista */}
             {loading ? (
                 <div className="flex items-center justify-center h-48">
-                    <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary-500" />
+                    <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-accent" />
                 </div>
             ) : orders.length === 0 ? (
-                <div className="glass-card-dark rounded-2xl p-12 text-center">
-                    <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-4">
-                        <svg className="w-8 h-8 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="glass-card-dark rounded-panel p-12 text-center">
+                    <div className="w-16 h-16 rounded-panel bg-raised flex items-center justify-center mx-auto mb-4">
+                        <svg className="w-8 h-8 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                         </svg>
                     </div>
-                    <p className="text-slate-400 font-medium">Sin pedidos</p>
-                    <p className="text-slate-500 text-sm mt-1">
+                    <p className="text-muted font-medium">Sin pedidos</p>
+                    <p className="text-muted text-sm mt-1">
                         No hay pedidos {filter ? `"${STATUS_CONFIG[filter]?.label?.toLowerCase()}"` : ''} en este momento
                     </p>
                 </div>
@@ -1178,7 +1178,7 @@ export default function WebOrders() {
                         key={order.id}
                         onClick={() => openDetail(order.id)}
                         disabled={detailLoading}
-                        className="w-full glass-card-dark rounded-xl p-4 hover:bg-white/[0.07] transition-colors text-left border border-white/5 hover:border-white/10"
+                        className="w-full glass-card-dark rounded-control p-4 hover:bg-raised transition-colors text-left border border-line hover:border-line-strong"
                     >
                         <div className="flex items-center gap-3">
                             <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center font-semibold text-sm flex-shrink-0">
@@ -1186,7 +1186,7 @@ export default function WebOrders() {
                             </div>
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-1.5 flex-wrap">
-                                    <span className="text-xs font-mono text-slate-500 bg-white/5 px-1.5 py-0.5 rounded">#{order.id}</span>
+                                    <span className="text-xs font-mono text-muted bg-raised px-1.5 py-0.5 rounded">#{order.id}</span>
                                     <p className="font-semibold text-sm truncate">
                                         {order.nombre ? `${order.nombre} ${order.apellido}` : `Pedido #${order.id}`}
                                     </p>
@@ -1195,13 +1195,13 @@ export default function WebOrders() {
                                     {order.web_status === 'reclamo' && <SubStatusBadge claimStatus={order.claim_status} />}
                                     <ProcessTypeBadge processType={order.web_process_type} status={order.web_status} />
                                     {order.conflicto && (
-                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/20 text-red-400 border border-red-500/30">
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-bad-soft text-bad border border-bad/30">
                                             ⚠️ Sin stock
                                         </span>
                                     )}
                                 </div>
                                 <div className="flex items-center gap-2 mt-0.5">
-                                    <p className="text-xs text-slate-400 truncate">{order.email ?? 'Sin email'}</p>
+                                    <p className="text-xs text-muted truncate">{order.email ?? 'Sin email'}</p>
                                     {order.tracking_number && (
                                         <span className="text-xs font-mono text-violet-400 bg-violet-500/10 px-1.5 py-0.5 rounded flex-shrink-0">
                                             {order.tracking_number}
@@ -1211,11 +1211,11 @@ export default function WebOrders() {
                             </div>
                             <div className="text-right flex-shrink-0">
                                 <p className="font-bold text-sm">${Number(order.total).toFixed(2)}</p>
-                                <p className="text-xs text-slate-500">
+                                <p className="text-xs text-muted">
                                     {new Date(order.created_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })}
                                 </p>
                             </div>
-                            <svg className="w-4 h-4 text-slate-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-4 h-4 text-muted flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                             </svg>
                         </div>
@@ -1227,12 +1227,12 @@ export default function WebOrders() {
                         <div className={`flex items-center gap-2 mb-3 pb-2 border-b ${borderClass}`}>
                             <span className="text-lg">{icon}</span>
                             <p className={`text-sm font-semibold ${accentClass}`}>{title}</p>
-                            <span className={`ml-auto text-xs px-2 py-0.5 rounded-full ${accentClass} bg-white/5`}>
+                            <span className={`ml-auto text-xs px-2 py-0.5 rounded-full ${accentClass} bg-raised`}>
                                 {colOrders.length}
                             </span>
                         </div>
                         {colOrders.length === 0 ? (
-                            <p className="text-xs text-slate-500 text-center py-8">Sin pedidos</p>
+                            <p className="text-xs text-muted text-center py-8">Sin pedidos</p>
                         ) : (
                             <div className="space-y-2">
                                 {colOrders.map(order => <OrderCard key={order.id} order={order} />)}
@@ -1248,11 +1248,11 @@ export default function WebOrders() {
                                 <Column
                                     title="Incidente Paquetería"
                                     icon="🚚"
-                                    accentClass="text-amber-400"
+                                    accentClass="text-warn"
                                     borderClass="border-amber-500/20"
                                     orders={reclamoPaqueteria}
                                 />
-                                <div className="w-px bg-white/10 self-stretch flex-shrink-0" />
+                                <div className="w-px bg-raised self-stretch flex-shrink-0" />
                                 <Column
                                     title="Reclamo Cliente"
                                     icon="👤"
@@ -1263,7 +1263,7 @@ export default function WebOrders() {
                             </div>
                             {reclamoResueltos.length > 0 && (
                                 <details className="group">
-                                    <summary className="cursor-pointer text-sm text-slate-500 hover:text-slate-300 transition-colors select-none flex items-center gap-2">
+                                    <summary className="cursor-pointer text-sm text-muted hover:text-ink transition-colors select-none flex items-center gap-2">
                                         <span className="group-open:rotate-90 transition-transform inline-block">▶</span>
                                         Resueltos ({reclamoResueltos.length})
                                     </summary>

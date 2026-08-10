@@ -63,7 +63,7 @@ const CreatableSelect = ({ label, value, onChange, options, placeholder, ...prop
 
     return (
         <div className="relative" ref={wrapperRef}>
-            <label className="block text-sm text-slate-400 mb-1">{label}</label>
+            <label className="block text-sm text-muted mb-1">{label}</label>
             <input
                 type="text"
                 value={value}
@@ -79,7 +79,7 @@ const CreatableSelect = ({ label, value, onChange, options, placeholder, ...prop
                 {...props}
             />
             {isOpen && filteredOptions.length > 0 && (
-                <div className="absolute z-50 w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-xl max-h-48 overflow-y-auto">
+                <div className="absolute z-50 w-full mt-1 bg-surface border border-line rounded-lg shadow-xl max-h-48 overflow-y-auto">
                     {filteredOptions.map((option, index) => (
                         <button
                             key={option}
@@ -89,8 +89,8 @@ const CreatableSelect = ({ label, value, onChange, options, placeholder, ...prop
                                 setIsOpen(false);
                             }}
                             className={`w-full text-left px-3 py-2 text-sm transition-colors ${index === highlightedIndex
-                                ? 'bg-primary-500/20 text-primary-300'
-                                : 'text-slate-300 hover:bg-white/5'
+                                ? 'bg-accent/20 text-accent'
+                                : 'text-ink hover:bg-raised'
                                 }`}
                         >
                             {option}
@@ -106,11 +106,11 @@ const CreatableSelect = ({ label, value, onChange, options, placeholder, ...prop
 const Modal = ({ type, title, isOpen, onClose, children }) => {
     if (!isOpen) return null;
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
-            <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-2xl overflow-hidden animate-scale-in">
-                <div className="flex justify-between items-center p-4 border-b border-slate-700 bg-slate-900/50">
-                    <h3 className="text-xl font-bold text-white">{title}</h3>
-                    <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 animate-fade-in">
+            <div className="bg-surface rounded-control shadow-2xl border border-line w-full max-w-2xl overflow-hidden animate-scale-in">
+                <div className="flex justify-between items-center p-4 border-b border-line bg-surface">
+                    <h3 className="text-xl font-bold text-ink">{title}</h3>
+                    <button onClick={onClose} className="text-muted hover:text-ink transition-colors">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
@@ -119,12 +119,12 @@ const Modal = ({ type, title, isOpen, onClose, children }) => {
                 <div className="p-6 max-h-[70vh] overflow-y-auto">
                     {children}
                 </div>
-                <div className="p-4 border-t border-slate-700 bg-slate-900/50 flex justify-end">
-                    <button onClick={onClose} className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors">
+                <div className="p-4 border-t border-line bg-surface flex justify-end">
+                    <button onClick={onClose} className="px-4 py-2 bg-raised hover:bg-raised text-ink rounded-lg transition-colors">
                         Cerrar
                     </button>
                     {type === 'print' && (
-                        <button className="ml-2 px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-lg transition-colors flex items-center gap-2">
+                        <button className="ml-2 px-4 py-2 bg-accent hover:bg-accent text-white rounded-lg transition-colors flex items-center gap-2">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
                             Imprimir Etiqueta
                         </button>
@@ -685,7 +685,7 @@ export default function Products() {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent"></div>
             </div>
         );
     }
@@ -696,7 +696,7 @@ export default function Products() {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold">Productos</h1>
-                    <p className="text-slate-400">{products.length} productos en catálogo</p>
+                    <p className="text-muted">{products.length} productos en catálogo</p>
                 </div>
                 <div className="flex items-center gap-3">
                 <button
@@ -743,17 +743,17 @@ export default function Products() {
 
             {/* Tabs for General / Adult */}
             {!showForm && (
-                <div className="flex border-b border-white/10 mb-6">
+                <div className="flex border-b border-line mb-6">
                     <button
                         onClick={() => setActiveTab('general')}
-                        className={`px-4 py-3 text-sm font-medium transition-colors relative ${activeTab === 'general' ? 'text-primary-400' : 'text-slate-400 hover:text-slate-200'}`}
+                        className={`px-4 py-3 text-sm font-medium transition-colors relative ${activeTab === 'general' ? 'text-accent' : 'text-muted hover:text-ink'}`}
                     >
                         Catálogo General
-                        {activeTab === 'general' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary-500" />}
+                        {activeTab === 'general' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-accent" />}
                     </button>
                     <button
                         onClick={() => setActiveTab('adult')}
-                        className={`px-4 py-3 text-sm font-medium transition-colors relative flex items-center gap-2 ${activeTab === 'adult' ? 'text-rose-400' : 'text-slate-400 hover:text-slate-200'}`}
+                        className={`px-4 py-3 text-sm font-medium transition-colors relative flex items-center gap-2 ${activeTab === 'adult' ? 'text-rose-400' : 'text-muted hover:text-ink'}`}
                     >
                         Contenido Adulto
                         <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300">18+</span>
@@ -764,7 +764,7 @@ export default function Products() {
 
             {/* Search Bar - No changes */}
             <div className="relative">
-                <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
                 <input
@@ -777,7 +777,7 @@ export default function Products() {
                 {searchQuery && (
                     <button
                         onClick={() => setSearchQuery('')}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-white transition-colors"
+                        className="absolute right-4 top-1/2 -translate-y-1/2 p-1 text-muted hover:text-ink transition-colors"
                     >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -788,29 +788,29 @@ export default function Products() {
 
             {/* Success Barcode Modal */}
             {successData && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
-                    <div className="glass-card p-6 w-full max-w-md animate-slide-up bg-slate-900/90 border border-emerald-500/30">
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
+                    <div className="glass-card p-6 w-full max-w-md animate-slide-up bg-surface border border-emerald-500/30">
                         <div className="flex flex-col items-center text-center mb-6">
-                            <div className="p-4 bg-emerald-500/20 rounded-full mb-4">
-                                <svg className="w-10 h-10 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="p-4 bg-ok-soft rounded-full mb-4">
+                                <svg className="w-10 h-10 text-ok" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                 </svg>
                             </div>
-                            <h3 className="text-xl font-bold text-white mb-2">{successData.title}</h3>
-                            <p className="text-slate-400 text-sm">
+                            <h3 className="text-xl font-bold text-ink mb-2">{successData.title}</h3>
+                            <p className="text-muted text-sm">
                                 {successData.message}
                             </p>
                         </div>
 
-                        <div className="bg-black/40 rounded-xl p-6 mb-6 border border-white/5">
-                            <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Código Generado (EAN-13)</p>
+                        <div className="bg-black/40 rounded-control p-6 mb-6 border border-line">
+                            <p className="text-xs text-muted uppercase tracking-wider mb-2">Código Generado (EAN-13)</p>
                             <div className="flex items-center justify-center gap-3">
-                                <span className="text-2xl font-mono text-emerald-400 tracking-widest font-bold">
+                                <span className="text-2xl font-mono text-ok tracking-widest font-bold">
                                     {successData.barcode}
                                 </span>
                                 <button
                                     onClick={() => navigator.clipboard.writeText(successData.barcode)}
-                                    className="p-2 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
+                                    className="p-2 hover:bg-raised rounded-lg text-muted hover:text-ink transition-colors"
                                     title="Copiar al portapapeles"
                                 >
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -818,7 +818,7 @@ export default function Products() {
                                     </svg>
                                 </button>
                             </div>
-                            <p className="text-center text-sm text-slate-400 mt-2">{successData.name}</p>
+                            <p className="text-center text-sm text-muted mt-2">{successData.name}</p>
                         </div>
 
                         <button
@@ -833,13 +833,13 @@ export default function Products() {
 
             {/* Extras Selection Modal */}
             {showExtrasModal && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4">
                     <div className="glass-card p-6 w-full max-w-md animate-slide-up">
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-xl font-bold">Seleccionar Extras</h2>
                             <button
                                 onClick={() => setShowExtrasModal(false)}
-                                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                                className="p-2 hover:bg-raised rounded-lg transition-colors"
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -850,21 +850,21 @@ export default function Products() {
                         {/* Predefined extras list */}
                         {AVAILABLE_EXTRAS.length > 0 && (
                             <div className="mb-4">
-                                <label className="block text-sm text-slate-400 mb-2">Extras disponibles</label>
-                                <div className="max-h-48 overflow-y-auto space-y-2 bg-white/5 rounded-xl p-3">
+                                <label className="block text-sm text-muted mb-2">Extras disponibles</label>
+                                <div className="max-h-48 overflow-y-auto space-y-2 bg-raised rounded-control p-3">
                                     {AVAILABLE_EXTRAS.map((extra) => (
                                         <button
                                             key={extra}
                                             type="button"
                                             onClick={() => toggleExtra(extra)}
                                             className={`w-full text-left px-3 py-2 rounded-lg transition-all flex items-center justify-between ${selectedExtras.includes(extra)
-                                                ? 'bg-primary-500/30 text-primary-300 border border-primary-500/50'
-                                                : 'hover:bg-white/10 border border-transparent'
+                                                ? 'bg-accent/30 text-accent border border-accent/25'
+                                                : 'hover:bg-raised border border-transparent'
                                                 }`}
                                         >
                                             <span>{extra}</span>
                                             {selectedExtras.includes(extra) && (
-                                                <svg className="w-5 h-5 text-primary-400" fill="currentColor" viewBox="0 0 20 20">
+                                                <svg className="w-5 h-5 text-accent" fill="currentColor" viewBox="0 0 20 20">
                                                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                                 </svg>
                                             )}
@@ -876,7 +876,7 @@ export default function Products() {
 
                         {/* Custom extra input */}
                         <div className="mb-4">
-                            <label className="block text-sm text-slate-400 mb-2">Agregar extra personalizado</label>
+                            <label className="block text-sm text-muted mb-2">Agregar extra personalizado</label>
                             <div className="flex gap-2">
                                 <input
                                     type="text"
@@ -901,19 +901,19 @@ export default function Products() {
 
                         {/* Selected extras preview */}
                         {selectedExtras.length > 0 && (
-                            <div className="mb-4 p-3 bg-white/5 rounded-xl">
-                                <p className="text-sm text-slate-400 mb-2">Seleccionados ({selectedExtras.length})</p>
+                            <div className="mb-4 p-3 bg-raised rounded-control">
+                                <p className="text-sm text-muted mb-2">Seleccionados ({selectedExtras.length})</p>
                                 <div className="flex flex-wrap gap-2">
                                     {selectedExtras.map((extra, i) => (
                                         <span
                                             key={i}
-                                            className="inline-flex items-center gap-1 px-2 py-1 bg-primary-500/20 text-primary-300 rounded-full text-sm"
+                                            className="inline-flex items-center gap-1 px-2 py-1 bg-accent/20 text-accent rounded-full text-sm"
                                         >
                                             {extra}
                                             <button
                                                 type="button"
                                                 onClick={() => toggleExtra(extra)}
-                                                className="hover:text-white"
+                                                className="hover:text-ink"
                                             >
                                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -939,15 +939,15 @@ export default function Products() {
 
             {/* Form Modal */}
             {showForm && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-slate-900 border border-white/10 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto animate-slide-up custom-scrollbar">
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+                    <div className="bg-surface border border-line rounded-panel shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto animate-slide-up custom-scrollbar">
 
                         {/* Header */}
-                        <div className="sticky top-0 z-10 bg-slate-900/95 backdrop-blur-sm border-b border-white/8 px-6 py-4 flex items-center justify-between">
-                            <h2 className="text-lg font-semibold text-white">
+                        <div className="sticky top-0 z-10 bg-surface border-b border-line px-6 py-4 flex items-center justify-between">
+                            <h2 className="text-lg font-semibold text-ink">
                                 {editingProduct ? 'Editar Producto' : 'Nuevo Producto'}
                             </h2>
-                            <button type="button" onClick={closeForm} className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors">
+                            <button type="button" onClick={closeForm} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-raised transition-colors">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
@@ -957,18 +957,18 @@ export default function Products() {
                             {/* ── Imagen ── */}
                             <div className="flex justify-center">
                                 <div className="relative">
-                                    <div className={`w-28 h-28 rounded-2xl border-2 border-dashed flex items-center justify-center overflow-hidden transition-all ${imagePreview ? 'border-primary-500 bg-black/40' : 'border-slate-700 hover:border-primary-500/50 bg-white/5'}`}>
+                                    <div className={`w-28 h-28 rounded-panel border-2 border-dashed flex items-center justify-center overflow-hidden transition-all ${imagePreview ? 'border-accent bg-black/40' : 'border-line hover:border-accent/25 bg-raised'}`}>
                                         {imagePreview
                                             ? <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
                                             : <div className="text-center p-3">
-                                                <svg className="w-7 h-7 text-slate-500 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                                <span className="text-xs text-slate-500">{editingProduct ? 'Cambiar' : 'Subir foto *'}</span>
+                                                <svg className="w-7 h-7 text-muted mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                                <span className="text-xs text-muted">{editingProduct ? 'Cambiar' : 'Subir foto *'}</span>
                                             </div>
                                         }
                                         <input type="file" accept="image/*" onChange={(e) => { const file = e.target.files[0]; if (file) { if (file.size > 50 * 1024 * 1024) { alert('Máximo 50MB.'); e.target.value = null; return; } setImageFile(file); setImagePreview(URL.createObjectURL(file)); } }} className="absolute inset-0 opacity-0 cursor-pointer" required={!editingProduct && !imageFile} />
                                     </div>
                                     {imagePreview && (
-                                        <button type="button" onClick={() => { setImageFile(null); setImagePreview(null); }} className="absolute -top-2 -right-2 w-6 h-6 bg-slate-700 hover:bg-red-500/80 text-white rounded-full flex items-center justify-center transition-colors shadow">
+                                        <button type="button" onClick={() => { setImageFile(null); setImagePreview(null); }} className="absolute -top-2 -right-2 w-6 h-6 bg-raised text-muted hover:bg-bad hover:text-white rounded-full flex items-center justify-center transition-colors shadow-panel cursor-pointer">
                                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
                                         </button>
                                     )}
@@ -977,30 +977,30 @@ export default function Products() {
 
                             {/* ── Información Básica ── */}
                             <div className="space-y-3">
-                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Información básica</p>
+                                <p className="text-xs font-semibold text-muted uppercase tracking-wider">Información básica</p>
                                 <div>
-                                    <label className="block text-sm text-slate-400 mb-1">Nombre</label>
+                                    <label className="block text-sm text-muted mb-1">Nombre</label>
                                     <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="input-glass" placeholder="Nombre del producto" required />
                                 </div>
                                 <div>
-                                    <label className="block text-sm text-slate-400 mb-1">ISBN / SKU Interno</label>
+                                    <label className="block text-sm text-muted mb-1">ISBN / SKU Interno</label>
                                     <div className="flex gap-2">
                                         <input type="text" value={formData.isbn} onChange={(e) => { const val = e.target.value.replace(/\D/g, ''); setFormData({ ...formData, isbn: val, sbin_code: val }); }} className="input-glass flex-1 font-mono" placeholder="ISBN-13 o SKU interno" maxLength={13} />
-                                        <button type="button" onClick={generateSku} disabled={!formData.name || !formData.category} className="px-3 py-2 bg-primary-500/20 text-primary-400 hover:bg-primary-500/30 rounded-lg text-sm font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed">Generar</button>
+                                        <button type="button" onClick={generateSku} disabled={!formData.name || !formData.category} className="px-3 py-2 bg-accent/20 text-accent hover:bg-accent/30 rounded-lg text-sm font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed">Generar</button>
                                     </div>
-                                    <p className="text-xs text-slate-600 mt-1">El código generado también se usará para escáner</p>
+                                    <p className="text-xs text-muted mt-1">El código generado también se usará para escáner</p>
                                 </div>
                                 <div className="grid grid-cols-3 gap-3">
                                     <div>
-                                        <label className="block text-xs text-slate-500 mb-1">Costo *</label>
+                                        <label className="block text-xs text-muted mb-1">Costo *</label>
                                         <input type="number" value={formData.cost_price} onChange={(e) => setFormData({ ...formData, cost_price: e.target.value })} onKeyDown={(e) => ["e","E","+","-"].includes(e.key) && e.preventDefault()} className="input-glass" step="0.01" min="0" placeholder="0.00" required />
                                     </div>
                                     <div>
-                                        <label className="block text-xs text-slate-500 mb-1">Venta *</label>
+                                        <label className="block text-xs text-muted mb-1">Venta *</label>
                                         <input type="number" value={formData.sale_price} onChange={(e) => setFormData({ ...formData, sale_price: e.target.value })} onKeyDown={(e) => ["e","E","+","-"].includes(e.key) && e.preventDefault()} className="input-glass" step="0.01" min="0" placeholder="0.00" required />
                                     </div>
                                     <div>
-                                        <label className="block text-xs text-slate-500 mb-1">Stock</label>
+                                        <label className="block text-xs text-muted mb-1">Stock</label>
                                         <input type="number" value={formData.stock} onChange={(e) => setFormData({ ...formData, stock: e.target.value })} className="input-glass" min="0" placeholder="0" />
                                     </div>
                                 </div>
@@ -1008,19 +1008,19 @@ export default function Products() {
 
                             {/* ── Clasificación ── */}
                             <div className="space-y-3">
-                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Clasificación</p>
+                                <p className="text-xs font-semibold text-muted uppercase tracking-wider">Clasificación</p>
 
                                 {/* Adult toggle */}
                                 <label className="flex items-center gap-3 cursor-pointer group w-fit">
-                                    <div className={`w-5 h-5 rounded flex items-center justify-center transition-colors ${formData.is_adult ? 'bg-rose-500' : 'border-2 border-slate-600 group-hover:border-slate-400'}`}>
-                                        {formData.is_adult && <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                                    <div className={`w-5 h-5 rounded flex items-center justify-center transition-colors ${formData.is_adult ? 'bg-rose-500' : 'border-2 border-line group-hover:border-line-strong'}`}>
+                                        {formData.is_adult && <svg className="w-3.5 h-3.5 text-ink" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                                     </div>
                                     <input type="checkbox" checked={formData.is_adult} onChange={(e) => setFormData(prev => ({ ...prev, is_adult: e.target.checked, category: e.target.checked ? 'Manga Hentai' : 'Manga' }))} className="hidden" />
-                                    <span className={`text-sm font-medium transition-colors ${formData.is_adult ? 'text-rose-400' : 'text-slate-400'}`}>Producto para adultos (18+)</span>
+                                    <span className={`text-sm font-medium transition-colors ${formData.is_adult ? 'text-rose-400' : 'text-muted'}`}>Producto para adultos (18+)</span>
                                 </label>
 
                                 {formData.is_adult && (
-                                    <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-rose-500/5 border border-rose-500/15">
+                                    <div className="grid grid-cols-2 gap-3 p-3 rounded-control bg-rose-500/5 border border-rose-500/15">
                                         <div>
                                             <label className="block text-xs text-rose-300/70 mb-1">Artista</label>
                                             <input type="text" value={formData.artist || ''} onChange={(e) => setFormData({ ...formData, artist: e.target.value })} className="input-glass border-rose-500/20" placeholder="Nombre del artista" />
@@ -1034,7 +1034,7 @@ export default function Products() {
 
                                 {/* Category chips */}
                                 <div>
-                                    <label className="block text-xs text-slate-500 mb-2">Categoría</label>
+                                    <label className="block text-xs text-muted mb-2">Categoría</label>
                                     <div className="grid grid-cols-3 gap-2">
                                         {(formData.is_adult
                                             ? ['Manga Hentai', 'Doujinshi', 'Revista Hentai', 'Figura Hentai', 'Accesorio Adulto', 'Libro de Arte Adulto']
@@ -1044,7 +1044,7 @@ export default function Products() {
                                             return (
                                                 <button key={type} type="button"
                                                     onClick={() => setFormData({ ...formData, category: type, ...(noPages ? { page_count: '', page_color: '' } : {}) })}
-                                                    className={`px-2 py-2 rounded-lg text-xs font-medium text-center transition-all border ${formData.category === type ? (formData.is_adult ? 'bg-rose-500/20 border-rose-500/60 text-rose-300' : 'bg-primary-500/20 border-primary-500/60 text-primary-300') : 'bg-white/3 border-white/8 text-slate-400 hover:border-slate-500 hover:text-slate-300'}`}
+                                                    className={`px-2 py-2 rounded-lg text-xs font-medium text-center transition-all border ${formData.category === type ? (formData.is_adult ? 'bg-rose-500/20 border-rose-500/60 text-rose-300' : 'bg-accent/20 border-accent/25 text-accent') : 'bg-white/3 border-line text-muted hover:border-line-strong hover:text-ink'}`}
                                                 >{type}</button>
                                             );
                                         })}
@@ -1054,15 +1054,15 @@ export default function Products() {
 
                             {/* ── Detalles Técnicos ── */}
                             <div className="space-y-3">
-                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Detalles técnicos</p>
+                                <p className="text-xs font-semibold text-muted uppercase tracking-wider">Detalles técnicos</p>
                                 <CreatableSelect label="Editorial" value={formData.publisher} onChange={(val) => setFormData(prev => ({ ...prev, publisher: val }))} options={uniquePublishers} placeholder="Casa editora" required />
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
-                                        <label className="block text-xs text-slate-500 mb-1">Fecha publicación</label>
+                                        <label className="block text-xs text-muted mb-1">Fecha publicación</label>
                                         <input type="date" value={formData.publication_date} onChange={(e) => setFormData({ ...formData, publication_date: e.target.value })} className="input-glass" />
                                     </div>
                                     <div>
-                                        <label className="block text-xs text-slate-500 mb-1">Idioma</label>
+                                        <label className="block text-xs text-muted mb-1">Idioma</label>
                                         <select value={formData.language} onChange={(e) => setFormData({ ...formData, language: e.target.value })} className="input-glass" required>
                                             <option value="">Seleccionar...</option>
                                             <option value="Español">Español</option>
@@ -1073,15 +1073,15 @@ export default function Products() {
                                 </div>
                                 <div className="grid grid-cols-3 gap-3">
                                     <div>
-                                        <label className={`block text-xs mb-1 ${['Figuras','Accesorio','Boxset','Calendario','Extra'].includes(formData.category) ? 'text-slate-700' : 'text-slate-500'}`}>Páginas</label>
+                                        <label className={`block text-xs mb-1 ${['Figuras','Accesorio','Boxset','Calendario','Extra'].includes(formData.category) ? 'text-ink' : 'text-muted'}`}>Páginas</label>
                                         <input type="number" value={formData.page_count} onChange={(e) => setFormData({ ...formData, page_count: e.target.value.replace(/^0+/,'').replace(/\D/g,'') })} className={`input-glass ${['Figuras','Accesorio','Boxset','Calendario','Extra'].includes(formData.category) ? 'opacity-40 cursor-not-allowed' : ''}`} placeholder="Núm" min="1" disabled={['Figuras','Accesorio','Boxset','Calendario','Extra'].includes(formData.category)} required={['Manga','Revista','Edición Especial','Fanbook','Libro de Arte'].includes(formData.category)} />
                                     </div>
                                     <div>
-                                        <label className="block text-xs text-slate-500 mb-1">Peso (g)</label>
+                                        <label className="block text-xs text-muted mb-1">Peso (g)</label>
                                         <input type="number" value={formData.weight} onChange={(e) => setFormData({ ...formData, weight: e.target.value.replace(/^0+/,'') })} className="input-glass" placeholder="Gramos" min="1" step="0.1" required />
                                     </div>
                                     <div>
-                                        <label className={`block text-xs mb-1 ${['Figuras','Accesorio','Boxset','Calendario','Extra'].includes(formData.category) ? 'text-slate-700' : 'text-slate-500'}`}>Color págs.</label>
+                                        <label className={`block text-xs mb-1 ${['Figuras','Accesorio','Boxset','Calendario','Extra'].includes(formData.category) ? 'text-ink' : 'text-muted'}`}>Color págs.</label>
                                         <select value={formData.page_color} onChange={(e) => setFormData({ ...formData, page_color: e.target.value })} className={`input-glass ${['Figuras','Accesorio','Boxset','Calendario','Extra'].includes(formData.category) ? 'opacity-40 cursor-not-allowed' : ''}`} required={['Manga','Revista','Edición Especial','Fanbook','Libro de Arte'].includes(formData.category)} disabled={['Figuras','Accesorio','Boxset','Calendario','Extra'].includes(formData.category)}>
                                             <option value="Blanco y Negro">B/N</option>
                                             <option value="Color">Color</option>
@@ -1089,7 +1089,7 @@ export default function Products() {
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-xs text-slate-500 mb-1">Dimensiones (cm) — Largo / Ancho / Alto</label>
+                                    <label className="block text-xs text-muted mb-1">Dimensiones (cm) — Largo / Ancho / Alto</label>
                                     <div className="grid grid-cols-3 gap-2">
                                         <input type="number" value={formData.dimensions.length} onChange={(e) => setFormData({ ...formData, dimensions: { ...formData.dimensions, length: e.target.value.replace(/^0+/,'') } })} className="input-glass" placeholder="Largo" min="0.1" step="0.1" required />
                                         <input type="number" value={formData.dimensions.width} onChange={(e) => setFormData({ ...formData, dimensions: { ...formData.dimensions, width: e.target.value.replace(/^0+/,'') } })} className="input-glass" placeholder="Ancho" min="0.1" step="0.1" required />
@@ -1100,7 +1100,7 @@ export default function Products() {
 
                             {/* ── Eventos ── */}
                             <div className="space-y-3">
-                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Eventos</p>
+                                <p className="text-xs font-semibold text-muted uppercase tracking-wider">Eventos</p>
                                 <div className="space-y-3">
                                     {[
                                         { key: 'novedad', label: 'Novedad', color: 'emerald', icon: '✦' },
@@ -1108,12 +1108,12 @@ export default function Products() {
                                     ].map(({ key, label, color, icon }) => {
                                         const ev = formData.events?.[key] || { active: false, type: 'until_stock', end_date: '' };
                                         const colorMap = {
-                                            emerald: { badge: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30', panel: 'bg-emerald-500/5 border-emerald-500/15', track: 'bg-emerald-500', radio: 'text-emerald-400' },
-                                            amber: { badge: 'bg-amber-500/15 text-amber-300 border-amber-500/30', panel: 'bg-amber-500/5 border-amber-500/15', track: 'bg-amber-500', radio: 'text-amber-400' }
+                                            emerald: { badge: 'bg-ok-soft text-ok border-emerald-500/30', panel: 'bg-ok-soft border-emerald-500/15', track: 'bg-emerald-500', radio: 'text-ok' },
+                                            amber: { badge: 'bg-warn-soft text-warn border-amber-500/30', panel: 'bg-warn-soft border-amber-500/15', track: 'bg-amber-500', radio: 'text-warn' }
                                         };
                                         const c = colorMap[color];
                                         return (
-                                            <div key={key} className={`rounded-xl border transition-all ${ev.active ? `${c.panel} border` : 'bg-white/3 border-white/8'}`}>
+                                            <div key={key} className={`rounded-control border transition-all ${ev.active ? `${c.panel} border` : 'bg-white/3 border-line'}`}>
                                                 <div className="flex items-center justify-between p-3">
                                                     <div className="flex items-center gap-2">
                                                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${c.badge}`}>
@@ -1122,7 +1122,7 @@ export default function Products() {
                                                     </div>
                                                     {/* Toggle switch */}
                                                     <button type="button" onClick={() => updateEvent(key, { active: !ev.active })}
-                                                        className={`relative w-11 h-6 rounded-full transition-colors duration-200 flex-shrink-0 ${ev.active ? c.track : 'bg-slate-700'}`}>
+                                                        className={`relative w-11 h-6 rounded-full transition-colors duration-200 flex-shrink-0 ${ev.active ? c.track : 'bg-raised'}`}>
                                                         <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${ev.active ? 'translate-x-5' : 'translate-x-0'}`} />
                                                     </button>
                                                 </div>
@@ -1134,26 +1134,26 @@ export default function Products() {
                                                                     {ev.type === 'until_stock' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                                                                 </div>
                                                                 <input type="radio" checked={ev.type === 'until_stock'} onChange={() => updateEvent(key, { type: 'until_stock', end_date: '' })} className="hidden" />
-                                                                <span className="text-xs text-slate-300">Hasta agotar stock</span>
+                                                                <span className="text-xs text-ink">Hasta agotar stock</span>
                                                             </label>
                                                             <label className="flex items-center gap-2 cursor-pointer">
                                                                 <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${ev.type === 'duration' ? `border-${color}-500 bg-${color}-500` : 'border-slate-500'}`}>
                                                                     {ev.type === 'duration' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                                                                 </div>
                                                                 <input type="radio" checked={ev.type === 'duration'} onChange={() => updateEvent(key, { type: 'duration' })} className="hidden" />
-                                                                <span className="text-xs text-slate-300">Por fecha</span>
+                                                                <span className="text-xs text-ink">Por fecha</span>
                                                             </label>
                                                         </div>
                                                         {ev.type === 'duration' && (
                                                             <div className="flex items-center gap-2">
                                                                 <div className="flex-1">
-                                                                    <label className="block text-xs text-slate-500 mb-1">Fecha fin</label>
+                                                                    <label className="block text-xs text-muted mb-1">Fecha fin</label>
                                                                     <input type="date" value={ev.end_date || ''} onChange={(e) => updateEvent(key, { end_date: e.target.value })} className="input-glass" min={new Date().toISOString().split('T')[0]} />
                                                                 </div>
                                                                 {ev.end_date && (
                                                                     <div className="flex-1">
-                                                                        <label className="block text-xs text-slate-500 mb-1">Vigencia</label>
-                                                                        <p className="text-xs text-slate-300 pt-2">
+                                                                        <label className="block text-xs text-muted mb-1">Vigencia</label>
+                                                                        <p className="text-xs text-ink pt-2">
                                                                             {Math.ceil((new Date(ev.end_date) - new Date()) / (1000*60*60*24))} días restantes
                                                                         </p>
                                                                     </div>
@@ -1170,19 +1170,19 @@ export default function Products() {
 
                             {/* ── Extras ── */}
                             <div className="space-y-2">
-                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Extras</p>
-                                <button type="button" onClick={openExtrasModal} className="input-glass w-full text-left flex items-center justify-between hover:border-primary-500/50 transition-colors">
-                                    <span className={formData.extras.length > 0 ? 'text-white text-sm' : 'text-slate-500 text-sm'}>
+                                <p className="text-xs font-semibold text-muted uppercase tracking-wider">Extras</p>
+                                <button type="button" onClick={openExtrasModal} className="input-glass w-full text-left flex items-center justify-between hover:border-accent/25 transition-colors">
+                                    <span className={formData.extras.length > 0 ? 'text-white text-sm' : 'text-muted text-sm'}>
                                         {formData.extras.length > 0 ? `${formData.extras.length} extra${formData.extras.length > 1 ? 's' : ''} seleccionado${formData.extras.length > 1 ? 's' : ''}` : 'Seleccionar extras...'}
                                     </span>
-                                    <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                                    <svg className="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                                 </button>
                                 {formData.extras.length > 0 && (
                                     <div className="flex flex-wrap gap-1.5">
                                         {formData.extras.map((extra, i) => (
-                                            <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary-500/20 text-primary-300 rounded-full text-xs">
+                                            <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-accent/20 text-accent rounded-full text-xs">
                                                 {extra}
-                                                <button type="button" onClick={() => removeExtraFromForm(extra)} className="hover:text-white"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
+                                                <button type="button" onClick={() => removeExtraFromForm(extra)} className="hover:text-ink"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
                                             </span>
                                         ))}
                                     </div>
@@ -1191,32 +1191,32 @@ export default function Products() {
 
                             {/* ── Etiquetas ── */}
                             <div className="space-y-2">
-                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Etiquetas</p>
+                                <p className="text-xs font-semibold text-muted uppercase tracking-wider">Etiquetas</p>
                                 <div className="relative">
-                                    <div className="input-glass flex flex-wrap items-center gap-1 min-h-[42px] p-2 focus-within:border-primary-500/50">
+                                    <div className="input-glass flex flex-wrap items-center gap-1 min-h-[42px] p-2 focus-within:border-accent/25">
                                         {(formData.tags || []).map((tag, i) => (
-                                            <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-500/20 text-emerald-300 rounded-full text-xs">
+                                            <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-ok-soft text-ok rounded-full text-xs">
                                                 {tag}
-                                                <button type="button" onClick={() => setFormData(prev => ({ ...prev, tags: (prev.tags || []).filter((_,idx) => idx !== i) }))} className="hover:text-white">
+                                                <button type="button" onClick={() => setFormData(prev => ({ ...prev, tags: (prev.tags || []).filter((_,idx) => idx !== i) }))} className="hover:text-ink">
                                                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                                                 </button>
                                             </span>
                                         ))}
                                         <input type="text" value={tagInput} onChange={(e) => { setTagInput(e.target.value); setShowTagDropdown(true); }} onFocus={() => setShowTagDropdown(true)} onBlur={() => setTimeout(() => setShowTagDropdown(false), 200)}
                                             onKeyDown={(e) => { if (e.key === 'Enter' && tagInput.trim()) { e.preventDefault(); const t = tagInput.trim(); if (!(formData.tags||[]).includes(t)) setFormData(prev=>({...prev,tags:[...(prev.tags||[]),t]})); setTagInput(''); setShowTagDropdown(false); } }}
-                                            className="flex-1 min-w-[100px] bg-transparent border-none outline-none text-white text-sm placeholder-slate-600"
+                                            className="flex-1 min-w-[100px] bg-transparent border-none outline-none text-ink text-sm placeholder-slate-600"
                                             placeholder={(formData.tags||[]).length === 0 ? 'Escribir etiqueta...' : '+'} />
                                     </div>
                                     {showTagDropdown && (() => { const filtered = tagSuggestions.filter(t => t.toLowerCase().includes(tagInput.toLowerCase()) && !(formData.tags||[]).includes(t)); return filtered.length > 0 ? (
-                                        <div className="absolute z-50 w-full mt-1 bg-slate-900 border border-white/10 rounded-lg shadow-xl max-h-36 overflow-y-auto custom-scrollbar">
-                                            {filtered.map((tag,i) => <button key={i} type="button" onMouseDown={(e)=>{ e.preventDefault(); if(!(formData.tags||[]).includes(tag)) setFormData(prev=>({...prev,tags:[...(prev.tags||[]),tag]})); setTagInput(''); setShowTagDropdown(false); }} className="w-full text-left px-3 py-2 text-sm text-slate-300 hover:bg-primary-500/20 hover:text-white transition-colors">{tag}</button>)}
+                                        <div className="absolute z-50 w-full mt-1 bg-surface border border-line rounded-lg shadow-xl max-h-36 overflow-y-auto custom-scrollbar">
+                                            {filtered.map((tag,i) => <button key={i} type="button" onMouseDown={(e)=>{ e.preventDefault(); if(!(formData.tags||[]).includes(tag)) setFormData(prev=>({...prev,tags:[...(prev.tags||[]),tag]})); setTagInput(''); setShowTagDropdown(false); }} className="w-full text-left px-3 py-2 text-sm text-ink hover:bg-accent/20 hover:text-white transition-colors">{tag}</button>)}
                                         </div>) : null; })()}
                                 </div>
-                                <p className="text-xs text-slate-600">Presiona Enter para crear nueva etiqueta</p>
+                                <p className="text-xs text-muted">Presiona Enter para crear nueva etiqueta</p>
                                 <div className="flex flex-wrap gap-1.5">
                                     {Array.from(new Set([...(formData.is_adult ? ADULT_PRESET_TAGS : PRESET_TAGS), ...tagSuggestions])).filter(tag => !(formData.tags||[]).includes(tag)).map((tag,i) => (
                                         <button key={`p-${i}`} type="button" onClick={() => setFormData(prev=>({...prev,tags:[...(prev.tags||[]),tag]}))}
-                                            className="px-2 py-1 text-xs bg-slate-800 hover:bg-emerald-500/20 text-slate-500 hover:text-emerald-300 border border-slate-700/60 hover:border-emerald-500/30 rounded-full transition-all">
+                                            className="px-2 py-1 text-xs bg-surface hover:bg-ok-soft text-muted hover:text-ok border border-line/60 hover:border-emerald-500/30 rounded-full transition-all">
                                             + {tag}
                                         </button>
                                     ))}
@@ -1225,10 +1225,10 @@ export default function Products() {
 
                             {/* ── Proveedor ── */}
                             <div className="space-y-2">
-                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Proveedor</p>
+                                <p className="text-xs font-semibold text-muted uppercase tracking-wider">Proveedor</p>
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
-                                        <label className="block text-xs text-slate-500 mb-1">Proveedor (opcional)</label>
+                                        <label className="block text-xs text-muted mb-1">Proveedor (opcional)</label>
                                         <select value={formData.supplier_id} onChange={(e) => setFormData({ ...formData, supplier_id: e.target.value })} className="input-glass">
                                             <option value="">Sin proveedor</option>
                                             {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -1236,9 +1236,9 @@ export default function Products() {
                                     </div>
                                     {formData.supplier_id && (
                                         <div className="animate-fade-in">
-                                            <label className="block text-xs text-slate-500 mb-1">Precio proveedor</label>
+                                            <label className="block text-xs text-muted mb-1">Precio proveedor</label>
                                             <div className="relative">
-                                                <span className="absolute left-3 top-2.5 text-slate-500 text-sm">$</span>
+                                                <span className="absolute left-3 top-2.5 text-muted text-sm">$</span>
                                                 <input type="number" step="0.01" value={formData.supplier_price} onChange={(e) => setFormData({ ...formData, supplier_price: e.target.value })} className="input-glass pl-7" placeholder="0.00" />
                                             </div>
                                         </div>
@@ -1248,7 +1248,7 @@ export default function Products() {
 
                             {/* ── Sinopsis ── */}
                             <div className="space-y-2">
-                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Sinopsis</p>
+                                <p className="text-xs font-semibold text-muted uppercase tracking-wider">Sinopsis</p>
                                 <textarea
                                     value={formData.sinopsis}
                                     onChange={(e) => setFormData({ ...formData, sinopsis: e.target.value })}
@@ -1260,10 +1260,10 @@ export default function Products() {
                             </div>
 
                             {/* ── Botones ── */}
-                            <div className="flex gap-3 pt-2 border-t border-white/8">
+                            <div className="flex gap-3 pt-2 border-t border-line">
                                 <button type="button" onClick={closeForm} className="flex-1 btn-secondary">Cancelar</button>
                                 <button type="submit" className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2" disabled={sbinStatus.isDuplicate || sbinStatus.checking || isSubmitting}>
-                                    {isSubmitting && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                                    {isSubmitting && <div className="w-4 h-4 border-2 border-line border-t-white rounded-full animate-spin" />}
                                     {editingProduct ? 'Guardar Cambios' : 'Crear Producto'}
                                 </button>
                             </div>
@@ -1276,17 +1276,17 @@ export default function Products() {
             <div className="glass-card overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full">
-                        <thead className="bg-white/5">
+                        <thead className="bg-raised">
                             <tr>
                                 <th className="table-header w-16">Img</th>
                                 <th
-                                    className="table-header cursor-pointer hover:bg-white/10 transition-colors group"
+                                    className="table-header cursor-pointer hover:bg-raised transition-colors group"
                                     onClick={() => requestSort('name')}
                                 >
                                     <div className="flex items-center gap-1">
                                         Producto
                                         {sortConfig.key === 'name' && (
-                                            <span className="text-primary-400">
+                                            <span className="text-accent">
                                                 {sortConfig.direction === 'asc' ? '↑' : '↓'}
                                             </span>
                                         )}
@@ -1298,52 +1298,52 @@ export default function Products() {
                                     </div>
                                 </th>
                                 <th
-                                    className="table-header cursor-pointer hover:bg-white/10 transition-colors group"
+                                    className="table-header cursor-pointer hover:bg-raised transition-colors group"
                                     onClick={() => requestSort('category')}
                                 >
                                     <div className="flex items-center gap-1">
                                         Categoría
                                         {sortConfig.key === 'category' && (
-                                            <span className="text-primary-400">
+                                            <span className="text-accent">
                                                 {sortConfig.direction === 'asc' ? '↑' : '↓'}
                                             </span>
                                         )}
                                     </div>
                                 </th>
                                 <th
-                                    className="table-header cursor-pointer hover:bg-white/10 transition-colors group"
+                                    className="table-header cursor-pointer hover:bg-raised transition-colors group"
                                     onClick={() => requestSort('publisher')}
                                 >
                                     <div className="flex items-center gap-1">
                                         Editorial
                                         {sortConfig.key === 'publisher' && (
-                                            <span className="text-primary-400">
+                                            <span className="text-accent">
                                                 {sortConfig.direction === 'asc' ? '↑' : '↓'}
                                             </span>
                                         )}
                                     </div>
                                 </th>
                                 <th
-                                    className="table-header text-right cursor-pointer hover:bg-white/10 transition-colors group"
+                                    className="table-header text-right cursor-pointer hover:bg-raised transition-colors group"
                                     onClick={() => requestSort('price')}
                                 >
                                     <div className="flex items-center justify-end gap-1">
                                         Precio
                                         {sortConfig.key === 'price' && (
-                                            <span className="text-primary-400">
+                                            <span className="text-accent">
                                                 {sortConfig.direction === 'asc' ? '↑' : '↓'}
                                             </span>
                                         )}
                                     </div>
                                 </th>
                                 <th
-                                    className="table-header text-right cursor-pointer hover:bg-white/10 transition-colors group"
+                                    className="table-header text-right cursor-pointer hover:bg-raised transition-colors group"
                                     onClick={() => requestSort('stock')}
                                 >
                                     <div className="flex items-center justify-end gap-1">
                                         Stock
                                         {sortConfig.key === 'stock' && (
-                                            <span className="text-primary-400">
+                                            <span className="text-accent">
                                                 {sortConfig.direction === 'asc' ? '↑' : '↓'}
                                             </span>
                                         )}
@@ -1352,12 +1352,12 @@ export default function Products() {
                                 <th className="table-header text-right">Acciones</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-white/5">
+                        <tbody className="divide-y divide-line">
                             {sortedProducts.map(product => (
-                                <tr key={product.id} className="hover:bg-white/5 transition-colors">
+                                <tr key={product.id} className="hover:bg-raised transition-colors">
                                     <td className="table-cell">
                                         <div
-                                            className="w-10 h-10 rounded-lg bg-white/5 overflow-hidden border border-white/10 cursor-pointer hover:border-primary-500 transition-colors"
+                                            className="w-10 h-10 rounded-lg bg-raised overflow-hidden border border-line cursor-pointer hover:border-accent transition-colors"
                                             onClick={() => setPreviewProduct(product)}
                                         >
                                             {product.image_url ? (
@@ -1367,7 +1367,7 @@ export default function Products() {
                                                     className="w-full h-full object-cover"
                                                 />
                                             ) : (
-                                                <div className="w-full h-full flex items-center justify-center text-slate-600">
+                                                <div className="w-full h-full flex items-center justify-center text-muted">
                                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                                                 </div>
                                             )}
@@ -1376,36 +1376,36 @@ export default function Products() {
                                     <td className="table-cell font-medium">{product.name}</td>
                                     <td className="table-cell">
                                         {(product.barcode || product.sbin_code || product.isbn) ? (
-                                            <span className="font-mono text-sm bg-slate-700/50 px-2 py-1 rounded">
+                                            <span className="font-mono text-sm bg-raised/50 px-2 py-1 rounded">
                                                 {product.barcode || product.sbin_code || product.isbn}
                                             </span>
                                         ) : (
-                                            <span className="text-slate-500 text-sm">-</span>
+                                            <span className="text-muted text-sm">-</span>
                                         )}
                                     </td>
                                     <td className="table-cell">
                                         {product.category && (
-                                            <span className="px-2 py-1 bg-primary-500/20 text-primary-400 rounded-lg text-xs">
+                                            <span className="px-2 py-1 bg-accent/20 text-accent rounded-lg text-xs">
                                                 {product.category}
                                             </span>
                                         )}
                                     </td>
                                     <td className="table-cell">
                                         {product.publisher ? (
-                                            <span className="text-slate-300 text-sm">
+                                            <span className="text-ink text-sm">
                                                 {product.publisher}
                                             </span>
                                         ) : (
-                                            <span className="text-slate-500 text-sm italic">-</span>
+                                            <span className="text-muted text-sm italic">-</span>
                                         )}
                                     </td>
                                     <td className="table-cell text-right">
                                         <div>
-                                            <p className="font-semibold text-emerald-400">
+                                            <p className="font-semibold text-ok">
                                                 ${Number(product.sale_price || product.price || 0).toFixed(2)}
                                             </p>
                                             {product.cost_price && product.sale_price && (
-                                                <p className="text-xs text-slate-400">
+                                                <p className="text-xs text-muted">
                                                     Margen: {(((product.sale_price - product.cost_price) / product.sale_price) * 100).toFixed(1)}%
                                                 </p>
                                             )}
@@ -1413,10 +1413,10 @@ export default function Products() {
                                     </td>
                                     <td className="table-cell text-right">
                                         <span className={`${product.stock > 10
-                                            ? 'text-slate-300'
+                                            ? 'text-ink'
                                             : product.stock > 0
-                                                ? 'text-amber-400'
-                                                : 'text-red-400'
+                                                ? 'text-warn'
+                                                : 'text-bad'
                                             }`}>
                                             {product.stock}
                                         </span>
@@ -1425,7 +1425,7 @@ export default function Products() {
                                         <div className="flex items-center justify-end gap-2">
                                             <button
                                                 onClick={() => handleEdit(product)}
-                                                className="p-2 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white"
+                                                className="p-2 hover:bg-raised rounded-lg transition-colors text-muted hover:text-ink"
                                                 title="Editar producto"
                                             >
                                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1436,8 +1436,8 @@ export default function Products() {
                                                 onClick={() => generateProductLabel(product, token)}
                                                 disabled={!product.isbn && !product.sbin_code && !product.barcode}
                                                 className={`p-2 rounded-lg transition-colors ${(product.isbn || product.sbin_code || product.barcode)
-                                                    ? 'hover:bg-white/10 text-slate-400 hover:text-white'
-                                                    : 'text-slate-700 cursor-not-allowed'
+                                                    ? 'hover:bg-raised text-muted hover:text-white'
+                                                    : 'text-ink cursor-not-allowed'
                                                     }`}
                                                 title={(product.isbn || product.sbin_code || product.barcode) ? "Imprimir etiqueta" : "Sin código para imprimir"}
                                             >
@@ -1447,7 +1447,7 @@ export default function Products() {
                                             </button>
                                             <button
                                                 onClick={() => setDeleteConfirm(product)}
-                                                className="p-2 hover:bg-red-500/20 rounded-lg transition-colors text-slate-400 hover:text-red-400"
+                                                className="p-2 hover:bg-bad-soft rounded-lg transition-colors text-muted hover:text-bad"
                                                 title="Eliminar producto"
                                             >
                                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1465,27 +1465,27 @@ export default function Products() {
 
             {/* Delete Confirmation Modal - Moved outside glass-cards */}
             {deleteConfirm && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[90] p-4 animate-fade-in">
-                    <div className="glass-card p-6 w-full max-w-md animate-slide-up bg-slate-900 border border-red-500/20 shadow-2xl">
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[90] p-4 animate-fade-in">
+                    <div className="glass-card p-6 w-full max-w-md animate-slide-up bg-surface border border-bad/30 shadow-2xl">
                         <div className="flex items-center gap-4 mb-4">
-                            <div className="p-3 bg-red-500/20 rounded-full">
-                                <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="p-3 bg-bad-soft rounded-full">
+                                <svg className="w-8 h-8 text-bad" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                 </svg>
                             </div>
                             <div>
-                                <h3 className="text-lg font-bold text-white">¿Eliminar producto?</h3>
-                                <p className="text-slate-400 text-sm">
+                                <h3 className="text-lg font-bold text-ink">¿Eliminar producto?</h3>
+                                <p className="text-muted text-sm">
                                     Esta acción no se puede deshacer.
                                 </p>
                             </div>
                         </div>
-                        <div className="bg-white/5 rounded-xl p-4 mb-6 border border-white/5">
-                            <p className="font-medium text-white">{deleteConfirm.name}</p>
+                        <div className="bg-raised rounded-control p-4 mb-6 border border-line">
+                            <p className="font-medium text-ink">{deleteConfirm.name}</p>
                             {deleteConfirm.sbin_code && (
-                                <p className="text-sm text-slate-400 font-mono">{deleteConfirm.sbin_code}</p>
+                                <p className="text-sm text-muted font-mono">{deleteConfirm.sbin_code}</p>
                             )}
-                            <p className="text-sm text-emerald-400 font-bold mt-1">${Number(deleteConfirm.sale_price || deleteConfirm.price || 0).toFixed(2)}</p>
+                            <p className="text-sm text-ok font-bold mt-1">${Number(deleteConfirm.sale_price || deleteConfirm.price || 0).toFixed(2)}</p>
                         </div>
                         <div className="flex gap-3">
                             <button
@@ -1507,43 +1507,43 @@ export default function Products() {
 
             {/* Force Delete Confirmation Modal - RED ALERT */}
             {forceDeleteConfirm && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[100] p-4 animate-fade-in">
+                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4 animate-fade-in">
                     <div className="glass-card p-8 w-full max-w-lg animate-slide-up bg-red-900/40 border-2 border-red-500 shadow-[0_0_50px_rgba(239,68,68,0.5)]">
                         <div className="flex items-center gap-6 mb-6">
                             <div className="p-4 bg-red-600 rounded-full animate-pulse">
-                                <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-10 h-10 text-ink" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                 </svg>
                             </div>
                             <div>
-                                <h3 className="text-2xl font-black text-white uppercase tracking-wider">¡Advertencia Crítica!</h3>
+                                <h3 className="text-2xl font-black text-ink uppercase tracking-wider">¡Advertencia Crítica!</h3>
                                 <p className="text-red-200 mt-1 font-medium">
                                     Este producto tiene historial de ventas.
                                 </p>
                             </div>
                         </div>
 
-                        <div className="bg-black/40 rounded-xl p-6 mb-8 border border-red-500/30">
-                            <p className="text-white text-lg mb-4">
-                                Estás a punto de eliminar: <span className="font-bold text-red-400">{forceDeleteConfirm.name}</span>
+                        <div className="bg-black/40 rounded-control p-6 mb-8 border border-bad/30">
+                            <p className="text-ink text-lg mb-4">
+                                Estás a punto de eliminar: <span className="font-bold text-bad">{forceDeleteConfirm.name}</span>
                             </p>
-                            <p className="text-gray-300 text-sm leading-relaxed">
+                            <p className="text-ink text-sm leading-relaxed">
                                 Esta acción eliminará el producto <strong>Y TODAS LAS VENTAS PASADAS</strong> asociadas a él.
                                 <br /><br />
-                                <span className="text-red-300 italic">Los reportes financieros históricos cambiarán irreversiblemente.</span>
+                                <span className="text-bad italic">Los reportes financieros históricos cambiarán irreversiblemente.</span>
                             </p>
                         </div>
 
                         <div className="flex gap-4">
                             <button
                                 onClick={() => setForceDeleteConfirm(null)}
-                                className="flex-1 py-4 bg-slate-700 text-white rounded-xl hover:bg-slate-600 font-bold transition-all"
+                                className="flex-1 py-4 bg-raised text-ink rounded-control hover:bg-raised font-bold transition-all"
                             >
                                 Cancelar (Seguro)
                             </button>
                             <button
                                 onClick={handleForceDelete}
-                                className="flex-1 py-4 bg-red-600 text-white rounded-xl hover:bg-red-700 font-bold shadow-lg shadow-red-900/50 hover:shadow-red-500/30 transition-all border border-red-400"
+                                className="flex-1 py-4 bg-red-600 text-white rounded-control hover:bg-red-700 font-bold shadow-lg shadow-red-900/50 hover:shadow-red-500/30 transition-all border border-red-400"
                             >
                                 SÍ, ELIMINAR TODO
                             </button>
@@ -1555,17 +1555,17 @@ export default function Products() {
             {/* Image Zoom Modal */}
             {zoomImage && (
                 <div
-                    className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[80] p-4 animate-fade-in"
+                    className="fixed inset-0 bg-black/80 flex items-center justify-center z-[80] p-4 animate-fade-in"
                     onClick={() => setZoomImage(null)}
                 >
                     <div className="relative max-w-4xl max-h-[90vh] w-full flex items-center justify-center">
                         <img
                             src={zoomImage}
                             alt="Zoom"
-                            className="max-w-full max-h-[90vh] object-contain rounded-xl shadow-2xl"
+                            className="max-w-full max-h-[90vh] object-contain rounded-control shadow-2xl"
                         />
                         <button
-                            className="absolute top-4 right-4 p-2 bg-black/50 text-white rounded-full hover:bg-white/20 transition-colors"
+                            className="absolute top-4 right-4 p-2 bg-black/50 text-white rounded-full hover:bg-raised transition-colors"
                             onClick={() => setZoomImage(null)}
                         >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1583,7 +1583,7 @@ export default function Products() {
                 onClose={() => setPreviewProduct(null)}
             >
                 {previewProduct && (
-                    <div className="space-y-6 text-slate-300">
+                    <div className="space-y-6 text-ink">
                         <div className="flex flex-col md:flex-row gap-6">
                             <div className="w-full md:w-1/3">
                                 {previewProduct.image_url ? (
@@ -1591,30 +1591,30 @@ export default function Products() {
                                         <img
                                             src={previewProduct.image_url}
                                             alt={previewProduct.name}
-                                            className="w-full h-auto rounded-lg shadow-lg border border-slate-600 transition-colors group-hover:border-primary-500"
+                                            className="w-full h-auto rounded-lg shadow-lg border border-line transition-colors group-hover:border-accent"
                                         />
                                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
-                                            <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <svg className="w-8 h-8 text-ink" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
                                             </svg>
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="w-full aspect-square bg-slate-700/50 rounded-lg flex items-center justify-center border border-slate-600">
-                                        <svg className="w-12 h-12 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                    <div className="w-full aspect-square bg-raised/50 rounded-lg flex items-center justify-center border border-line">
+                                        <svg className="w-12 h-12 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                                     </div>
                                 )}
                             </div>
                             <div className="w-full md:w-2/3 space-y-4">
                                 <div>
-                                    <h4 className="text-sm font-semibold text-primary-400 mb-1">Título</h4>
-                                    <p className="text-xl font-bold text-white leading-tight">{previewProduct.name}</p>
+                                    <h4 className="text-sm font-semibold text-accent mb-1">Título</h4>
+                                    <p className="text-xl font-bold text-ink leading-tight">{previewProduct.name}</p>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-x-4 gap-y-3 p-4 bg-slate-900/50 rounded-xl border border-slate-700">
+                                <div className="grid grid-cols-2 gap-x-4 gap-y-3 p-4 bg-surface rounded-control border border-line">
                                     <div>
-                                        <span className="block text-xs text-slate-500 uppercase">Clasificación</span>
-                                        <span className={`inline-block mt-1 text-xs px-2 py-0.5 rounded font-medium ${previewProduct.is_adult ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-primary-500/20 text-primary-400 border border-primary-500/30'}`}>
+                                        <span className="block text-xs text-muted uppercase">Clasificación</span>
+                                        <span className={`inline-block mt-1 text-xs px-2 py-0.5 rounded font-medium ${previewProduct.is_adult ? 'bg-bad-soft text-bad border border-bad/30' : 'bg-accent/20 text-accent border border-accent/25'}`}>
                                             {previewProduct.is_adult ? 'Adultos (18+)' : 'General'}
                                         </span>
                                     </div>
@@ -1622,52 +1622,52 @@ export default function Products() {
                                     {!!previewProduct.is_adult && (
                                         <>
                                             <div>
-                                                <span className="block text-xs text-slate-500 uppercase">Artista</span>
-                                                <span className="font-medium text-slate-200">{previewProduct.artist || 'N/A'}</span>
+                                                <span className="block text-xs text-muted uppercase">Artista</span>
+                                                <span className="font-medium text-ink">{previewProduct.artist || 'N/A'}</span>
                                             </div>
                                             <div>
-                                                <span className="block text-xs text-slate-500 uppercase">Grupo / Círculo</span>
-                                                <span className="font-medium text-slate-200">{previewProduct.group_name || 'N/A'}</span>
+                                                <span className="block text-xs text-muted uppercase">Grupo / Círculo</span>
+                                                <span className="font-medium text-ink">{previewProduct.group_name || 'N/A'}</span>
                                             </div>
                                         </>
                                     )}
 
                                     <div>
-                                        <span className="block text-xs text-slate-500 uppercase">Categoría</span>
-                                        <span className="font-medium text-slate-200">{previewProduct.category || 'N/A'}</span>
+                                        <span className="block text-xs text-muted uppercase">Categoría</span>
+                                        <span className="font-medium text-ink">{previewProduct.category || 'N/A'}</span>
                                     </div>
                                     <div>
-                                        <span className="block text-xs text-slate-500 uppercase">Editorial</span>
-                                        <span className="font-medium text-slate-200">{previewProduct.publisher || 'N/A'}</span>
+                                        <span className="block text-xs text-muted uppercase">Editorial</span>
+                                        <span className="font-medium text-ink">{previewProduct.publisher || 'N/A'}</span>
                                     </div>
 
-                                    <div className="col-span-2 mt-2 pt-2 border-t border-slate-700/50">
-                                        <span className="block text-xs text-slate-500 uppercase mb-2">Etiquetas</span>
+                                    <div className="col-span-2 mt-2 pt-2 border-t border-line/50">
+                                        <span className="block text-xs text-muted uppercase mb-2">Etiquetas</span>
                                         <div className="flex flex-wrap gap-1">
                                             {previewProduct.tags && previewProduct.tags.length > 0 ? (
                                                 previewProduct.tags.map(tag => (
-                                                    <span key={tag} className="bg-slate-700/50 border border-slate-600 text-slate-300 px-2 py-0.5 rounded-md text-xs">
+                                                    <span key={tag} className="bg-raised/50 border border-line text-ink px-2 py-0.5 rounded-md text-xs">
                                                         {tag}
                                                     </span>
                                                 ))
                                             ) : (
-                                                <span className="text-slate-500 text-sm italic">Sin etiquetas</span>
+                                                <span className="text-muted text-sm italic">Sin etiquetas</span>
                                             )}
                                         </div>
                                     </div>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div className="p-3 bg-slate-900/30 rounded-lg border border-slate-700">
-                                        <span className="block text-xs text-slate-500 uppercase mb-1">Stock Disponible</span>
-                                        <span className={`text-2xl font-bold ${previewProduct.stock > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                    <div className="p-3 bg-surface rounded-lg border border-line">
+                                        <span className="block text-xs text-muted uppercase mb-1">Stock Disponible</span>
+                                        <span className={`text-2xl font-bold ${previewProduct.stock > 0 ? 'text-ok' : 'text-bad'}`}>
                                             {previewProduct.stock} uds.
                                         </span>
                                     </div>
-                                    <div className="p-3 bg-slate-900/30 rounded-lg border border-slate-700">
-                                        <span className="block text-xs text-slate-500 uppercase mb-1">Precio de Venta</span>
-                                        <span className="text-2xl font-bold text-emerald-400">${parseFloat(previewProduct.sale_price).toFixed(2)}</span>
-                                        <span className="block text-xs text-slate-500 mt-1">Costo: ${parseFloat(previewProduct.cost_price).toFixed(2)}</span>
+                                    <div className="p-3 bg-surface rounded-lg border border-line">
+                                        <span className="block text-xs text-muted uppercase mb-1">Precio de Venta</span>
+                                        <span className="text-2xl font-bold text-ok">${parseFloat(previewProduct.sale_price).toFixed(2)}</span>
+                                        <span className="block text-xs text-muted mt-1">Costo: ${parseFloat(previewProduct.cost_price).toFixed(2)}</span>
                                     </div>
                                 </div>
                             </div>

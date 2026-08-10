@@ -513,7 +513,7 @@ export default function Sales() {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent"></div>
             </div>
         );
     }
@@ -525,7 +525,7 @@ export default function Sales() {
             {/* Stock Alert Modal */}
             {stockAlert && (
                 <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-slide-up">
-                    <div className="bg-red-500/90 backdrop-blur-sm text-white px-6 py-3 rounded-xl shadow-xl flex items-center gap-3">
+                    <div className="bg-bad text-white px-6 py-3 rounded-control shadow-pop flex items-center gap-3">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                         </svg>
@@ -536,25 +536,25 @@ export default function Sales() {
 
             {/* Extras Verification Modal */}
             {showExtrasVerification && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
                     <div className="glass-card p-6 w-full max-w-lg animate-slide-up">
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-3">
-                                <div className="p-2 bg-amber-500/20 rounded-xl">
-                                    <svg className="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div className="p-2 bg-warn-soft rounded-control">
+                                    <svg className="w-6 h-6 text-warn" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                     </svg>
                                 </div>
                                 <h2 className="text-xl font-bold">Verificar Extras</h2>
                             </div>
-                            <button onClick={closeExtrasVerification} className="p-2 hover:bg-white/10 rounded-lg">
+                            <button onClick={closeExtrasVerification} className="p-2 hover:bg-raised rounded-lg">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             </button>
                         </div>
 
-                        <p className="text-slate-400 mb-4">
+                        <p className="text-muted mb-4">
                             Por favor verifica que los siguientes productos tengan sus extras antes de continuar con el cobro.
                         </p>
 
@@ -562,16 +562,16 @@ export default function Sales() {
                             {getProductsWithExtras().map(item => (
                                 <div
                                     key={item.product_id}
-                                    className={`p-4 rounded-xl border transition-all cursor-pointer ${verifiedExtras[item.product_id]
-                                        ? 'bg-emerald-500/20 border-emerald-500/50'
-                                        : 'bg-white/5 border-white/10 hover:border-amber-500/50'
+                                    className={`p-4 rounded-control border transition-all cursor-pointer ${verifiedExtras[item.product_id]
+                                        ? 'bg-ok-soft border-emerald-500/50'
+                                        : 'bg-raised border-line hover:border-amber-500/50'
                                         }`}
                                     onClick={() => handleVerifyExtra(item.product_id)}
                                 >
                                     <div className="flex items-center justify-between">
                                         <div className="flex-1">
                                             <p className="font-medium">{item.name}</p>
-                                            <p className="text-sm text-slate-400">
+                                            <p className="text-sm text-muted">
                                                 Cantidad: {item.quantity} • Extras: {item.extras.join(', ')}
                                             </p>
                                         </div>
@@ -580,7 +580,7 @@ export default function Sales() {
                                             : 'border-slate-500'
                                             }`}>
                                             {verifiedExtras[item.product_id] && (
-                                                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <svg className="w-4 h-4 text-ink" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                                                 </svg>
                                             )}
@@ -603,11 +603,11 @@ export default function Sales() {
 
             {/* Payment Confirmation Modal */}
             {showPaymentModal && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
                     <div className="glass-card p-6 w-full max-w-lg animate-slide-up">
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-xl font-bold">Confirmación de Venta</h2>
-                            <button onClick={closePaymentModal} className="p-2 hover:bg-white/10 rounded-lg">
+                            <button onClick={closePaymentModal} className="p-2 hover:bg-raised rounded-lg">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
@@ -615,13 +615,13 @@ export default function Sales() {
                         </div>
 
                         {/* Order Summary */}
-                        <div className="bg-white/5 rounded-xl p-4 mb-6">
-                            <p className="text-sm text-slate-400 mb-2">Resumen del pedido</p>
+                        <div className="bg-raised rounded-control p-4 mb-6">
+                            <p className="text-sm text-muted mb-2">Resumen del pedido</p>
                             <div className="max-h-32 overflow-auto space-y-1">
                                 {cart.map(item => (
                                     <div key={item.product_id} className="flex justify-between text-sm">
                                         <span>{item.quantity}x {item.name}</span>
-                                        <span className="text-slate-300">${(item.price * item.quantity).toFixed(2)}</span>
+                                        <span className="text-ink">${(item.price * item.quantity).toFixed(2)}</span>
                                     </div>
                                 ))}
                             </div>
@@ -631,7 +631,7 @@ export default function Sales() {
                         <div className="space-y-3 mb-4">
                             {/* Discount */}
                             <div>
-                                <label className="block text-sm text-slate-400 mb-1">Descuento (opcional)</label>
+                                <label className="block text-sm text-muted mb-1">Descuento (opcional)</label>
                                 <input
                                     type="number"
                                     value={discount}
@@ -646,7 +646,7 @@ export default function Sales() {
 
                              {/* Surcharge */}
                             <div>
-                                <label className="block text-sm text-slate-400 mb-1">Aumento (opcional)</label>
+                                <label className="block text-sm text-muted mb-1">Aumento (opcional)</label>
                                 <input
                                     type="number"
                                     value={surcharge}
@@ -660,13 +660,13 @@ export default function Sales() {
 
                             {/* Coupon Code */}
                             <div className="pt-2">
-                                <label className="block text-sm text-slate-400 mb-1">Código de Cupón</label>
+                                <label className="block text-sm text-muted mb-1">Código de Cupón</label>
                                 <div className="flex gap-2">
                                     <input
                                         type="text"
                                         value={couponCode}
                                         onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                                        className={`input-glass flex-1 ${couponError ? 'border-red-500/50' : couponSuccess ? 'border-emerald-500/50' : ''}`}
+                                        className={`input-glass flex-1 ${couponError ? 'border-bad/30' : couponSuccess ? 'border-emerald-500/50' : ''}`}
                                         placeholder="Ej. BISONTE10"
                                         disabled={couponLoading || !!couponSuccess}
                                     />
@@ -677,7 +677,7 @@ export default function Sales() {
                                                 setCouponSuccess('');
                                                 setDiscount(0);
                                             }}
-                                            className="px-4 py-2 bg-red-500/20 text-red-400 rounded-xl hover:bg-red-500/30 transition-colors text-sm"
+                                            className="px-4 py-2 bg-bad-soft text-bad rounded-control hover:bg-bad-soft transition-colors text-sm"
                                         >
                                             Quitar
                                         </button>
@@ -685,54 +685,54 @@ export default function Sales() {
                                         <button 
                                             onClick={handleValidateCoupon}
                                             disabled={couponLoading || !couponCode}
-                                            className="px-4 py-2 bg-primary-500 text-white rounded-xl hover:bg-primary-600 transition-colors disabled:opacity-50 text-sm font-medium"
+                                            className="px-4 py-2 bg-accent text-white rounded-control hover:bg-accent transition-colors disabled:opacity-50 text-sm font-medium"
                                         >
                                             {couponLoading ? '...' : 'Aplicar'}
                                         </button>
                                     )}
                                 </div>
-                                {couponError && <p className="text-[10px] text-red-400 mt-1 ml-1">{couponError}</p>}
-                                {couponSuccess && <p className="text-[10px] text-emerald-400 mt-1 ml-1">{couponSuccess}</p>}
+                                {couponError && <p className="text-[10px] text-bad mt-1 ml-1">{couponError}</p>}
+                                {couponSuccess && <p className="text-[10px] text-ok mt-1 ml-1">{couponSuccess}</p>}
                             </div>
                         </div>
 
 
                         {/* Total Display with Breakdown */}
-                        <div className="bg-white/5 rounded-xl p-4 mb-6">
-                            <div className="flex justify-between text-sm text-slate-400 mb-1">
+                        <div className="bg-raised rounded-control p-4 mb-6">
+                            <div className="flex justify-between text-sm text-muted mb-1">
                                 <span>Subtotal:</span>
                                 <span>${getSubtotal().toFixed(2)}</span>
                             </div>
                             {parseFloat(discount) > 0 && (
-                                <div className="flex justify-between text-sm text-emerald-400">
+                                <div className="flex justify-between text-sm text-ok">
                                     <span>Descuento:</span>
                                     <span>-${parseFloat(discount).toFixed(2)}</span>
                                 </div>
                             )}
                             {parseFloat(surcharge) > 0 && (
-                                <div className="flex justify-between text-sm text-amber-400">
+                                <div className="flex justify-between text-sm text-warn">
                                     <span>Aumento:</span>
                                     <span>+${parseFloat(surcharge).toFixed(2)}</span>
                                 </div>
                             )}
-                            <div className="border-t border-white/10 mt-2 pt-2 flex justify-between">
+                            <div className="border-t border-line mt-2 pt-2 flex justify-between">
                                 <span className="font-bold">Total:</span>
-                                <span className="text-xl font-bold text-primary-400">${getTotal().toFixed(2)} MXN</span>
+                                <span className="text-xl font-bold text-accent">${getTotal().toFixed(2)} MXN</span>
                             </div>
                         </div>
 
                         {/* Cash Payment */}
                         {paymentMethod === 'cash' && (
                             <div className="space-y-4">
-                                <div className="flex items-center gap-3 p-3 bg-emerald-500/20 rounded-xl">
-                                    <svg className="w-8 h-8 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div className="flex items-center gap-3 p-3 bg-ok-soft rounded-control">
+                                    <svg className="w-8 h-8 text-ok" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                                     </svg>
-                                    <span className="font-semibold text-emerald-300">Pago en Efectivo</span>
+                                    <span className="font-semibold text-ok">Pago en Efectivo</span>
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm text-slate-400 mb-1">Monto recibido (MXN)</label>
+                                    <label className="block text-sm text-muted mb-1">Monto recibido (MXN)</label>
                                     <input
                                         type="number"
                                         value={amountReceived}
@@ -746,9 +746,9 @@ export default function Sales() {
                                 </div>
 
                                 {parseFloat(amountReceived) >= getTotal() && (
-                                    <div className="bg-emerald-500/20 rounded-xl p-4 text-center">
-                                        <p className="text-sm text-slate-400">Cambio a devolver</p>
-                                        <p className="text-3xl font-bold text-emerald-400">${getChange().toFixed(2)} MXN</p>
+                                    <div className="bg-ok-soft rounded-control p-4 text-center">
+                                        <p className="text-sm text-muted">Cambio a devolver</p>
+                                        <p className="text-3xl font-bold text-ok">${getChange().toFixed(2)} MXN</p>
                                     </div>
                                 )}
                             </div>
@@ -757,7 +757,7 @@ export default function Sales() {
                         {/* Card Payment */}
                         {paymentMethod === 'card' && (
                             <div className="space-y-4">
-                                <div className="flex items-center gap-3 p-3 bg-blue-500/20 rounded-xl">
+                                <div className="flex items-center gap-3 p-3 bg-blue-500/20 rounded-control">
                                     <svg className="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                                     </svg>
@@ -765,22 +765,22 @@ export default function Sales() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm text-slate-400 mb-2">Tipo de tarjeta</label>
+                                    <label className="block text-sm text-muted mb-2">Tipo de tarjeta</label>
                                     <div className="grid grid-cols-2 gap-3">
                                         <button
                                             onClick={() => setCardType('debit')}
-                                            className={`p-3 rounded-xl border-2 transition-all ${cardType === 'debit'
+                                            className={`p-3 rounded-control border-2 transition-all ${cardType === 'debit'
                                                 ? 'border-blue-500 bg-blue-500/20 text-blue-300'
-                                                : 'border-white/10 hover:border-white/30'
+                                                : 'border-line hover:border-line-strong'
                                                 }`}
                                         >
                                             <span className="font-semibold">Débito</span>
                                         </button>
                                         <button
                                             onClick={() => setCardType('credit')}
-                                            className={`p-3 rounded-xl border-2 transition-all ${cardType === 'credit'
+                                            className={`p-3 rounded-control border-2 transition-all ${cardType === 'credit'
                                                 ? 'border-purple-500 bg-purple-500/20 text-purple-300'
-                                                : 'border-white/10 hover:border-white/30'
+                                                : 'border-line hover:border-line-strong'
                                                 }`}
                                         >
                                             <span className="font-semibold">Crédito</span>
@@ -789,7 +789,7 @@ export default function Sales() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm text-slate-400 mb-2">Banco emisor</label>
+                                    <label className="block text-sm text-muted mb-2">Banco emisor</label>
                                     <select
                                         value={selectedBank}
                                         onChange={(e) => setSelectedBank(e.target.value)}
@@ -806,7 +806,7 @@ export default function Sales() {
 
                         {/* Error Message */}
                         {paymentError && (
-                            <div className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-xl text-red-300 text-sm flex items-center gap-2">
+                            <div className="mb-4 p-3 bg-bad-soft border border-bad/30 rounded-control text-bad text-sm flex items-center gap-2">
                                 <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
@@ -839,13 +839,13 @@ export default function Sales() {
 
             {/* Payment Ticket Modal */}
             {showTicket && ticketData && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
                     <div className="bg-white text-gray-900 w-full max-w-sm rounded-lg shadow-2xl animate-slide-up overflow-hidden">
                         {/* Ticket Header */}
                         <div className="bg-gray-100 p-4 text-center border-b-2 border-dashed border-gray-300">
                             <h2 className="text-xl font-bold">TORLAN POS</h2>
                             <p className="text-sm text-gray-600">Ticket de Venta #{ticketData.id}</p>
-                            <p className="text-xs text-gray-500 mt-1">
+                            <p className="text-xs text-muted mt-1">
                                 {ticketData.date.toLocaleDateString('es-MX')} - {ticketData.date.toLocaleTimeString('es-MX')}
                             </p>
                         </div>
@@ -854,7 +854,7 @@ export default function Sales() {
                         <div className="p-4 border-b-2 border-dashed border-gray-300">
                             <table className="w-full text-sm">
                                 <thead>
-                                    <tr className="text-gray-500 text-xs">
+                                    <tr className="text-muted text-xs">
                                         <th className="text-left py-1">CANT.</th>
                                         <th className="text-left py-1">PRODUCTO</th>
                                         <th className="text-right py-1">PRECIO</th>
@@ -922,7 +922,7 @@ export default function Sales() {
                                 )}
                             </div>
 
-                            <div className="mt-4 pt-4 border-t border-gray-300 text-center text-xs text-gray-500">
+                            <div className="mt-4 pt-4 border-t border-gray-300 text-center text-xs text-muted">
                                 <p>Atendió: {ticketData.cashier}</p>
                                 <p className="mt-2">¡Gracias por su compra!</p>
                             </div>
@@ -931,7 +931,7 @@ export default function Sales() {
                         {/* Close Button */}
                         <button
                             onClick={closeTicket}
-                            className="w-full p-4 bg-primary-600 text-white font-semibold hover:bg-primary-500 transition-colors"
+                            className="w-full p-4 bg-accent text-white font-semibold hover:bg-accent transition-colors"
                         >
                             Cerrar Ticket
                         </button>
@@ -943,13 +943,13 @@ export default function Sales() {
             <div className="flex-1 flex flex-col min-w-0">
                 <div className="mb-4">
                     <h1 className="text-2xl font-bold">Cobrar</h1>
-                    <p className="text-slate-400">Escanea o busca productos para agregar</p>
+                    <p className="text-muted">Escanea o busca productos para agregar</p>
                 </div>
 
                 {scannerFeedback && (
-                    <div className={`mb-4 p-3 rounded-xl animate-fade-in ${scannerFeedback.type === 'success'
-                        ? 'bg-emerald-500/20 border border-emerald-500/30 text-emerald-300'
-                        : 'bg-red-500/20 border border-red-500/30 text-red-300'
+                    <div className={`mb-4 p-3 rounded-control animate-fade-in ${scannerFeedback.type === 'success'
+                        ? 'bg-ok-soft border border-emerald-500/30 text-ok'
+                        : 'bg-bad-soft border border-bad/30 text-bad'
                         }`}>
                         <div className="flex items-center gap-2 font-medium">
                             {scannerFeedback.message}
@@ -959,7 +959,7 @@ export default function Sales() {
 
                 <div className="mb-4">
                     <div className="relative" ref={autocompleteRef}>
-                        <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
                         </svg>
                         <input
@@ -979,7 +979,7 @@ export default function Sales() {
                                     setShowAutocomplete(false);
                                     searchInputRef.current?.focus();
                                 }}
-                                className="absolute right-4 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-white"
+                                className="absolute right-4 top-1/2 -translate-y-1/2 p-1 text-muted hover:text-ink"
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -989,16 +989,16 @@ export default function Sales() {
 
                         {/* Autocomplete Dropdown */}
                         {showAutocomplete && products.length > 0 && (
-                            <div className="absolute top-full left-0 right-0 mt-2 bg-slate-900/98 backdrop-blur-xl border-2 border-primary-500/30 rounded-lg overflow-hidden z-50 shadow-2xl max-h-80 overflow-y-auto">
+                            <div className="absolute top-full left-0 right-0 mt-2 bg-surface border-2 border-accent/25 rounded-lg overflow-hidden z-50 shadow-2xl max-h-80 overflow-y-auto">
                                 {products.slice(0, 5).map((product, index) => (
                                     <button
                                         key={product.id}
                                         onClick={() => handleSuggestionClick(product)}
                                         disabled={product.stock <= 0}
                                         className={`w-full p-3 flex items-center gap-3 transition-colors text-left ${index === selectedSuggestionIndex
-                                            ? 'bg-primary-500/30 border-l-2 border-primary-400'
-                                            : 'hover:bg-white/5'
-                                            } ${product.stock <= 0 ? 'opacity-50 cursor-not-allowed' : ''} ${index !== products.slice(0, 5).length - 1 ? 'border-b border-white/5' : ''
+                                            ? 'bg-accent/30 border-l-2 border-accent'
+                                            : 'hover:bg-raised'
+                                            } ${product.stock <= 0 ? 'opacity-50 cursor-not-allowed' : ''} ${index !== products.slice(0, 5).length - 1 ? 'border-b border-line' : ''
                                             }`}
                                     >
                                         {product.image_url ? (
@@ -1009,7 +1009,7 @@ export default function Sales() {
                                             />
                                         ) : (
                                             <div className="w-12 h-12 bg-black/20 rounded flex items-center justify-center">
-                                                <svg className="w-6 h-6 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <svg className="w-6 h-6 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                                 </svg>
                                             </div>
@@ -1017,17 +1017,17 @@ export default function Sales() {
                                         <div className="flex-1 min-w-0">
                                             <p className="font-medium truncate">{product.name}</p>
                                             {product.sbin_code && (
-                                                <p className="text-xs text-slate-400 font-mono">{product.sbin_code}</p>
+                                                <p className="text-xs text-muted font-mono">{product.sbin_code}</p>
                                             )}
                                         </div>
                                         <div className="text-right">
-                                            <p className="font-bold text-primary-400">
+                                            <p className="font-bold text-accent">
                                                 ${Number(product.sale_price || product.price).toFixed(2)}
                                             </p>
                                             {product.stock <= 0 ? (
-                                                <p className="text-xs text-red-400">Sin stock</p>
+                                                <p className="text-xs text-bad">Sin stock</p>
                                             ) : product.stock <= 5 ? (
-                                                <p className="text-xs text-amber-400">Stock: {product.stock}</p>
+                                                <p className="text-xs text-warn">Stock: {product.stock}</p>
                                             ) : null}
                                         </div>
                                     </button>
@@ -1035,8 +1035,8 @@ export default function Sales() {
                             </div>
                         )}
                     </div>
-                    <p className="text-xs text-slate-500 mt-1 ml-1">
-                        Presiona <kbd className="px-1.5 py-0.5 bg-slate-700 rounded text-slate-300">Enter</kbd> para agregar • Usa <kbd className="px-1.5 py-0.5 bg-slate-700 rounded text-slate-300">↑↓</kbd> para navegar
+                    <p className="text-xs text-muted mt-1 ml-1">
+                        Presiona <kbd className="px-1.5 py-0.5 bg-raised rounded text-ink">Enter</kbd> para agregar • Usa <kbd className="px-1.5 py-0.5 bg-raised rounded text-ink">↑↓</kbd> para navegar
                     </p>
                 </div>
 
@@ -1047,7 +1047,7 @@ export default function Sales() {
                                 key={product.id}
                                 onClick={() => addToCart(product)}
                                 disabled={product.stock <= 0}
-                                className={`glass-card p-4 text-left transition-all hover:scale-[1.02] active:scale-[0.98] ${product.stock <= 0 ? 'opacity-50 cursor-not-allowed' : 'hover:border-primary-500/50'
+                                className={`glass-card p-4 text-left transition-all hover:scale-[1.02] active:scale-[0.98] ${product.stock <= 0 ? 'opacity-50 cursor-not-allowed' : 'hover:border-accent/25'
                                     }`}
                             >
                                 <div className="flex flex-col gap-2 mb-2">
@@ -1059,7 +1059,7 @@ export default function Sales() {
                                                 className="w-full h-full object-cover"
                                             />
                                         ) : (
-                                            <div className="w-full h-full flex items-center justify-center text-slate-600">
+                                            <div className="w-full h-full flex items-center justify-center text-muted">
                                                 <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                                             </div>
                                         )}
@@ -1067,27 +1067,27 @@ export default function Sales() {
                                     <div className="flex items-start justify-between">
                                         <h3 className="font-medium text-sm line-clamp-2">{product.name}</h3>
                                         {product.stock <= 5 && product.stock > 0 && (
-                                            <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-400 text-xs rounded shrink-0 ml-1">
+                                            <span className="px-1.5 py-0.5 bg-warn-soft text-warn text-xs rounded shrink-0 ml-1">
                                                 {product.stock}
                                             </span>
                                         )}
                                     </div>
                                 </div>
                                 {product.sbin_code && (
-                                    <p className="text-xs text-slate-500 mb-1 font-mono">{product.sbin_code}</p>
+                                    <p className="text-xs text-muted mb-1 font-mono">{product.sbin_code}</p>
                                 )}
-                                <p className="text-lg font-bold text-primary-400">
+                                <p className="text-lg font-bold text-accent">
                                     ${Number(product.sale_price || product.price).toFixed(2)}
                                 </p>
                                 {product.stock <= 0 && (
-                                    <p className="text-xs text-red-400 mt-1">Sin stock</p>
+                                    <p className="text-xs text-bad mt-1">Sin stock</p>
                                 )}
                             </button>
                         ))}
                     </div>
 
                     {products.length === 0 && (
-                        <div className="flex flex-col items-center justify-center h-64 text-slate-400">
+                        <div className="flex flex-col items-center justify-center h-64 text-muted">
                             <svg className="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                             </svg>
@@ -1105,7 +1105,7 @@ export default function Sales() {
                     aria-label="Ver carrito"
                 >
                     <div className="relative">
-                        <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-7 h-7 text-ink" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                         </svg>
                         <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
@@ -1117,11 +1117,11 @@ export default function Sales() {
 
             {/* Desktop Cart Section - Hidden on mobile */}
             <div className="hidden md:flex w-96 flex-col glass-card-dark">
-                <div className="p-4 border-b border-white/10">
+                <div className="p-4 border-b border-line">
                     <div className="flex items-center justify-between">
                         <h2 className="text-lg font-semibold">Ticket de Cobro</h2>
                         {cart.length > 0 && (
-                            <span className="px-2 py-1 bg-primary-500/20 text-primary-400 rounded-full text-sm">
+                            <span className="px-2 py-1 bg-accent/20 text-accent rounded-full text-sm">
                                 {cart.reduce((sum, item) => sum + item.quantity, 0)} items
                             </span>
                         )}
@@ -1130,7 +1130,7 @@ export default function Sales() {
 
                 <div className="flex-1 overflow-auto p-4 space-y-3">
                     {cart.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-full text-slate-400">
+                        <div className="flex flex-col items-center justify-center h-full text-muted">
                             <svg className="w-16 h-16 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                             </svg>
@@ -1138,9 +1138,9 @@ export default function Sales() {
                         </div>
                     ) : (
                         cart.map(item => (
-                            <div key={item.product_id} className="bg-white/5 rounded-xl p-3">
+                            <div key={item.product_id} className="bg-raised rounded-control p-3">
                                 <div className="flex items-start gap-3 mb-2">
-                                    <div className="w-12 h-12 rounded-lg bg-black/20 overflow-hidden shrink-0 border border-white/10">
+                                    <div className="w-12 h-12 rounded-lg bg-black/20 overflow-hidden shrink-0 border border-line">
                                         {item.image_url ? (
                                             <img
                                                 src={item.image_url}
@@ -1148,7 +1148,7 @@ export default function Sales() {
                                                 className="w-full h-full object-cover"
                                             />
                                         ) : (
-                                            <div className="w-full h-full flex items-center justify-center text-slate-600">
+                                            <div className="w-full h-full flex items-center justify-center text-muted">
                                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                                             </div>
                                         )}
@@ -1156,13 +1156,13 @@ export default function Sales() {
                                     <div className="flex-1 min-w-0">
                                         <p className="font-medium text-sm truncate">{item.name}</p>
                                         {item.sbin_code && (
-                                            <p className="text-xs text-slate-500 font-mono">{item.sbin_code}</p>
+                                            <p className="text-xs text-muted font-mono">{item.sbin_code}</p>
                                         )}
-                                        <p className="text-xs text-slate-400">${item.price.toFixed(2)} c/u</p>
+                                        <p className="text-xs text-muted">${item.price.toFixed(2)} c/u</p>
                                     </div>
                                     <button
                                         onClick={() => removeFromCart(item.product_id)}
-                                        className="p-1 hover:bg-red-500/20 rounded text-slate-400 hover:text-red-400"
+                                        className="p-1 hover:bg-bad-soft rounded text-muted hover:text-bad"
                                     >
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1173,7 +1173,7 @@ export default function Sales() {
                                     <div className="flex items-center gap-2">
                                         <button
                                             onClick={() => updateQuantity(item.product_id, -1)}
-                                            className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center"
+                                            className="w-8 h-8 rounded-lg bg-raised hover:bg-raised flex items-center justify-center"
                                         >
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
@@ -1182,14 +1182,14 @@ export default function Sales() {
                                         <span className="w-8 text-center font-medium">{item.quantity}</span>
                                         <button
                                             onClick={() => updateQuantity(item.product_id, 1)}
-                                            className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center"
+                                            className="w-8 h-8 rounded-lg bg-raised hover:bg-raised flex items-center justify-center"
                                         >
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                                             </svg>
                                         </button>
                                     </div>
-                                    <p className="font-semibold text-primary-400">
+                                    <p className="font-semibold text-accent">
                                         ${(item.price * item.quantity).toFixed(2)}
                                     </p>
                                 </div>
@@ -1198,10 +1198,10 @@ export default function Sales() {
                     )}
                 </div>
 
-                <div className="p-4 border-t border-white/10 space-y-4">
+                <div className="p-4 border-t border-line space-y-4">
                     <div className="flex items-center justify-between text-xl">
                         <span className="font-medium">Total a Cobrar:</span>
-                        <span className="font-bold text-2xl text-primary-400">
+                        <span className="font-bold text-2xl text-accent">
                             ${getTotal().toFixed(2)}
                         </span>
                     </div>
@@ -1235,22 +1235,22 @@ export default function Sales() {
             <div className={`mobile-cart-drawer md:hidden ${mobileCartOpen ? 'open' : 'closed'}`}>
                 {/* Drag Handle */}
                 <div className="flex justify-center py-2">
-                    <div className="w-12 h-1.5 bg-slate-600 rounded-full"></div>
+                    <div className="w-12 h-1.5 bg-raised rounded-full"></div>
                 </div>
 
                 <div className="flex flex-col h-full pb-6 overflow-hidden">
-                    <div className="px-4 pb-4 border-b border-white/10 flex items-center justify-between">
+                    <div className="px-4 pb-4 border-b border-line flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <h2 className="text-lg font-semibold">Ticket de Cobro</h2>
                             {cart.length > 0 && (
-                                <span className="px-2 py-1 bg-primary-500/20 text-primary-400 rounded-full text-sm">
+                                <span className="px-2 py-1 bg-accent/20 text-accent rounded-full text-sm">
                                     {totalItems} items
                                 </span>
                             )}
                         </div>
                         <button
                             onClick={() => setMobileCartOpen(false)}
-                            className="p-2 hover:bg-white/10 rounded-lg"
+                            className="p-2 hover:bg-raised rounded-lg"
                         >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -1260,7 +1260,7 @@ export default function Sales() {
 
                     <div className="flex-1 overflow-auto px-4 py-4 space-y-3">
                         {cart.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center h-full text-slate-400">
+                            <div className="flex flex-col items-center justify-center h-full text-muted">
                                 <svg className="w-16 h-16 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                                 </svg>
@@ -1268,9 +1268,9 @@ export default function Sales() {
                             </div>
                         ) : (
                             cart.map(item => (
-                                <div key={item.product_id} className="bg-white/5 rounded-xl p-3">
+                                <div key={item.product_id} className="bg-raised rounded-control p-3">
                                     <div className="flex items-start gap-3 mb-2">
-                                        <div className="w-12 h-12 rounded-lg bg-black/20 overflow-hidden shrink-0 border border-white/10">
+                                        <div className="w-12 h-12 rounded-lg bg-black/20 overflow-hidden shrink-0 border border-line">
                                             {item.image_url ? (
                                                 <img
                                                     src={item.image_url}
@@ -1278,7 +1278,7 @@ export default function Sales() {
                                                     className="w-full h-full object-cover"
                                                 />
                                             ) : (
-                                                <div className="w-full h-full flex items-center justify-center text-slate-600">
+                                                <div className="w-full h-full flex items-center justify-center text-muted">
                                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                                                 </div>
                                             )}
@@ -1286,13 +1286,13 @@ export default function Sales() {
                                         <div className="flex-1 min-w-0">
                                             <p className="font-medium text-sm truncate">{item.name}</p>
                                             {item.sbin_code && (
-                                                <p className="text-xs text-slate-500 font-mono">{item.sbin_code}</p>
+                                                <p className="text-xs text-muted font-mono">{item.sbin_code}</p>
                                             )}
-                                            <p className="text-xs text-slate-400">${item.price.toFixed(2)} c/u</p>
+                                            <p className="text-xs text-muted">${item.price.toFixed(2)} c/u</p>
                                         </div>
                                         <button
                                             onClick={() => removeFromCart(item.product_id)}
-                                            className="p-1 hover:bg-red-500/20 rounded text-slate-400 hover:text-red-400 touch-target"
+                                            className="p-1 hover:bg-bad-soft rounded text-muted hover:text-bad touch-target"
                                         >
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1303,7 +1303,7 @@ export default function Sales() {
                                         <div className="flex items-center gap-2">
                                             <button
                                                 onClick={() => updateQuantity(item.product_id, -1)}
-                                                className="w-10 h-10 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center touch-target"
+                                                className="w-10 h-10 rounded-lg bg-raised hover:bg-raised flex items-center justify-center touch-target"
                                             >
                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
@@ -1312,14 +1312,14 @@ export default function Sales() {
                                             <span className="w-10 text-center font-medium">{item.quantity}</span>
                                             <button
                                                 onClick={() => updateQuantity(item.product_id, 1)}
-                                                className="w-10 h-10 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center touch-target"
+                                                className="w-10 h-10 rounded-lg bg-raised hover:bg-raised flex items-center justify-center touch-target"
                                             >
                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                                                 </svg>
                                             </button>
                                         </div>
-                                        <p className="font-semibold text-primary-400">
+                                        <p className="font-semibold text-accent">
                                             ${(item.price * item.quantity).toFixed(2)}
                                         </p>
                                     </div>
@@ -1328,10 +1328,10 @@ export default function Sales() {
                         )}
                     </div>
 
-                    <div className="px-4 pt-4 border-t border-white/10 space-y-4 bg-slate-900">
+                    <div className="px-4 pt-4 border-t border-line space-y-4 bg-surface">
                         <div className="flex items-center justify-between text-xl">
                             <span className="font-medium">Total a Cobrar:</span>
-                            <span className="font-bold text-2xl text-primary-400">
+                            <span className="font-bold text-2xl text-accent">
                                 ${getTotal().toFixed(2)}
                             </span>
                         </div>

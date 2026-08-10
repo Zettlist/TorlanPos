@@ -122,7 +122,7 @@ export default function CouponsManager() {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent"></div>
             </div>
         );
     }
@@ -132,8 +132,8 @@ export default function CouponsManager() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-white">Gestión de Cupones</h1>
-                    <p className="text-slate-400">{coupons.length} cupones activos/inactivos</p>
+                    <h1 className="text-2xl font-bold text-ink">Gestión de Cupones</h1>
+                    <p className="text-muted">{coupons.length} cupones activos/inactivos</p>
                 </div>
                 <button
                     onClick={() => {
@@ -153,7 +153,7 @@ export default function CouponsManager() {
 
             {/* Success/Error Alerts */}
             {success && (
-                <div className="p-4 bg-emerald-500/20 border border-emerald-500/30 rounded-xl text-emerald-300 animate-fade-in flex items-center gap-2">
+                <div className="p-4 bg-ok-soft border border-emerald-500/30 rounded-control text-ok animate-fade-in flex items-center gap-2">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
@@ -161,7 +161,7 @@ export default function CouponsManager() {
                 </div>
             )}
             {error && (
-                <div className="p-4 bg-red-500/20 border border-red-500/30 rounded-xl text-red-300 animate-fade-in flex items-center gap-2">
+                <div className="p-4 bg-bad-soft border border-bad/30 rounded-control text-bad animate-fade-in flex items-center gap-2">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
@@ -173,7 +173,7 @@ export default function CouponsManager() {
             <div className="glass-card overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full">
-                        <thead className="bg-white/5">
+                        <thead className="bg-raised">
                             <tr>
                                 <th className="table-header">Código</th>
                                 <th className="table-header">Descuento</th>
@@ -183,40 +183,40 @@ export default function CouponsManager() {
                                 <th className="table-header text-right">Acciones</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-white/5">
+                        <tbody className="divide-y divide-line">
                             {coupons.map(c => (
-                                <tr key={c.id} className="hover:bg-white/5 transition-colors">
+                                <tr key={c.id} className="hover:bg-raised transition-colors">
                                     <td className="table-cell">
-                                        <span className="font-mono font-bold text-primary-400 bg-primary-500/10 px-2 py-1 rounded border border-primary-500/20">
+                                        <span className="font-mono font-bold text-accent bg-accent/10 px-2 py-1 rounded border border-accent/25">
                                             {c.code}
                                         </span>
                                     </td>
-                                    <td className="table-cell text-white">
+                                    <td className="table-cell text-ink">
                                         {c.discount_type === 'percentage' 
                                             ? `${parseFloat(c.discount_value)}%` 
                                             : `$${parseFloat(c.discount_value)} MXN`}
                                     </td>
                                     <td className="table-cell">
                                         {c.status === 'active' ? (
-                                            <span className="px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-full text-xs font-medium">Activo</span>
+                                            <span className="px-3 py-1 bg-ok-soft text-ok rounded-full text-xs font-medium">Activo</span>
                                         ) : (
-                                            <span className="px-3 py-1 bg-slate-500/20 text-slate-400 rounded-full text-xs font-medium">Inactivo</span>
+                                            <span className="px-3 py-1 bg-slate-500/20 text-muted rounded-full text-xs font-medium">Inactivo</span>
                                         )}
                                     </td>
-                                    <td className="table-cell text-slate-300">
+                                    <td className="table-cell text-ink">
                                         {c.usage_count} / {c.usage_limit || '∞'}
                                     </td>
-                                    <td className="table-cell text-slate-400 text-sm">
+                                    <td className="table-cell text-muted text-sm">
                                         {c.expiration_date ? new Date(c.expiration_date).toLocaleDateString() : 'Nunca'}
                                     </td>
                                     <td className="table-cell text-right">
                                         <div className="flex justify-end gap-2">
-                                            <button onClick={() => openEdit(c)} className="p-2 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white">
+                                            <button onClick={() => openEdit(c)} className="p-2 hover:bg-raised rounded-lg transition-colors text-muted hover:text-ink">
                                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                                 </svg>
                                             </button>
-                                            <button onClick={() => setDeleteConfirm(c)} className="p-2 hover:bg-red-500/20 rounded-lg transition-colors text-slate-400 hover:text-red-400">
+                                            <button onClick={() => setDeleteConfirm(c)} className="p-2 hover:bg-bad-soft rounded-lg transition-colors text-muted hover:text-bad">
                                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                                 </svg>
@@ -232,12 +232,12 @@ export default function CouponsManager() {
 
             {/* Form Modal */}
             {showForm && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                     <div className="glass-card p-6 w-full max-w-md animate-slide-up">
                         <h2 className="text-xl font-semibold mb-6">{editingCoupon ? 'Editar Cupón' : 'Nuevo Cupón'}</h2>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-sm text-slate-400 mb-1">Código del Cupón</label>
+                                <label className="block text-sm text-muted mb-1">Código del Cupón</label>
                                 <input
                                     type="text"
                                     value={formData.code}
@@ -250,7 +250,7 @@ export default function CouponsManager() {
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm text-slate-400 mb-1">Tipo</label>
+                                    <label className="block text-sm text-muted mb-1">Tipo</label>
                                     <select
                                         value={formData.discount_type}
                                         onChange={(e) => setFormData({ ...formData, discount_type: e.target.value })}
@@ -261,7 +261,7 @@ export default function CouponsManager() {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-sm text-slate-400 mb-1">Valor</label>
+                                    <label className="block text-sm text-muted mb-1">Valor</label>
                                     <input
                                         type="number"
                                         value={formData.discount_value}
@@ -276,7 +276,7 @@ export default function CouponsManager() {
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm text-slate-400 mb-1">Estado</label>
+                                    <label className="block text-sm text-muted mb-1">Estado</label>
                                     <select
                                         value={formData.status}
                                         onChange={(e) => setFormData({ ...formData, status: e.target.value })}
@@ -287,7 +287,7 @@ export default function CouponsManager() {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-sm text-slate-400 mb-1">Límite de Usos (Opcional)</label>
+                                    <label className="block text-sm text-muted mb-1">Límite de Usos (Opcional)</label>
                                     <input
                                         type="number"
                                         value={formData.usage_limit}
@@ -299,7 +299,7 @@ export default function CouponsManager() {
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-sm text-slate-400 mb-1">Fecha de Expiración (Opcional)</label>
+                                <label className="block text-sm text-muted mb-1">Fecha de Expiración (Opcional)</label>
                                 <input
                                     type="date"
                                     value={formData.expiration_date}
@@ -318,17 +318,17 @@ export default function CouponsManager() {
 
             {/* Delete Confirmation */}
             {deleteConfirm && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                     <div className="glass-card p-6 w-full max-w-md animate-slide-up">
                         <div className="flex items-center gap-4 mb-4">
-                            <div className="p-3 bg-red-500/20 rounded-full">
-                                <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="p-3 bg-bad-soft rounded-full">
+                                <svg className="w-8 h-8 text-bad" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                 </svg>
                             </div>
-                            <h3 className="text-lg font-semibold text-white">¿Eliminar cupón?</h3>
+                            <h3 className="text-lg font-semibold text-ink">¿Eliminar cupón?</h3>
                         </div>
-                        <p className="text-slate-300 mb-6">Estás a punto de eliminar el cupón <span className="font-bold text-white">"{deleteConfirm.code}"</span>. Esta acción no se puede deshacer.</p>
+                        <p className="text-ink mb-6">Estás a punto de eliminar el cupón <span className="font-bold text-ink">"{deleteConfirm.code}"</span>. Esta acción no se puede deshacer.</p>
                         <div className="flex gap-3">
                             <button onClick={() => setDeleteConfirm(null)} className="flex-1 btn-secondary">No, cancelar</button>
                             <button onClick={() => handleDelete(deleteConfirm.id)} className="flex-1 btn-danger">Sí, eliminar</button>

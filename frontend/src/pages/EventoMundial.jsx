@@ -3,7 +3,7 @@ import { API_URL } from '../config';
 import { useAuth } from '../context/AuthContext';
 
 const EQUIPOS = {
-    mexico: { nombre: 'México', bandera: '🇲🇽', color: 'bg-green-600', texto: 'text-green-400' },
+    mexico: { nombre: 'México', bandera: '🇲🇽', color: 'bg-green-600', texto: 'text-ok' },
     corea: { nombre: 'Corea del Sur', bandera: '🇰🇷', color: 'bg-blue-600', texto: 'text-blue-400' },
 };
 
@@ -69,7 +69,7 @@ export default function EventoMundial() {
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent"></div>
             </div>
         );
     }
@@ -84,14 +84,14 @@ export default function EventoMundial() {
     return (
         <div className="p-4 md:p-8 max-w-6xl mx-auto">
             <div className="mb-6">
-                <h1 className="text-2xl md:text-3xl font-bold text-white">⚽ Mundial 2026 — 🇲🇽 México vs Corea del Sur 🇰🇷</h1>
-                <p className="text-slate-400 mt-1">
+                <h1 className="text-2xl md:text-3xl font-bold text-ink">⚽ Mundial 2026 — 🇲🇽 México vs Corea del Sur 🇰🇷</h1>
+                <p className="text-muted mt-1">
                     Votación fase de grupos (cierra 18 jun 7:00 pm) — tienda Bisonte Manga
                 </p>
             </div>
 
             {error && (
-                <div className="mb-4 p-3 bg-red-500/10 border border-red-500/40 rounded-lg text-red-400">
+                <div className="mb-4 p-3 bg-bad-soft border border-bad/30 rounded-lg text-bad">
                     {error}
                 </div>
             )}
@@ -99,27 +99,27 @@ export default function EventoMundial() {
             {/* Tarjetas de conteo */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                 {Object.entries(EQUIPOS).map(([key, eq]) => (
-                    <div key={key} className="bg-slate-800 border border-slate-700 rounded-xl p-5">
-                        <div className="flex items-center gap-2 text-slate-300">
+                    <div key={key} className="bg-surface border border-line rounded-control p-5">
+                        <div className="flex items-center gap-2 text-ink">
                             <span className="text-2xl">{eq.bandera}</span>
                             <span className="font-semibold">{eq.nombre}</span>
                         </div>
                         <div className={`text-4xl font-bold mt-2 ${eq.texto}`}>{conteos[key]}</div>
-                        <div className="text-slate-500 text-sm">
+                        <div className="text-muted text-sm">
                             {total === 0 ? '—' : `${key === 'mexico' ? pctMx : pctRsa}% de los votos`}
                         </div>
                     </div>
                 ))}
-                <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">
-                    <div className="text-slate-300 font-semibold">Total de votos</div>
-                    <div className="text-4xl font-bold mt-2 text-white">{total}</div>
-                    <div className="text-slate-500 text-sm">se actualiza cada 10s</div>
+                <div className="bg-surface border border-line rounded-control p-5">
+                    <div className="text-ink font-semibold">Total de votos</div>
+                    <div className="text-4xl font-bold mt-2 text-ink">{total}</div>
+                    <div className="text-muted text-sm">se actualiza cada 10s</div>
                 </div>
             </div>
 
             {/* Barra de proporción */}
             <div className="mb-8">
-                <div className="flex h-8 rounded-lg overflow-hidden border border-slate-700">
+                <div className="flex h-8 rounded-lg overflow-hidden border border-line">
                     <div
                         className="bg-green-600 flex items-center pl-3 text-white text-sm font-bold transition-all duration-700"
                         style={{ width: `${Math.max(8, Math.min(92, pctMx))}%` }}
@@ -136,17 +136,17 @@ export default function EventoMundial() {
             </div>
 
             {/* Publicar resultado */}
-            <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 mb-8">
-                <h2 className="text-lg font-bold text-white mb-1">Publicar resultado</h2>
-                <p className="text-slate-400 text-sm mb-4">
+            <div className="bg-surface border border-line rounded-control p-5 mb-8">
+                <h2 className="text-lg font-bold text-ink mb-1">Publicar resultado</h2>
+                <p className="text-muted text-sm mb-4">
                     Al terminar el partido, marca al ganador y define el código de descuento.
                     Quienes votaron por el ganador lo verán al instante en la tienda.
                 </p>
 
                 {resultado && (
-                    <div className="mb-4 p-3 bg-green-500/10 border border-green-500/40 rounded-lg text-green-400 text-sm">
+                    <div className="mb-4 p-3 bg-ok-soft border border-ok/30 rounded-lg text-ok text-sm">
                         Resultado actual: ganó <strong>{EQUIPOS[resultado.ganador]?.nombre}</strong>
-                        {resultado.codigo && <> — código <code className="font-mono bg-slate-900 px-2 py-0.5 rounded">{resultado.codigo}</code></>}
+                        {resultado.codigo && <> — código <code className="font-mono bg-surface px-2 py-0.5 rounded">{resultado.codigo}</code></>}
                     </div>
                 )}
 
@@ -154,7 +154,7 @@ export default function EventoMundial() {
                     <select
                         value={ganador}
                         onChange={e => setGanador(e.target.value)}
-                        className="bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 text-white"
+                        className="bg-surface border border-line rounded-lg px-4 py-2 text-ink"
                     >
                         <option value="">— Ganador —</option>
                         <option value="mexico">🇲🇽 México</option>
@@ -165,31 +165,31 @@ export default function EventoMundial() {
                         value={codigo}
                         onChange={e => setCodigo(e.target.value.toUpperCase())}
                         placeholder="Código de descuento (ej. MUNDIAL10)"
-                        className="flex-1 bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-500"
+                        className="flex-1 bg-surface border border-line rounded-lg px-4 py-2 text-ink placeholder-slate-500"
                     />
                     <button
                         onClick={publicarResultado}
                         disabled={!ganador || publicando}
-                        className="px-6 py-2 bg-gradient-to-r from-primary-500 to-accent-500 rounded-lg text-white font-semibold disabled:opacity-50"
+                        className="px-6 py-2 bg-accent rounded-lg text-white font-semibold disabled:opacity-50"
                     >
                         {publicando ? 'Publicando…' : 'Publicar'}
                     </button>
                 </div>
-                {mensaje && <p className="mt-3 text-sm text-slate-300">{mensaje}</p>}
+                {mensaje && <p className="mt-3 text-sm text-ink">{mensaje}</p>}
             </div>
 
             {/* Tabla de votantes */}
-            <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
-                <div className="p-5 border-b border-slate-700">
-                    <h2 className="text-lg font-bold text-white">Votantes ({votantes.length})</h2>
+            <div className="bg-surface border border-line rounded-control overflow-hidden">
+                <div className="p-5 border-b border-line">
+                    <h2 className="text-lg font-bold text-ink">Votantes ({votantes.length})</h2>
                 </div>
                 {votantes.length === 0 ? (
-                    <p className="p-5 text-slate-500">Aún no hay votos.</p>
+                    <p className="p-5 text-muted">Aún no hay votos.</p>
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
-                                <tr className="text-left text-slate-400 border-b border-slate-700">
+                                <tr className="text-left text-muted border-b border-line">
                                     <th className="px-5 py-3">Cliente</th>
                                     <th className="px-5 py-3">Email</th>
                                     <th className="px-5 py-3">Voto</th>
@@ -200,17 +200,17 @@ export default function EventoMundial() {
                                 {votantes.map(v => {
                                     const eq = EQUIPOS[v.opcion];
                                     return (
-                                        <tr key={v.id} className="border-b border-slate-700/50 text-slate-300">
+                                        <tr key={v.id} className="border-b border-line/50 text-ink">
                                             <td className="px-5 py-3">
-                                                {v.nombre ? `${v.nombre} ${v.apellido || ''}`.trim() : <span className="text-slate-500">Cliente #{v.cliente_id ?? '?'}</span>}
+                                                {v.nombre ? `${v.nombre} ${v.apellido || ''}`.trim() : <span className="text-muted">Cliente #{v.cliente_id ?? '?'}</span>}
                                             </td>
-                                            <td className="px-5 py-3 text-slate-400">{v.email || '—'}</td>
+                                            <td className="px-5 py-3 text-muted">{v.email || '—'}</td>
                                             <td className="px-5 py-3">
-                                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${v.opcion === 'mexico' ? 'bg-green-500/15 text-green-400' : 'bg-blue-500/15 text-blue-400'}`}>
+                                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${v.opcion === 'mexico' ? 'bg-ok-soft text-ok' : 'bg-blue-500/15 text-blue-400'}`}>
                                                     {eq?.bandera} {eq?.nombre || v.opcion}
                                                 </span>
                                             </td>
-                                            <td className="px-5 py-3 text-slate-400">
+                                            <td className="px-5 py-3 text-muted">
                                                 {new Date(v.created_at).toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' })}
                                             </td>
                                         </tr>
