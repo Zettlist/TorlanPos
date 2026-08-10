@@ -1,1 +1,11 @@
 uploads/
+
+# Credenciales de la base remota. Nunca al repositorio: DB_PASSWORD da acceso
+# total a los datos de clientes, y el CA identifica el servicio.
+.env.aiven
+.env.*.local
+certs/
+
+# La plantilla si va al repositorio: no tiene ningun valor, solo los nombres.
+# El .gitignore de la raiz excluye `.env.*`, asi que hay que reincluirla.
+!.env.aiven.example

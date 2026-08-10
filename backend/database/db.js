@@ -1,4 +1,5 @@
 import mysql from 'mysql2/promise';
+import { readFileSync } from 'fs';
 
 // Database connection configuration
 const dbConfig = {
@@ -20,6 +21,30 @@ if (dbHost.startsWith('/cloudsql/')) {
   // TCP connection for local development or direct IP
   dbConfig.host = dbHost;
   dbConfig.port = parseInt(process.env.DB_PORT) || 3306;
+}
+
+// ─── TLS ────────────────────────────────────────────────────────────────────
+//
+// Aiven rechaza cualquier conexion sin cifrar. Antes esto no hacia falta
+// porque Cloud SQL se alcanzaba por socket Unix dentro de App Engine, donde el
+// trafico no sale de la maquina; una base publica es otra cosa: sin TLS las
+// credenciales y todos los datos de clientes viajan en claro por internet.
+//
+// DB_SSL_CA apunta al ca.pem que descarga el panel de Aiven. Verificar contra
+// esa CA es lo que distingue "cifrado" de "cifrado contra quien sea": sin
+// comprobar el certificado, un intermediario puede presentarse como la base.
+//
+// DB_SSL=1 sin CA usa la verificacion por defecto de Node contra las CA
+// publicas del sistema. Sirve para un proveedor con certificado publico, no
+// para Aiven, que firma con CA propia.
+const rutaCA = process.env.DB_SSL_CA;
+if (rutaCA) {
+  dbConfig.ssl = {
+    ca: readFileSync(rutaCA, 'utf8'),
+    rejectUnauthorized: true,
+  };
+} else if (process.env.DB_SSL === '1') {
+  dbConfig.ssl = { rejectUnauthorized: true };
 }
 
 // Create connection pool
