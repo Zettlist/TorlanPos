@@ -10,7 +10,7 @@ import multer from 'multer';
 import { uploadFileToGCS } from '../utils/storage.js';
 // import ptp from 'pdf-to-printer'; // Removed for client-side printing support
 import { fileURLToPath } from 'url';
-import { generateEAN13, getProductSequence } from '../utils/barcodeGenerator.js';
+import { generarCodigoParaEmpresa } from '../utils/barcodeGenerator.js';
 
 // Configure Multer (Memory Storage)
 const upload = multer({
@@ -392,29 +392,27 @@ router.post('/', requireInventoryWrite, upload.single('image'), async (req, res)
             publisherId = pubRows.insertId;
         }
 
-        // Auto-generate EAN-13 barcode if not provided and category exists
+        // Codigo de barras automatico si no se captura uno.
+        //
+        // Antes solo se generaba cuando el producto traia categoria, asi que
+        // los que no la tenian quedaban sin codigo y no se podian escanear. Y
+        // si la generacion fallaba se seguia en silencio: el producto nacia sin
+        // etiqueta posible y nadie se enteraba hasta el mostrador.
         let finalBarcode = barcode;
-        if (!barcode && categoryId) {
-            try {
-                const sequence = await getProductSequence(pool, empresaId, categoryId, publisherId);
-                finalBarcode = generateEAN13(empresaId, categoryId, publisherId, sequence);
-                console.log(`✓ Generated EAN-13 barcode: ${finalBarcode} (E:${empresaId} C:${categoryId} P:${publisherId || 0} S:${sequence})`);
-            } catch (barcodeError) {
-                console.warn('Barcode generation failed:', barcodeError.message);
-                // Continue without barcode if generation fails
-            }
+        if (!barcode) {
+            finalBarcode = await generarCodigoParaEmpresa(pool, empresaId);
         }
 
         // ... validation ...
 
         const [result] = await pool.query(`
             INSERT INTO products (
-                empresa_id, name, price, cost_price, sale_price, stock, category, category_id, barcode, sbin_code, isbn,
+                empresa_id, name, cost_price, sale_price, stock, category, category_id, barcode, sbin_code, isbn,
                 extras, publication_date, publisher, publisher_id, page_count, dimensions,
                 weight, page_color, language, supplier_id, supplier_price, image_url, gender, is_adult, artist, group_name, events, sinopsis
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
-            empresaId, name, sale_price, cost_price, sale_price, stock || 0, category || null, categoryId,
+            empresaId, name, cost_price, sale_price, stock || 0, category || null, categoryId,
             finalBarcode || null, sbin_code || null, isbn || null, extras || null,
             publication_date || null, publisher || null, publisherId, page_count || null, dimensions || null,
             weight || null, page_color || null, language || null, supplier_id || null, supplier_price || null, imageUrl, null,
@@ -438,6 +436,16 @@ router.post('/', requireInventoryWrite, upload.single('image'), async (req, res)
             }
         }
     } catch (error) {
+        // La unicidad la impone la base, no el SELECT previo. Si dos altas
+        // simultaneas mandan el mismo codigo, aqui llega la segunda.
+        if (error.code === 'ER_DUP_ENTRY') {
+            const campo = /barcode/.test(error.message) ? 'código de barras'
+                : /sbin/.test(error.message) ? 'código SBIN'
+                    : 'código';
+            return res.status(409).json({
+                error: `Ese ${campo} ya está en uso por otro producto de la empresa.`
+            });
+        }
         console.error('Create product error:', error);
         res.status(500).json({ error: 'Error interno del servidor' });
     }
