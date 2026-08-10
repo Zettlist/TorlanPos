@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-
-// Use hardcoded URL for production to avoid env var issues
-const API_URL = import.meta.env.PROD
-    ? 'https://pos-torlan.uc.r.appspot.com/api'
-    : 'http://localhost:3000/api';
+// Copia desincronizada de la URL del API: apuntaba al 3000 y el backend
+// escucha en el 3001. Ver src/config.js.
+import { API_URL } from '../../config';
 
 export default function CashSession() {
     const { token, user, isEmpresaAdmin } = useAuth();

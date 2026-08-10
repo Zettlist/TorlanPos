@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-
-// Use hardcoded URL for production to avoid env var issues
-const API_URL = import.meta.env.PROD
-    ? 'https://pos-torlan.uc.r.appspot.com/api'
-    : 'http://localhost:3000/api';
+// La URL estaba copiada a mano aqui, apuntando al puerto 3000. El backend
+// escucha en el 3001, asi que en desarrollo esta pantalla fallaba con
+// ERR_CONNECTION_REFUSED y mostraba "0 empresas" — no vacia, sino sin poder
+// preguntar. Tres pantallas tenian la copia y ninguna se actualizo cuando
+// cambio el puerto. La unica fuente es src/config.js.
+import { API_URL } from '../../config';
 
 export default function EmpresaManager() {
     const { token, user, isGlobalAdmin } = useAuth();

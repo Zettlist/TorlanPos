@@ -36,6 +36,12 @@ if (!schemaPath) {
 const USUARIO = 'admin';
 const CLAVE = 'torlan2026';
 
+// El admin global no pertenece a ninguna empresa: administra todas. Es el que
+// abre TorlanAdmin (alta de empresas, features, planes). Sin el, esas pantallas
+// devuelven 403 y no hay forma de verlas en local.
+const ADMIN_GLOBAL = 'TorlanAdmin';
+const CLAVE_GLOBAL = 'torlan-global-2026';
+
 console.log('Arrancando MySQL 8 local (la primera vez descarga binarios)…');
 const db = await createDB({ version: '8.0.x', dbName: 'torlan_pos' });
 
@@ -59,6 +65,14 @@ await conn.query(
                         first_login, has_setup_complete, onboarding_completed)
      VALUES (?,?,?,?,?,1,0,1,1)`,
     [USUARIO, '10001', hash, empresaId, 'empresa_admin']);
+
+// empresa_id NULL a proposito: el admin global no cuelga de ninguna empresa,
+// y `validateEmpresaActive` se salta la comprobacion justo por ese rol.
+await conn.query(
+    `INSERT INTO users (username, employee_number, password_hash, empresa_id, role, is_admin,
+                        first_login, has_setup_complete, onboarding_completed)
+     VALUES (?,?,?,NULL,?,1,0,1,1)`,
+    [ADMIN_GLOBAL, '90001', await bcrypt.hash(CLAVE_GLOBAL, 10), 'global_admin']);
 
 // Todas las funciones encendidas para que se vean los modulos del menu.
 await conn.query(`
@@ -140,9 +154,13 @@ console.log(`
   MySQL local listo en 127.0.0.1:${db.port}
   Base: torlan_pos · ${CATALOGO.length} productos sembrados
 
-  Entrar al POS:
+  Entrar al POS (administrador de empresa):
     Usuario:    ${USUARIO}   (o el numero 10001)
     Contraseña: ${CLAVE}
+
+  Administrador global (empresas, planes, features):
+    Usuario:    ${ADMIN_GLOBAL}   (o el numero 90001)
+    Contraseña: ${CLAVE_GLOBAL}
 
   Deja esta ventana abierta. Ctrl+C para detener.
 ────────────────────────────────────────────────
