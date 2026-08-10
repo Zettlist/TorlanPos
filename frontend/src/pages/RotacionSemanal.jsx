@@ -257,14 +257,14 @@ export default function RotacionSemanal({ onClose }) {
                         <h2 className="text-lg font-bold text-ink flex items-center gap-2">
                             Rotación Semanal
                             {isAdultTab && (
-                                <span className="text-xs px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 font-semibold">18+</span>
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-700 border border-rose-500/30 font-semibold">18+</span>
                             )}
                         </h2>
                         <p className="text-xs text-muted">
                             Selecciona una columna y luego los productos ·
                             <span className="text-ok mx-1">■ Novedad</span>
                             <span className="text-warn">■ Liquidación</span>
-                            {isAdultTab && <span className="text-rose-400 ml-1">· rotación independiente</span>}
+                            {isAdultTab && <span className="text-rose-700 ml-1">· rotación independiente</span>}
                         </p>
                     </div>
                 </div>
@@ -276,7 +276,7 @@ export default function RotacionSemanal({ onClose }) {
                     )}
                     <button
                         onClick={clearAll}
-                        className="btn-secondary text-sm flex items-center gap-2 text-rose-400 hover:text-rose-300 border-rose-500/30 hover:border-rose-400/50"
+                        className="btn-secondary text-sm flex items-center gap-2 text-rose-700 hover:text-rose-700 border-rose-500/30 hover:border-rose-400/50"
                     >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -310,13 +310,13 @@ export default function RotacionSemanal({ onClose }) {
                                     onClick={() => switchTab(t.key)}
                                     className={`px-4 py-2.5 text-sm font-medium transition-colors relative flex items-center gap-1.5 ${
                                         activeTab === t.key
-                                            ? (t.key === 'adult' ? 'text-rose-400' : 'text-accent')
+                                            ? (t.key === 'adult' ? 'text-rose-700' : 'text-accent')
                                             : 'text-muted hover:text-ink'
                                     }`}
                                 >
                                     {t.label}
                                     {t.key === 'adult' && (
-                                        <span className="text-[10px] px-1 py-0.5 rounded bg-rose-500/20 text-rose-300 font-bold">18+</span>
+                                        <span className="text-[10px] px-1 py-0.5 rounded bg-rose-500/20 text-rose-700 font-bold">18+</span>
                                     )}
                                     {activeTab === t.key && (
                                         <span className={`absolute bottom-0 left-0 right-0 h-0.5 rounded-t ${t.key === 'adult' ? 'bg-rose-400' : 'bg-primary-400'}`} />
@@ -336,7 +336,7 @@ export default function RotacionSemanal({ onClose }) {
                     {/* Hint */}
                     {!activeCol && (
                         <div className="mx-4 mb-2 mt-2 px-3 py-2 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                            <p className="text-xs text-blue-300">
+                            <p className="text-xs text-blue-700">
                                 👈 Selecciona una columna de la derecha para empezar a asignar productos
                             </p>
                         </div>

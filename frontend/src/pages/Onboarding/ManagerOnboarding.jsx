@@ -170,7 +170,7 @@ export default function ManagerOnboarding() {
                     {/* Step 1: Welcome */}
                     {currentStep === 1 && (
                         <div className="text-center animate-slide-up">
-                            <h1 className="text-4xl font-bold text-white mb-4 bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
+                            <h1 className="text-4xl font-bold text-white mb-4 text-ink">
                                 ¡Bienvenido a Torlan POS!
                             </h1>
                             <p className="text-muted mb-8 text-lg">
@@ -184,7 +184,7 @@ export default function ManagerOnboarding() {
                                         Definir metas de ventas
                                     </li>
                                     <li className="flex items-center gap-3">
-                                        <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 text-sm">2</div>
+                                        <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-700 text-sm">2</div>
                                         Revisión final
                                     </li>
                                 </ul>

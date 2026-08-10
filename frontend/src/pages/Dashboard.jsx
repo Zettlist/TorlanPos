@@ -8,14 +8,14 @@ const GoalProgress = ({ title, current, target, isEditing, onTargetChange, icon,
     const excess = current - target;
 
     // Smart Color Logic
-    let colorClass = "text-blue-500";
+    let colorClass = "text-blue-700";
     let progressBarColor = "bg-blue-500";
 
     if (progress >= 100) {
         colorClass = "text-emerald-500";
         progressBarColor = "bg-emerald-500";
     } else if (progress > 80) {
-        colorClass = "text-orange-500";
+        colorClass = "text-orange-700";
         progressBarColor = "bg-orange-500";
     }
 
@@ -219,7 +219,7 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-bold">
-                            ¡Bienvenido, <span className="bg-accent bg-clip-text text-transparent">{user?.username}</span>!
+                            ¡Bienvenido, <span className="text-ink">{user?.username}</span>!
                         </h1>
                         <p className="text-muted mt-1">
                             {new Date().toLocaleDateString('es-MX', {
@@ -370,7 +370,7 @@ export default function Dashboard() {
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                                         </svg>
                                     ) : (
-                                        <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg className="w-6 h-6 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                                         </svg>
                                     )}

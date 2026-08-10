@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 
 const EQUIPOS = {
     mexico: { nombre: 'México', bandera: '🇲🇽', color: 'bg-green-600', texto: 'text-ok' },
-    corea: { nombre: 'Corea del Sur', bandera: '🇰🇷', color: 'bg-blue-600', texto: 'text-blue-400' },
+    corea: { nombre: 'Corea del Sur', bandera: '🇰🇷', color: 'bg-blue-600', texto: 'text-blue-700' },
 };
 
 export default function EventoMundial() {
@@ -206,7 +206,7 @@ export default function EventoMundial() {
                                             </td>
                                             <td className="px-5 py-3 text-muted">{v.email || '—'}</td>
                                             <td className="px-5 py-3">
-                                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${v.opcion === 'mexico' ? 'bg-ok-soft text-ok' : 'bg-blue-500/15 text-blue-400'}`}>
+                                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${v.opcion === 'mexico' ? 'bg-ok-soft text-ok' : 'bg-blue-500/15 text-blue-700'}`}>
                                                     {eq?.bandera} {eq?.nombre || v.opcion}
                                                 </span>
                                             </td>

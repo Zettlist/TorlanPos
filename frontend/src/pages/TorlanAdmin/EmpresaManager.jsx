@@ -286,8 +286,8 @@ export default function EmpresaManager() {
     const getPlanBadge = (plan) => {
         const colors = {
             'Basico': 'bg-raised text-ink',
-            'Premium': 'bg-blue-500/20 text-blue-300 border border-blue-500/30',
-            'Empresarial': 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+            'Premium': 'bg-blue-500/20 text-blue-700 border border-blue-500/30',
+            'Empresarial': 'bg-purple-500/20 text-purple-700 border border-purple-500/30'
         };
         return colors[plan] || 'bg-raised text-ink';
     };
@@ -378,7 +378,7 @@ export default function EmpresaManager() {
                 </div>
                 <div className="glass-card-dark p-4">
                     <p className="text-muted text-sm">Premium+</p>
-                    <p className="text-2xl font-bold text-blue-400">
+                    <p className="text-2xl font-bold text-blue-700">
                         {empresas.filter(e => e.plan_contratado !== 'Basico').length}
                     </p>
                 </div>
@@ -458,7 +458,7 @@ export default function EmpresaManager() {
                                                     onClick={() => openEditModal(empresa)}
                                                     className="w-full text-left px-4 py-3 hover:bg-raised flex items-center gap-3 text-sm text-ink hover:text-ink"
                                                 >
-                                                    <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <svg className="w-5 h-5 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                                     </svg>
                                                     Editar Empresa

@@ -753,10 +753,10 @@ export default function Products() {
                     </button>
                     <button
                         onClick={() => setActiveTab('adult')}
-                        className={`px-4 py-3 text-sm font-medium transition-colors relative flex items-center gap-2 ${activeTab === 'adult' ? 'text-rose-400' : 'text-muted hover:text-ink'}`}
+                        className={`px-4 py-3 text-sm font-medium transition-colors relative flex items-center gap-2 ${activeTab === 'adult' ? 'text-rose-700' : 'text-muted hover:text-ink'}`}
                     >
                         Contenido Adulto
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300">18+</span>
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-bad-soft text-bad">18+</span>
                         {activeTab === 'adult' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-rose-500" />}
                     </button>
                 </div>
@@ -1016,17 +1016,17 @@ export default function Products() {
                                         {formData.is_adult && <svg className="w-3.5 h-3.5 text-ink" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                                     </div>
                                     <input type="checkbox" checked={formData.is_adult} onChange={(e) => setFormData(prev => ({ ...prev, is_adult: e.target.checked, category: e.target.checked ? 'Manga Hentai' : 'Manga' }))} className="hidden" />
-                                    <span className={`text-sm font-medium transition-colors ${formData.is_adult ? 'text-rose-400' : 'text-muted'}`}>Producto para adultos (18+)</span>
+                                    <span className={`text-sm font-medium transition-colors ${formData.is_adult ? 'text-rose-700' : 'text-muted'}`}>Producto para adultos (18+)</span>
                                 </label>
 
                                 {formData.is_adult && (
                                     <div className="grid grid-cols-2 gap-3 p-3 rounded-control bg-rose-500/5 border border-rose-500/15">
                                         <div>
-                                            <label className="block text-xs text-rose-300/70 mb-1">Artista</label>
+                                            <label className="block text-xs text-rose-700/70 mb-1">Artista</label>
                                             <input type="text" value={formData.artist || ''} onChange={(e) => setFormData({ ...formData, artist: e.target.value })} className="input-glass border-rose-500/20" placeholder="Nombre del artista" />
                                         </div>
                                         <div>
-                                            <label className="block text-xs text-rose-300/70 mb-1">Grupo / Círculo</label>
+                                            <label className="block text-xs text-rose-700/70 mb-1">Grupo / Círculo</label>
                                             <input type="text" value={formData.group_name || ''} onChange={(e) => setFormData({ ...formData, group_name: e.target.value })} className="input-glass border-rose-500/20" placeholder="Círculo doujin" />
                                         </div>
                                     </div>
@@ -1044,7 +1044,7 @@ export default function Products() {
                                             return (
                                                 <button key={type} type="button"
                                                     onClick={() => setFormData({ ...formData, category: type, ...(noPages ? { page_count: '', page_color: '' } : {}) })}
-                                                    className={`px-2 py-2 rounded-lg text-xs font-medium text-center transition-all border ${formData.category === type ? (formData.is_adult ? 'bg-rose-500/20 border-rose-500/60 text-rose-300' : 'bg-accent/20 border-accent/25 text-accent') : 'bg-white/3 border-line text-muted hover:border-line-strong hover:text-ink'}`}
+                                                    className={`px-2 py-2 rounded-lg text-xs font-medium text-center transition-all border ${formData.category === type ? (formData.is_adult ? 'bg-rose-500/20 border-rose-500/60 text-rose-700' : 'bg-accent/20 border-accent/25 text-accent') : 'bg-white/3 border-line text-muted hover:border-line-strong hover:text-ink'}`}
                                                 >{type}</button>
                                             );
                                         })}

@@ -951,13 +951,13 @@ export default function Preventas() {
                         <div className="bg-surface rounded-panel shadow-2xl border border-indigo-500/30 w-full max-w-md mx-4 p-6 space-y-5">
                             <div className="flex items-center gap-3">
                                 <div className="w-12 h-12 bg-indigo-600/20 rounded-control flex items-center justify-center flex-shrink-0">
-                                    <svg className="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className="w-6 h-6 text-indigo-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                     </svg>
                                 </div>
                                 <div>
                                     <h3 className="text-lg font-bold text-ink">Cerrar Pedido</h3>
-                                    <p className="text-sm text-muted">Se moverán <span className="font-semibold text-indigo-400">{items.length} pedidos</span> al historial</p>
+                                    <p className="text-sm text-muted">Se moverán <span className="font-semibold text-indigo-700">{items.length} pedidos</span> al historial</p>
                                 </div>
                             </div>
 
@@ -1051,14 +1051,14 @@ export default function Preventas() {
                                             <td className="px-6 py-4 font-medium text-ink">{item.title}</td>
                                             <td className="px-6 py-4">{item.artist}</td>
                                             <td className="px-6 py-4 text-right font-medium">
-                                                <span className={item.balance > 0 ? "text-orange-400" : "text-ok"}>
+                                                <span className={item.balance > 0 ? "text-orange-700" : "text-ok"}>
                                                     ${formatPrice(item.balance)}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 text-center">
                                                 <span className={`text-xs px-2 py-1 rounded font-medium ${item.isPaidInFull
                                                     ? "bg-green-600/20 text-ok ring-1 ring-green-500/30"
-                                                    : "bg-orange-600/20 text-orange-400 ring-1 ring-orange-500/30"
+                                                    : "bg-orange-600/20 text-orange-700 ring-1 ring-orange-500/30"
                                                     }`}>
                                                     {item.isPaidInFull ? "Liquidado" : "Apartado"}
                                                 </span>
@@ -1144,7 +1144,7 @@ export default function Preventas() {
                                                             <td className="px-4 py-3 text-xs text-muted">{Array.isArray(order.categories) ? order.categories.join(', ') : order.category}</td>
                                                             <td className="px-4 py-3 text-right text-xs font-medium text-ink">${formatPrice(order.totalPrice)}</td>
                                                             <td className="px-4 py-3 text-center">
-                                                                <span className={`text-xs px-2 py-0.5 rounded font-medium ${order.isPaidInFull ? 'bg-green-600/20 text-ok ring-1 ring-green-500/30' : 'bg-orange-600/20 text-orange-400 ring-1 ring-orange-500/30'}`}>
+                                                                <span className={`text-xs px-2 py-0.5 rounded font-medium ${order.isPaidInFull ? 'bg-green-600/20 text-ok ring-1 ring-green-500/30' : 'bg-orange-600/20 text-orange-700 ring-1 ring-orange-500/30'}`}>
                                                                     {order.isPaidInFull ? 'Liquidado' : 'Apartado'}
                                                                 </span>
                                                             </td>
@@ -1189,7 +1189,7 @@ export default function Preventas() {
                                         <td className="px-4 py-2">{histItem.title}</td>
                                         <td className="px-4 py-2 text-right text-ink">${formatPrice(histItem.totalPrice)}</td>
                                         <td className="px-4 py-2 text-right">
-                                            <span className={histItem.balance > 0 ? "text-orange-400" : "text-ok"}>
+                                            <span className={histItem.balance > 0 ? "text-orange-700" : "text-ok"}>
                                                 ${formatPrice(histItem.balance)}
                                             </span>
                                         </td>
@@ -1277,12 +1277,12 @@ export default function Preventas() {
                                         </div>
                                         <div className="flex justify-between items-center">
                                             <span className="text-muted">Total Pagado</span>
-                                            <span className="text-lg font-medium text-blue-400">${formatPrice(selectedOrder.totalPaid)}</span>
+                                            <span className="text-lg font-medium text-blue-700">${formatPrice(selectedOrder.totalPaid)}</span>
                                         </div>
                                         <div className="w-full h-px bg-raised my-2"></div>
                                         <div className="flex justify-between items-center">
                                             <span className="text-muted font-medium">Saldo Pendiente</span>
-                                            <span className={`text-2xl font-bold ${selectedOrder.balance > 0 ? 'text-orange-400' : 'text-ok'}`}>
+                                            <span className={`text-2xl font-bold ${selectedOrder.balance > 0 ? 'text-orange-700' : 'text-ok'}`}>
                                                 ${formatPrice(selectedOrder.balance)}
                                             </span>
                                         </div>
@@ -1359,7 +1359,7 @@ export default function Preventas() {
                     <div className="p-4 bg-surface rounded-lg border border-line">
                         <div className="flex justify-between items-center mb-2">
                             <span className="text-muted">Saldo Pendiente:</span>
-                            <span className="text-2xl font-bold text-orange-400">${formatPrice(selectedOrder?.balance || 0)}</span>
+                            <span className="text-2xl font-bold text-orange-700">${formatPrice(selectedOrder?.balance || 0)}</span>
                         </div>
                     </div>
 

@@ -271,7 +271,7 @@ export default function SalesReports() {
                                                 {formatCurrency(row.goal)}
                                             </td>
                                             <td className="p-4 text-right">
-                                                <span className={`font-bold ${row.goalAchieved ? 'text-ok' : 'text-orange-400'
+                                                <span className={`font-bold ${row.goalAchieved ? 'text-ok' : 'text-orange-700'
                                                     }`}>
                                                     {row.goalPercentage.toFixed(1)}%
                                                 </span>

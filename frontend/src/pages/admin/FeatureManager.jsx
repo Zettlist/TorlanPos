@@ -237,7 +237,7 @@ export default function FeatureManager() {
                                             }}
                                             className={`px-2 py-0.5 rounded text-xs font-medium transition-all hover:scale-105 ${selectedUser.has_setup_complete
                                                 ? 'bg-ok-soft text-ok hover:bg-ok-soft'
-                                                : 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30'
+                                                : 'bg-blue-500/20 text-blue-700 hover:bg-blue-500/30'
                                                 }`}
                                             title="Clic para cambiar estado"
                                         >
@@ -287,7 +287,7 @@ export default function FeatureManager() {
                                     </div>
                                     <div className="bg-raised rounded-control p-4">
                                         <p className="text-xs text-muted uppercase tracking-wider">Ventas Hoy</p>
-                                        <p className="text-2xl font-bold text-blue-400">${userStats.todaySales?.toFixed(2) || '0.00'}</p>
+                                        <p className="text-2xl font-bold text-blue-700">${userStats.todaySales?.toFixed(2) || '0.00'}</p>
                                     </div>
                                     <div className="bg-raised rounded-control p-4">
                                         <p className="text-xs text-muted uppercase tracking-wider">Ticket Promedio</p>

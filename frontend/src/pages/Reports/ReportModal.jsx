@@ -316,7 +316,7 @@ export default function ReportModal({ report, onClose }) {
                                                 </td>
                                                 <td className="p-3 text-center">
                                                     {session.auto_closed ? (
-                                                        <span className="text-xs px-2 py-1 bg-orange-500/20 text-orange-300 rounded">
+                                                        <span className="text-xs px-2 py-1 bg-orange-500/20 text-orange-700 rounded">
                                                             🤖 Auto
                                                         </span>
                                                     ) : (
@@ -363,7 +363,7 @@ export default function ReportModal({ report, onClose }) {
                             <div className="glass-card-dark p-4 border-l-4 border-blue-500">
                                 <div className="flex items-center justify-between mb-2">
                                     <span className="text-muted"><span className="print:hidden">💳</span> Tarjeta</span>
-                                    <span className="text-2xl font-bold text-blue-400">
+                                    <span className="text-2xl font-bold text-blue-700">
                                         {formatCurrency(paymentBreakdown.card)}
                                     </span>
                                 </div>

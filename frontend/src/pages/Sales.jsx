@@ -758,10 +758,10 @@ export default function Sales() {
                         {paymentMethod === 'card' && (
                             <div className="space-y-4">
                                 <div className="flex items-center gap-3 p-3 bg-blue-500/20 rounded-control">
-                                    <svg className="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className="w-8 h-8 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                                     </svg>
-                                    <span className="font-semibold text-blue-300">Pago con Tarjeta</span>
+                                    <span className="font-semibold text-blue-700">Pago con Tarjeta</span>
                                 </div>
 
                                 <div>
@@ -770,7 +770,7 @@ export default function Sales() {
                                         <button
                                             onClick={() => setCardType('debit')}
                                             className={`p-3 rounded-control border-2 transition-all ${cardType === 'debit'
-                                                ? 'border-blue-500 bg-blue-500/20 text-blue-300'
+                                                ? 'border-blue-500 bg-blue-500/20 text-blue-700'
                                                 : 'border-line hover:border-line-strong'
                                                 }`}
                                         >
@@ -779,7 +779,7 @@ export default function Sales() {
                                         <button
                                             onClick={() => setCardType('credit')}
                                             className={`p-3 rounded-control border-2 transition-all ${cardType === 'credit'
-                                                ? 'border-purple-500 bg-purple-500/20 text-purple-300'
+                                                ? 'border-purple-500 bg-purple-500/20 text-purple-700'
                                                 : 'border-line hover:border-line-strong'
                                                 }`}
                                         >
@@ -1210,7 +1210,7 @@ export default function Sales() {
                         <button
                             onClick={() => openPaymentModal('cash')}
                             disabled={cart.length === 0}
-                            className="btn-primary py-4 flex flex-col items-center gap-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="btn-primary py-4 flex flex-col items-center gap-1 bg-ok hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -1220,7 +1220,7 @@ export default function Sales() {
                         <button
                             onClick={() => openPaymentModal('card')}
                             disabled={cart.length === 0}
-                            className="btn-primary py-4 flex flex-col items-center gap-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="btn-primary py-4 flex flex-col items-center gap-1 bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
@@ -1343,7 +1343,7 @@ export default function Sales() {
                                     setMobileCartOpen(false);
                                 }}
                                 disabled={cart.length === 0}
-                                className="btn-primary py-4 flex flex-col items-center gap-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed touch-target"
+                                className="btn-primary py-4 flex flex-col items-center gap-1 bg-ok hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed touch-target"
                             >
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -1356,7 +1356,7 @@ export default function Sales() {
                                     setMobileCartOpen(false);
                                 }}
                                 disabled={cart.length === 0}
-                                className="btn-primary py-4 flex flex-col items-center gap-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed touch-target"
+                                className="btn-primary py-4 flex flex-col items-center gap-1 bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed touch-target"
                             >
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />

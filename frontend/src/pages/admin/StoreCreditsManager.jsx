@@ -209,7 +209,7 @@ export default function StoreCreditsManager() {
                     { label: 'Inactivos', count: credits.filter(c => c.status === 'disabled').length, color: 'from-red-400 to-pink-400' },
                 ].map(({ label, count, color }) => (
                     <div key={label} className="glass-card-dark rounded-control p-4 text-center">
-                        <p className={`text-2xl font-bold bg-gradient-to-r ${color} bg-clip-text text-transparent`}>{count}</p>
+                        <p className="text-2xl font-bold text-ink tabular">{count}</p>
                         <p className="text-xs text-muted mt-1">{label}</p>
                     </div>
                 ))}

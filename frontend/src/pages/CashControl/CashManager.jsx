@@ -296,12 +296,12 @@ export default function CashManager() {
 
                                 <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-control">
                                     <div className="flex justify-between items-center mb-1">
-                                        <span className="text-blue-300 font-medium">Total Esperado en Caja</span>
-                                        <span className="text-2xl font-bold text-blue-300">
+                                        <span className="text-blue-700 font-medium">Total Esperado en Caja</span>
+                                        <span className="text-2xl font-bold text-blue-700">
                                             ${Number(activeSession.current_expected).toFixed(2)}
                                         </span>
                                     </div>
-                                    <p className="text-xs text-blue-300/60 text-right">Fondo + Ventas</p>
+                                    <p className="text-xs text-blue-700/60 text-right">Fondo + Ventas</p>
                                 </div>
                             </div>
 
@@ -393,7 +393,7 @@ export default function CashManager() {
                                             <td className="table-cell text-right">
                                                 {session.status === 'closed' ? (
                                                     session.difference !== undefined ? (
-                                                        <span className={session.difference === 0 ? 'text-muted' : session.difference > 0 ? 'text-blue-400' : 'text-bad'}>
+                                                        <span className={session.difference === 0 ? 'text-muted' : session.difference > 0 ? 'text-blue-700' : 'text-bad'}>
                                                             {session.difference > 0 ? '+' : ''}{Number(session.difference).toFixed(2)}
                                                         </span>
                                                     ) : (
@@ -568,8 +568,8 @@ export default function CashManager() {
                                             </div>
 
                                             <div className="flex justify-between items-center border-t border-line pt-2 mt-2">
-                                                <span className="text-blue-300 font-bold">Total Esperado en Caja (Efectivo)</span>
-                                                <span className="font-mono text-xl text-blue-300 font-bold">
+                                                <span className="text-blue-700 font-bold">Total Esperado en Caja (Efectivo)</span>
+                                                <span className="font-mono text-xl text-blue-700 font-bold">
                                                     ${Number(selectedSessionDetails.session.calculated_expected).toFixed(2)}
                                                 </span>
                                             </div>

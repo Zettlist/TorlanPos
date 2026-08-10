@@ -429,7 +429,7 @@ export default function UserManager() {
                                                 Activo
                                             </span>
                                         ) : (
-                                            <span className="flex items-center gap-2 text-blue-400">
+                                            <span className="flex items-center gap-2 text-blue-700">
                                                 <span className="w-2 h-2 bg-blue-400 rounded-full"></span>
                                                 Setup pendiente
                                             </span>

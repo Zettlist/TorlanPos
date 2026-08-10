@@ -167,7 +167,7 @@ export default function CashSession() {
                         ) : (
                             <>
                                 <div className="text-6xl mb-4">📊</div>
-                                <h2 className="text-2xl font-bold text-blue-400 mb-4">Caja Cerrada con Diferencia</h2>
+                                <h2 className="text-2xl font-bold text-blue-700 mb-4">Caja Cerrada con Diferencia</h2>
                                 <div className="bg-surface rounded-lg p-4 mb-4 text-left">
                                     <div className="flex justify-between mb-2">
                                         <span className="text-muted">Esperado:</span>

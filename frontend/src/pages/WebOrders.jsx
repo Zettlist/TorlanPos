@@ -5,19 +5,19 @@ import { API_URL } from '../config';
 const STATUS_CONFIG = {
     pendiente:  { label: 'Pendiente',  bg: 'bg-warn-soft',   text: 'text-warn',   border: 'border-amber-500/30',   dot: 'bg-amber-400'   },
     confirmado: { label: 'Confirmado', bg: 'bg-ok-soft', text: 'text-ok', border: 'border-emerald-500/30', dot: 'bg-emerald-400' },
-    envio:      { label: 'En Envío',   bg: 'bg-blue-500/20',    text: 'text-blue-400',    border: 'border-blue-500/30',    dot: 'bg-blue-400'    },
-    entregado:  { label: 'Entregado',  bg: 'bg-teal-500/20',    text: 'text-teal-400',    border: 'border-teal-500/30',    dot: 'bg-teal-400'    },
-    reclamo:    { label: 'Reclamo',    bg: 'bg-orange-500/20',  text: 'text-orange-400',  border: 'border-orange-500/30',  dot: 'bg-orange-400'  },
+    envio:      { label: 'En Envío',   bg: 'bg-blue-500/20',    text: 'text-blue-700',    border: 'border-blue-500/30',    dot: 'bg-blue-400'    },
+    entregado:  { label: 'Entregado',  bg: 'bg-teal-500/20',    text: 'text-teal-700',    border: 'border-teal-500/30',    dot: 'bg-teal-400'    },
+    reclamo:    { label: 'Reclamo',    bg: 'bg-orange-500/20',  text: 'text-orange-700',  border: 'border-orange-500/30',  dot: 'bg-orange-400'  },
     cancelado:  { label: 'Cancelado',  bg: 'bg-bad-soft',     text: 'text-bad',     border: 'border-bad/30',     dot: 'bg-red-400'     },
 };
 
 const SHIPPING_CONFIG = {
-    en_espera:  { label: 'En espera de despacho', icon: '📦', bg: 'bg-blue-500/15',    text: 'text-blue-300',    border: 'border-blue-500/20'    },
-    despachado: { label: 'Despachado',             icon: '🚚', bg: 'bg-violet-500/15', text: 'text-violet-300', border: 'border-violet-500/20' },
+    en_espera:  { label: 'En espera de despacho', icon: '📦', bg: 'bg-blue-500/15',    text: 'text-blue-700',    border: 'border-blue-500/20'    },
+    despachado: { label: 'Despachado',             icon: '🚚', bg: 'bg-violet-500/15', text: 'text-violet-700', border: 'border-violet-500/20' },
 };
 
 const CLAIM_CONFIG = {
-    disputa:    { label: 'En disputa',  icon: '⚠️', bg: 'bg-orange-500/15', text: 'text-orange-300', border: 'border-orange-500/20' },
+    disputa:    { label: 'En disputa',  icon: '⚠️', bg: 'bg-orange-500/15', text: 'text-orange-700', border: 'border-orange-500/20' },
     resolucion: { label: 'Resuelto',    icon: '✅', bg: 'bg-ok-soft', text: 'text-ok', border: 'border-emerald-500/20' },
 };
 
@@ -57,7 +57,7 @@ function ProcessTypeBadge({ processType, status }) {
     return (
         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border ${
             isAuto
-                ? 'bg-violet-500/15 text-violet-400 border-violet-500/30'
+                ? 'bg-violet-500/15 text-violet-700 border-violet-500/30'
                 : 'bg-slate-500/15 text-muted border-slate-500/30'
         }`}>
             {isAuto ? (
@@ -277,7 +277,7 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                             {order.shipping_method && (
                                 <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border ${
                                     order.shipping_method === 'envia'
-                                        ? 'bg-cyan-500/15 text-cyan-300 border-cyan-500/20'
+                                        ? 'bg-cyan-500/15 text-cyan-700 border-cyan-500/20'
                                         : 'bg-warn-soft text-warn border-amber-500/20'
                                 }`}>
                                     {order.shipping_method === 'envia' ? '📦 Envia.com' : '🦬 Envío Bisonte'}
@@ -334,7 +334,7 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                     {/* Tracking number — shown for any status when available */}
                     {order.tracking_number && (
                         <div className="bg-violet-500/10 border border-violet-500/20 rounded-control p-4">
-                            <p className="text-xs text-violet-400 uppercase tracking-wider mb-1">Número de Guía</p>
+                            <p className="text-xs text-violet-700 uppercase tracking-wider mb-1">Número de Guía</p>
                             <p className="font-mono text-lg font-bold text-ink">{order.tracking_number}</p>
                             {order.envia_label_data && (
                                 (() => {
@@ -342,7 +342,7 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                                         const ld = typeof order.envia_label_data === 'string' ? JSON.parse(order.envia_label_data) : order.envia_label_data;
                                         return ld?.label ? (
                                             <a href={ld.label} target="_blank" rel="noreferrer"
-                                                className="text-xs text-cyan-400 hover:text-cyan-300 underline mt-1 block">
+                                                className="text-xs text-cyan-700 hover:text-cyan-700 underline mt-1 block">
                                                 Ver / Descargar Etiqueta PDF
                                             </a>
                                         ) : null;
@@ -372,7 +372,7 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                         <div className="bg-teal-500/10 border border-teal-500/20 rounded-control p-4 flex items-center gap-3">
                             <span className="text-2xl">🎉</span>
                             <div>
-                                <p className="text-xs text-teal-400 uppercase tracking-wider">Entregado</p>
+                                <p className="text-xs text-teal-700 uppercase tracking-wider">Entregado</p>
                                 <p className="text-sm text-ink">
                                     {new Date(order.delivered_at).toLocaleDateString('es-MX', {
                                         day: '2-digit', month: 'long', year: 'numeric',
@@ -397,15 +397,15 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                         </div>
                         <div className="space-y-2 pt-3 border-t border-line">
                             <p className="text-xs text-muted uppercase tracking-wider mb-2">Contacto</p>
-                            <a href={`mailto:${order.email}`} className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 transition-colors group">
-                                <svg className="w-4 h-4 text-muted group-hover:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <a href={`mailto:${order.email}`} className="flex items-center gap-2 text-sm text-blue-700 hover:text-blue-700 transition-colors group">
+                                <svg className="w-4 h-4 text-muted group-hover:text-blue-700 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                                 </svg>
                                 {order.email}
                             </a>
                             {order.telefono ? (
-                                <a href={`tel:${order.telefono}`} className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 transition-colors group">
-                                    <svg className="w-4 h-4 text-muted group-hover:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <a href={`tel:${order.telefono}`} className="flex items-center gap-2 text-sm text-blue-700 hover:text-blue-700 transition-colors group">
+                                    <svg className="w-4 h-4 text-muted group-hover:text-blue-700 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                                     </svg>
                                     {order.telefono}
@@ -515,7 +515,7 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                                 <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-control p-4 flex items-start gap-3">
                                     <span className="text-lg flex-shrink-0">📦</span>
                                     <div>
-                                        <p className="text-xs text-cyan-400 font-semibold uppercase tracking-wider">Envío Envia.com</p>
+                                        <p className="text-xs text-cyan-700 font-semibold uppercase tracking-wider">Envío Envia.com</p>
                                         <p className="text-xs text-muted mt-0.5">La guía se genera automáticamente al confirmar existencia.</p>
                                     </div>
                                 </div>
@@ -575,7 +575,7 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                             {/* Envia.com — guía lista, esperar webhook de paquetería */}
                             {isEnvia && order.tracking_number && (
                                 <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-control p-4">
-                                    <p className="text-xs text-cyan-300 font-semibold mb-1">📦 Guía generada — en espera de recolección</p>
+                                    <p className="text-xs text-cyan-700 font-semibold mb-1">📦 Guía generada — en espera de recolección</p>
                                     <p className="text-xs text-muted">El estado avanzará automáticamente cuando la paquetería registre el movimiento.</p>
                                 </div>
                             )}
@@ -594,7 +594,7 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                                 </div>
                             ) : !isEnvia && (
                                 <div className="bg-blue-500/10 border border-blue-500/20 rounded-control p-4 space-y-4">
-                                    <p className="text-sm font-semibold text-blue-300">Preparar Envío</p>
+                                    <p className="text-sm font-semibold text-blue-700">Preparar Envío</p>
                                     {/* Sub-status */}
                                     <div className="grid grid-cols-2 gap-2">
                                         {[
@@ -668,7 +668,7 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
 
                             {order.shipping_status === 'en_espera' && showShipForm && (
                                 <div className="bg-violet-500/10 border border-violet-500/20 rounded-control p-4 space-y-3">
-                                    <p className="text-sm font-semibold text-violet-300">🚚 Marcar como Despachado</p>
+                                    <p className="text-sm font-semibold text-violet-700">🚚 Marcar como Despachado</p>
                                     <div>
                                         <label className="text-xs text-muted mb-1 block">Número de Guía (opcional)</label>
                                         <input
@@ -712,7 +712,7 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                                     <button
                                         onClick={() => { setShowClaimForm(true); setClaimData({ claim_status: 'disputa', claim_type: 'cliente', claim_notes: '' }); }}
                                         disabled={acting}
-                                        className="px-5 py-3 bg-orange-500/20 hover:bg-orange-500/30 disabled:opacity-50 text-orange-400 border border-orange-500/30 rounded-control font-semibold transition-colors"
+                                        className="px-5 py-3 bg-orange-500/20 hover:bg-orange-500/30 disabled:opacity-50 text-orange-700 border border-orange-500/30 rounded-control font-semibold transition-colors"
                                     >
                                         Reclamo
                                     </button>
@@ -726,7 +726,7 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                         <button
                             onClick={() => { setShowClaimForm(true); setClaimData({ claim_status: 'disputa', claim_type: 'cliente', claim_notes: '' }); }}
                             disabled={acting}
-                            className="w-full py-3 bg-orange-500/20 hover:bg-orange-500/30 disabled:opacity-50 text-orange-400 border border-orange-500/30 rounded-control font-semibold transition-colors"
+                            className="w-full py-3 bg-orange-500/20 hover:bg-orange-500/30 disabled:opacity-50 text-orange-700 border border-orange-500/30 rounded-control font-semibold transition-colors"
                         >
                             ⚠️ Abrir Reclamo
                         </button>
@@ -735,7 +735,7 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                     {/* Claim form (shared for envio + entregado) */}
                     {(isEnvio || isEntregado) && showClaimForm && (
                         <div className="bg-orange-500/10 border border-orange-500/20 rounded-control p-4 space-y-4">
-                            <p className="text-sm font-semibold text-orange-300">⚠️ Abrir Reclamo</p>
+                            <p className="text-sm font-semibold text-orange-700">⚠️ Abrir Reclamo</p>
 
                             {/* Tipo de reclamo */}
                             <div>
@@ -839,7 +839,7 @@ function OrderDetailModal({ order, onClose, onConfirm, onCancel, onRefreshOrder 
                     {/* Reclamo edit form */}
                     {isReclamo && showClaimForm && (
                         <div className="bg-orange-500/10 border border-orange-500/20 rounded-control p-4 space-y-4">
-                            <p className="text-sm font-semibold text-orange-300">Editar Reclamo</p>
+                            <p className="text-sm font-semibold text-orange-700">Editar Reclamo</p>
                             <div className="grid grid-cols-2 gap-2">
                                 {[
                                     { value: 'disputa',    label: '⚠️ Disputa',   desc: 'En proceso' },
@@ -952,14 +952,17 @@ const STAT_ITEMS = [
     { key: 'cancelado',  label: 'Cancelados',  color: 'from-red-400 to-pink-400'       },
 ];
 
+// Cada filtro fija fondo Y texto. Antes solo fijaba el fondo y la etiqueta
+// heredaba un color pensado para el tema oscuro: el chip activo quedaba en
+// 1.11:1, practicamente ilegible.
 const FILTERS = [
-    { value: 'pendiente',  label: 'Pendientes',  activeBg: 'bg-warn-soft border-amber-500/40'   },
-    { value: 'confirmado', label: 'Confirmados', activeBg: 'bg-ok-soft border-emerald-500/40' },
-    { value: 'envio',      label: 'Envío',        activeBg: 'bg-blue-500/20 border-blue-500/40'     },
-    { value: 'entregado',  label: 'Entregados',  activeBg: 'bg-teal-500/20 border-teal-500/40'     },
-    { value: 'reclamo',    label: 'Reclamos',     activeBg: 'bg-orange-500/20 border-orange-500/40' },
-    { value: 'cancelado',  label: 'Cancelados',  activeBg: 'bg-bad-soft border-bad/30'       },
-    { value: '',           label: 'Todos',        activeBg: 'bg-accent/20 border-accent/25' },
+    { value: 'pendiente',  label: 'Pendientes',  activeBg: 'bg-warn-soft border-warn/40 text-warn'    },
+    { value: 'confirmado', label: 'Confirmados', activeBg: 'bg-ok-soft border-ok/40 text-ok'          },
+    { value: 'envio',      label: 'Envío',       activeBg: 'bg-accent-soft border-accent/40 text-accent' },
+    { value: 'entregado',  label: 'Entregados',  activeBg: 'bg-ok-soft border-ok/40 text-ok'          },
+    { value: 'reclamo',    label: 'Reclamos',    activeBg: 'bg-warn-soft border-warn/40 text-warn'    },
+    { value: 'cancelado',  label: 'Cancelados',  activeBg: 'bg-bad-soft border-bad/40 text-bad'       },
+    { value: '',           label: 'Todos',       activeBg: 'bg-accent-soft border-accent/40 text-accent' },
 ];
 
 export default function WebOrders() {
@@ -1115,7 +1118,9 @@ export default function WebOrders() {
                         onClick={() => setFilter(key)}
                         className={`glass-card-dark rounded-control p-3 text-center transition-all border ${filter === key ? 'border-line bg-raised' : 'border-transparent hover:border-line-strong'}`}
                     >
-                        <p className={`text-2xl font-bold bg-gradient-to-r ${color} bg-clip-text text-transparent`}>
+                        {/* Cifra en tinta plana: el texto con gradiente quedaba
+                            transparente sobre fondo claro, o sea invisible. */}
+                        <p className="text-2xl font-bold text-ink tabular">
                             {counts[key] ?? 0}
                         </p>
                         <p className="text-[11px] text-muted mt-0.5">{label}</p>
@@ -1131,7 +1136,7 @@ export default function WebOrders() {
                         onClick={() => setFilter(value)}
                         className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors border ${
                             filter === value
-                                ? `${activeBg} text-white`
+                                ? `${activeBg} font-semibold`
                                 : 'bg-raised text-muted border-line hover:border-line-strong'
                         }`}
                     >
@@ -1203,7 +1208,7 @@ export default function WebOrders() {
                                 <div className="flex items-center gap-2 mt-0.5">
                                     <p className="text-xs text-muted truncate">{order.email ?? 'Sin email'}</p>
                                     {order.tracking_number && (
-                                        <span className="text-xs font-mono text-violet-400 bg-violet-500/10 px-1.5 py-0.5 rounded flex-shrink-0">
+                                        <span className="text-xs font-mono text-violet-700 bg-violet-500/10 px-1.5 py-0.5 rounded flex-shrink-0">
                                             {order.tracking_number}
                                         </span>
                                     )}
@@ -1256,7 +1261,7 @@ export default function WebOrders() {
                                 <Column
                                     title="Reclamo Cliente"
                                     icon="👤"
-                                    accentClass="text-orange-400"
+                                    accentClass="text-orange-700"
                                     borderClass="border-orange-500/20"
                                     orders={reclamoCliente}
                                 />
