@@ -647,8 +647,8 @@ router.post('/bulk', requireInventoryWrite, async (req, res) => {
 
         for (const product of products) {
             await pool.query(
-                'INSERT INTO products (empresa_id, name, price, stock, category, sbin_code, isbn, extras, publication_date, publisher, page_count, dimensions, weight, page_color, language) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                [empresaId, product.name, product.price, product.stock || 0, product.category || null, product.sbin_code || null, product.isbn || null, product.extras || null, product.publication_date || null, product.publisher || null, product.page_count || null, product.dimensions || null, product.weight || null, product.page_color || null, product.language || null]
+                'INSERT INTO products (empresa_id, name, sale_price, stock, category, sbin_code, isbn, extras, publication_date, publisher, page_count, dimensions, weight, page_color, language) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                [empresaId, product.name, product.sale_price ?? product.price, product.stock || 0, product.category || null, product.sbin_code || null, product.isbn || null, product.extras || null, product.publication_date || null, product.publisher || null, product.page_count || null, product.dimensions || null, product.weight || null, product.page_color || null, product.language || null]
             );
         }
 

@@ -297,7 +297,7 @@ router.delete('/:id/purge', async (req, res) => {
         // --- HISTORY SNAPSHOT BEFORE DELETION ---
         const [users] = await connection.query('SELECT id, username, role, is_admin FROM users WHERE empresa_id = ?', [id]);
         const [productCount] = await connection.query('SELECT COUNT(*) as count FROM products WHERE empresa_id = ?', [id]);
-        const [productSample] = await connection.query('SELECT name, price FROM products WHERE empresa_id = ? LIMIT 5', [id]);
+        const [productSample] = await connection.query('SELECT name, sale_price FROM products WHERE empresa_id = ? LIMIT 5', [id]);
         const [salesCount] = await connection.query('SELECT COUNT(*) as count FROM sales WHERE empresa_id = ?', [id]);
         const [salesTotal] = await connection.query('SELECT COALESCE(SUM(total), 0) as total FROM sales WHERE empresa_id = ?', [id]);
 

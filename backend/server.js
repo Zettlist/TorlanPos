@@ -18,6 +18,7 @@ import onboardingRoutes from './routes/onboarding.js';
 import reportsRoutes from './routes/reports.js';
 import suppliersRoutes from './routes/suppliers.js';
 import cronRoutes from './routes/cronRoutes.js';
+import { iniciarOutboxWorker } from './services/outboxWorker.js';
 import preventasRoutes from './routes/preventas.js';
 import anticiposRoutes from './routes/anticipos.js';
 import publicCatalogRoutes from './routes/publicCatalog.js';
@@ -191,6 +192,9 @@ async function startServer() {
             console.log('📝 Request logging: Enabled');
             console.log('='.repeat(60) + '\n');
             console.log('⏰ App Engine Cron endpoints ready at /api/cron');
+            // Entrega los cobros y cancelaciones encolados hacia la tienda.
+            // Sin esto los pedidos se confirman pero nunca se cobran.
+            iniciarOutboxWorker();
         });
 
         // Run schema migrations asynchronously in the background

@@ -5,12 +5,9 @@ import { sendOrderEmail } from '../services/emailService.js';
 
 const router = express.Router();
 
-const BISONTE_SHOP_URL = process.env.BISONTE_SHOP_URL || 'http://localhost:3000';
-const BISONTE_CAPTURE_KEY = process.env.BISONTE_CAPTURE_KEY;
-
 const VALID_STATUSES = ['pendiente', 'confirmado', 'envio', 'entregado', 'reclamo', 'cancelado'];
 
-const ENVIA_URL_BASE = 'https://api-test.envia.com';
+const ENVIA_URL_BASE = process.env.ENVIA_API_URL || 'https://api-test.envia.com';
 const STATE_CODES_ENVIA = {
     'Aguascalientes': 'AG', 'Baja California': 'BC', 'Baja California Sur': 'BS',
     'Campeche': 'CM', 'Chiapas': 'CS', 'Chihuahua': 'CH', 'Ciudad de México': 'CX',
@@ -23,13 +20,121 @@ const STATE_CODES_ENVIA = {
     'Zacatecas': 'ZA',
 };
 
-/**
- * Generate an Envia.com label and save tracking to DB.
- * @param {number} saleId
- * @param {object} quote  — envia_quote_data (already parsed)
- * @param {object} address — shipping_address_json (already parsed)
- * @returns {{ trackingNumber, labelData }} or throws on error
- */
+// El pedido web ya no se deduce de sales (antes: cash_session_id IS NULL AND
+// cliente_id IS NOT NULL). Existe si hay fila en bisonte_orders, punto.
+const ORDER_FROM = `
+    FROM bisonte_orders bo
+    JOIN sales s ON s.id = bo.sale_id
+    LEFT JOIN clientes cl ON cl.id = bo.cliente_id
+`;
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  BANDEJA DE SALIDA
+//
+//  El cobro en Stripe vive en la tienda, asi que el POS tiene que saltar por
+//  HTTP. Ese salto no es transaccional: antes el error se tragaba en un catch
+//  vacio y el POS daba por cancelado un pedido cuya autorizacion seguia viva en
+//  la tarjeta del cliente.
+//
+//  Ahora la intencion se escribe en la MISMA transaccion que mueve el estado.
+//  Si el proceso muere entre el commit y la llamada, la fila sigue pendiente y
+//  el worker la reintenta. Nada se pierde en silencio.
+// ─────────────────────────────────────────────────────────────────────────────
+async function enqueue(conn, tipo, saleId, payload = null) {
+    await conn.query(
+        `INSERT INTO integration_outbox (tipo, sale_id, payload) VALUES (?, ?, ?)
+         ON DUPLICATE KEY UPDATE estado = 'pendiente', intentos = 0, ultimo_error = NULL`,
+        [tipo, saleId, payload ? JSON.stringify(payload) : null]
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  RESERVA DE INVENTARIO
+//
+//  La tienda reserva al confirmar el checkout (stock_reservado += cantidad),
+//  con CHECK (stock_reservado <= stock) impidiendo la sobreventa desde la base.
+//  Aqui solo se consuma o se libera.
+//
+//  Esto reemplaza a checkFifoStock y cascadeCancelLaterOrders, que recorrian
+//  toda la cola de pendientes con una subquery por item — O(n^2) y sin bloqueo,
+//  o sea sobreventa cuando dos confirmaciones corrian a la vez. Con la reserva
+//  hecha en el checkout el orden de llegada se resuelve solo: quien no alcanza
+//  no completa la compra, en vez de enterarse despues de pagar.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Consuma la reserva: baja stock fisico y libera lo comprometido. */
+async function commitReservation(saleId, conn) {
+    const [[row]] = await conn.query(
+        `SELECT stock_deducted FROM bisonte_orders WHERE sale_id = ? FOR UPDATE`, [saleId]
+    );
+    if (!row || row.stock_deducted) return false;
+
+    await conn.query(`
+        UPDATE products p
+          JOIN sale_items si ON si.product_id = p.id
+           SET p.stock           = p.stock - si.quantity,
+               p.stock_reservado = GREATEST(0, p.stock_reservado - si.quantity)
+         WHERE si.sale_id = ?
+    `, [saleId]);
+
+    await conn.query(
+        `UPDATE bisonte_orders SET stock_deducted = 1 WHERE sale_id = ?`, [saleId]
+    );
+    return true;
+}
+
+/** Libera la reserva sin tocar el stock fisico (pedido cancelado antes de surtir). */
+async function releaseReservation(saleId, conn) {
+    await conn.query(`
+        UPDATE products p
+          JOIN sale_items si ON si.product_id = p.id
+           SET p.stock_reservado = GREATEST(0, p.stock_reservado - si.quantity)
+         WHERE si.sale_id = ?
+    `, [saleId]);
+}
+
+/** Devuelve al inventario un pedido ya surtido (cancelacion con reembolso). */
+async function restoreStock(saleId, conn) {
+    const [[row]] = await conn.query(
+        `SELECT stock_deducted FROM bisonte_orders WHERE sale_id = ? FOR UPDATE`, [saleId]
+    );
+    if (!row || !row.stock_deducted) return false;
+
+    await conn.query(`
+        UPDATE products p
+          JOIN sale_items si ON si.product_id = p.id
+           SET p.stock = p.stock + si.quantity
+         WHERE si.sale_id = ?
+    `, [saleId]);
+
+    await conn.query(
+        `UPDATE bisonte_orders SET stock_deducted = 0 WHERE sale_id = ?`, [saleId]
+    );
+    return true;
+}
+
+async function getOrderForEmail(saleId, conn) {
+    const [[order]] = await conn.query(`
+        SELECT s.id, s.total, bo.tracking_number, bo.claim_notes,
+               bo.shipping_method, bo.envia_quote_data,
+               cl.nombre, cl.apellido, cl.email
+        ${ORDER_FROM}
+        WHERE s.id = ?
+    `, [saleId]);
+    if (!order) return order;
+
+    if (order.envia_quote_data) {
+        try {
+            const q = typeof order.envia_quote_data === 'string'
+                ? JSON.parse(order.envia_quote_data)
+                : order.envia_quote_data;
+            order.carrier = q.carrier || null;
+        } catch { order.carrier = null; }
+    }
+    return order;
+}
+
+/** Genera guia en Envia.com y guarda el tracking. Lanza si falla. */
 async function generateEnviaLabel(saleId, quote, address) {
     const token = process.env.ENVIA_BEARER_TOKEN;
     if (!token) throw new Error('ENVIA_BEARER_TOKEN no configurado');
@@ -46,22 +151,22 @@ async function generateEnviaLabel(saleId, quote, address) {
 
     const body = {
         origin: {
-            name: 'Bisonte Manga',
-            phone: '8110000000',
-            street: 'Delta',
+            name: process.env.SHIP_ORIGIN_NAME || 'Bisonte Manga',
+            phone: process.env.SHIP_ORIGIN_PHONE || '8110000000',
+            street: process.env.SHIP_ORIGIN_STREET || 'Delta',
             number: '172',
-            district: 'Viejo Roble',
-            city: 'San Nicolás de los Garza',
-            state: 'NL',
+            district: process.env.SHIP_ORIGIN_DISTRICT || 'Viejo Roble',
+            city: process.env.SHIP_ORIGIN_CITY || 'San Nicolás de los Garza',
+            state: process.env.SHIP_ORIGIN_STATE || 'NL',
             country: 'MX',
-            postalCode: '66418',
+            postalCode: process.env.SHIP_ORIGIN_CP || '66418',
             branchCode,
         },
         destination: {
             name: address.nombre_recibe || 'Cliente',
             phone: (address.telefono || '0000000000').replace(/\D/g, '').slice(0, 10),
             street: address.calle || '',
-            number: address.numero_exterior || 'S/N',
+            number: address.numero_ext || address.numero_exterior || 'S/N',
             district: address.colonia || '',
             city: address.municipio || '',
             state: stateCode,
@@ -69,13 +174,8 @@ async function generateEnviaLabel(saleId, quote, address) {
             postalCode: String(address.cp || '').trim(),
         },
         packages: [{
-            type: 'box',
-            content: 'Manga',
-            amount: 1,
-            declaredValue: 200,
-            lengthUnit: 'CM',
-            weightUnit: 'KG',
-            weight: pkg.weight,
+            type: 'box', content: 'Manga', amount: 1, declaredValue: 200,
+            lengthUnit: 'CM', weightUnit: 'KG', weight: pkg.weight,
             dimensions: { length: pkg.length, width: pkg.width, height: pkg.height },
         }],
         shipment: {
@@ -83,10 +183,7 @@ async function generateEnviaLabel(saleId, quote, address) {
             carrier: quote.carrier || 'estafeta',
             service: quote.service || quote.raw?.service,
         },
-        settings: {
-            printFormat: 'PDF',
-            printSize: 'PAPER_7X4.75',
-        },
+        settings: { printFormat: 'PDF', printSize: 'PAPER_7X4.75' },
     };
 
     const res = await fetch(`${ENVIA_URL_BASE}/ship/generate/`, {
@@ -98,7 +195,8 @@ async function generateEnviaLabel(saleId, quote, address) {
 
     const text = await res.text();
     let data;
-    try { data = JSON.parse(text); } catch { throw new Error(`Envia.com respuesta inválida: ${text.slice(0, 200)}`); }
+    try { data = JSON.parse(text); }
+    catch { throw new Error(`Envia.com respuesta inválida: ${text.slice(0, 200)}`); }
 
     if (!res.ok || data.error || !data.data) {
         const errObj = data.error || data.message || `Envia.com error ${res.status}`;
@@ -109,292 +207,17 @@ async function generateEnviaLabel(saleId, quote, address) {
     const trackingNumber = labelData.trackingNumber || labelData.tracking_number || labelData.guia || '';
 
     await pool.query(
-        `UPDATE sales SET envia_label_data = ?, tracking_number = ? WHERE id = ?`,
+        `UPDATE bisonte_orders SET envia_label_data = ?, tracking_number = ? WHERE sale_id = ?`,
         [JSON.stringify(labelData), trackingNumber, saleId]
     );
 
-    console.log(`[Envia] Sale #${saleId} — guía generada. Tracking: ${trackingNumber}`);
+    console.log(`[Envia] Pedido #${saleId} — guía generada. Tracking: ${trackingNumber}`);
     return { trackingNumber, labelData };
 }
 
-async function callBisonte(url, body) {
-    const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(20000),
-    });
-    const text = await res.text();
-    try {
-        return JSON.parse(text);
-    } catch {
-        console.error(`[Bisonte] Non-JSON response (${res.status}) from ${url}:`, text.slice(0, 300));
-        return { success: false, error: `Bisonte HTTP ${res.status}: respuesta inválida`, _rawStatus: res.status };
-    }
-}
-
-async function callBisonteCapture(saleId, action) {
-    return callBisonte(`${BISONTE_SHOP_URL}/api/orders/capture`, { saleId, action, apiKey: BISONTE_CAPTURE_KEY });
-}
-
-async function callBisonteRefund(saleId, reason) {
-    return callBisonte(`${BISONTE_SHOP_URL}/api/orders/refund`, { saleId, reason: reason || 'requested_by_customer', apiKey: BISONTE_CAPTURE_KEY });
-}
-
-/**
- * Deduct stock for all items in an order.
- * Uses stock_deducted flag to prevent double deduction.
- */
-async function deductStock(saleId, conn) {
-    const [[{ already }]] = await conn.query(
-        `SELECT stock_deducted AS already FROM sales WHERE id = ?`, [saleId]
-    );
-    if (already) return; // already deducted, skip
-
-    await conn.query(`
-        UPDATE products p
-        JOIN sale_items si ON si.product_id = p.id
-        SET p.stock = GREATEST(0, p.stock - si.quantity)
-        WHERE si.sale_id = ?
-    `, [saleId]);
-
-    await conn.query(
-        `UPDATE sales SET stock_deducted = 1 WHERE id = ?`, [saleId]
-    );
-}
-
-/**
- * Fetch minimal order data for email (nombre, apellido, email, total, etc.)
- */
-async function getOrderForEmail(saleId, conn) {
-    const [[order]] = await conn.query(`
-        SELECT s.id, s.total, s.tracking_number, s.claim_notes,
-               s.shipping_method, s.envia_quote_data,
-               cl.nombre, cl.apellido, cl.email
-        FROM sales s
-        LEFT JOIN clientes cl ON cl.id = s.cliente_id
-        WHERE s.id = ?
-    `, [saleId]);
-    if (!order) return order;
-    // Extract carrier from envia_quote_data
-    if (order.envia_quote_data) {
-        try {
-            const q = typeof order.envia_quote_data === 'string'
-                ? JSON.parse(order.envia_quote_data)
-                : order.envia_quote_data;
-            order.carrier = q.carrier || null;
-        } catch { order.carrier = null; }
-    }
-    return order;
-}
-
-/**
- * Evalúa el stock de un pedido considerando la cola FIFO.
- */
-async function checkFifoStock(saleId, conn) {
-    const [items] = await conn.query(`
-        SELECT si.product_id, si.quantity, p.name, p.stock
-        FROM sale_items si
-        JOIN products p ON p.id = si.product_id
-        WHERE si.sale_id = ?
-    `, [saleId]);
-
-    const faltantesFifo    = [];
-    const advertenciasStock = [];
-
-    for (const item of items) {
-        const [[{ reservado }]] = await conn.query(`
-            SELECT COALESCE(SUM(si2.quantity), 0) AS reservado
-            FROM sales s2
-            JOIN sale_items si2 ON si2.sale_id = s2.id
-            WHERE s2.web_status = 'pendiente'
-              AND s2.id < ?
-              AND si2.product_id = ?
-        `, [saleId, item.product_id]);
-
-        const disponible = item.stock - reservado;
-
-        if (disponible < item.quantity) {
-            if (reservado > 0) {
-                faltantesFifo.push(
-                    `"${item.name}" (stock: ${item.stock}, reservado por órdenes anteriores: ${reservado}, necesitas: ${item.quantity})`
-                );
-            } else {
-                advertenciasStock.push(
-                    `"${item.name}" (stock disponible: ${item.stock}, pedido: ${item.quantity})`
-                );
-            }
-        }
-    }
-
-    return { okFifo: faltantesFifo.length === 0, faltantesFifo, advertenciasStock };
-}
-
-/**
- * Cancela automáticamente pedidos POSTERIORES que ya no tienen stock.
- */
-async function cascadeCancelLaterOrders(confirmedSaleId, conn) {
-    const [confirmedItems] = await conn.query(
-        `SELECT product_id FROM sale_items WHERE sale_id = ?`, [confirmedSaleId]
-    );
-    const productIds = confirmedItems.map(i => i.product_id);
-    if (!productIds.length) return [];
-
-    const [laterOrders] = await conn.query(`
-        SELECT DISTINCT s.id
-        FROM sales s
-        JOIN sale_items si ON si.sale_id = s.id
-        WHERE s.web_status = 'pendiente'
-          AND s.id > ?
-          AND si.product_id IN (?)
-        ORDER BY s.id ASC
-    `, [confirmedSaleId, productIds]);
-
-    const autoCancelled = [];
-
-    for (const { id: laterSaleId } of laterOrders) {
-        const { okFifo, faltantesFifo } = await checkFifoStock(laterSaleId, conn);
-
-        if (!okFifo) {
-            try { await callBisonteCapture(laterSaleId, 'cancel'); } catch { /* ignore */ }
-            await conn.query(
-                `UPDATE sales SET web_status = 'cancelado', web_process_type = 'auto' WHERE id = ?`,
-                [laterSaleId]
-            );
-            autoCancelled.push({ id: laterSaleId, motivo: faltantesFifo.join('; ') });
-            // Notify client of auto-cancel
-            const orderData = await getOrderForEmail(laterSaleId, conn);
-            if (orderData?.email) {
-                sendOrderEmail('cancelado', orderData.email, { ...orderData, motivo: faltantesFifo.join(' | ') });
-            }
-        }
-    }
-
-    return autoCancelled;
-}
-
-// ──────────────────────────────────────────────────────────────────────────────
-// GET /api/web-orders/envia-webhook  — Envia.com connectivity test (Probar)
-// ──────────────────────────────────────────────────────────────────────────────
-router.get('/envia-webhook', (req, res) => {
-    res.json({ ok: true });
-});
-
-// ──────────────────────────────────────────────────────────────────────────────
-// POST /api/web-orders/envia-webhook
-// Envia.com onShipmentStatusUpdate — no auth required (external callback)
-// Marks sale as 'entregado' when carrier delivers the package.
-// ──────────────────────────────────────────────────────────────────────────────
-router.post('/envia-webhook', async (req, res) => {
-    const body = req.body;
-    console.log('[EnviaWebhook] Received:', JSON.stringify(body));
-
-    // Respond 200 immediately so Envia.com doesn't retry
-    res.json({ received: true });
-
-    try {
-        // Envia.com field names vary — try all known variants
-        const trackingNumber =
-            body.trackingNumber || body.tracking_number || body.guia ||
-            body.data?.trackingNumber || body.data?.tracking_number || body.data?.guia;
-
-        const statusRaw = (
-            body.status || body.shipmentStatus || body.state ||
-            body.data?.status || body.data?.shipmentStatus || body.data?.state || ''
-        ).toLowerCase();
-
-        if (!trackingNumber) {
-            console.log('[EnviaWebhook] No tracking number found in payload — ignoring.');
-            return;
-        }
-
-        // Map Envia.com status → POS web_status
-        // ENVIADO      → envio
-        // ENTREGADO    → entregado
-        // DEVOLUCIÓN   → reclamo
-        // CON INCIDENTE→ reclamo
-        // CANCELADO    → cancelado
-        // CREADO       → ignored (label already stored)
-        let newStatus = null;
-
-        if (['delivered', 'entregado', 'delivery', 'entrega'].some(k => statusRaw.includes(k))) {
-            newStatus = 'entregado';
-        } else if (['in_transit', 'shipped', 'enviado', 'picked_up', 'en_camino', 'transit'].some(k => statusRaw.includes(k))) {
-            newStatus = 'envio';
-        } else if (['devol', 'return'].some(k => statusRaw.includes(k))) {
-            newStatus = 'reclamo';
-        } else if (['incident', 'incidente', 'exception', 'con_incidente'].some(k => statusRaw.includes(k))) {
-            newStatus = 'reclamo';
-        } else if (['cancelled', 'canceled', 'cancelado'].some(k => statusRaw.includes(k))) {
-            newStatus = 'cancelado';
-        }
-
-        if (!newStatus) {
-            console.log(`[EnviaWebhook] Tracking ${trackingNumber} status="${statusRaw}" — no mapping, ignoring.`);
-            return;
-        }
-
-        // Find the sale by tracking number
-        const [[sale]] = await pool.query(
-            `SELECT id, web_status FROM sales WHERE tracking_number = ? AND cash_session_id IS NULL LIMIT 1`,
-            [trackingNumber]
-        );
-
-        if (!sale) {
-            console.log(`[EnviaWebhook] No sale found for tracking ${trackingNumber}`);
-            return;
-        }
-
-        if (sale.web_status === newStatus) {
-            console.log(`[EnviaWebhook] Sale #${sale.id} already ${newStatus} — skipping.`);
-            return;
-        }
-
-        // Valid transitions only
-        const validFrom = {
-            envio:      ['confirmado'],
-            entregado:  ['envio'],
-            reclamo:    ['envio', 'entregado'],
-            cancelado:  ['pendiente', 'confirmado', 'envio'],
-        };
-        if (!validFrom[newStatus]?.includes(sale.web_status)) {
-            console.log(`[EnviaWebhook] Sale #${sale.id}: invalid transition ${sale.web_status} → ${newStatus}, skipping.`);
-            return;
-        }
-
-        let updateFields;
-        if (newStatus === 'entregado') {
-            updateFields = `web_status = 'entregado', delivered_at = NOW()`;
-        } else if (newStatus === 'reclamo') {
-            // carrier-triggered claims are always type 'paqueteria'
-            updateFields = `web_status = 'reclamo', claim_type = 'paqueteria', claim_status = 'disputa'`;
-        } else {
-            updateFields = `web_status = '${newStatus}'`;
-        }
-
-        await pool.query(`UPDATE sales SET ${updateFields} WHERE id = ?`, [sale.id]);
-        console.log(`[EnviaWebhook] Sale #${sale.id}: ${sale.web_status} → ${newStatus}. Tracking: ${trackingNumber}`);
-
-        // Email
-        const conn = await pool.getConnection();
-        const orderData = await getOrderForEmail(sale.id, conn);
-        conn.release();
-        const emailTemplate = {
-            entregado: 'entregado',
-            reclamo:   'reclamo_paqueteria',
-            cancelado: 'cancelado',
-            envio:     'envio_despachado',
-        }[newStatus];
-        if (orderData?.email && emailTemplate) sendOrderEmail(emailTemplate, orderData.email, orderData);
-
-    } catch (err) {
-        console.error('[EnviaWebhook] Error processing webhook:', err.message);
-    }
-});
-
-// ──────────────────────────────────────────────────────────────────────────────
-// GET /api/web-orders
-// ──────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+//  GET /api/web-orders
+// ─────────────────────────────────────────────────────────────────────────────
 router.get('/', authenticateToken, validateEmpresaActive, async (req, res) => {
     res.set('Cache-Control', 'no-store');
     try {
@@ -403,34 +226,42 @@ router.get('/', authenticateToken, validateEmpresaActive, async (req, res) => {
         const offset = (parseInt(page) - 1) * parseInt(limit);
 
         const params = [empresa_id];
-        let statusFilter = '';
+        let filtro = '';
         if (status && VALID_STATUSES.includes(status)) {
-            statusFilter = 'AND s.web_status = ?';
+            filtro = 'AND bo.estado = ?';
             params.push(status);
         }
         if (claim_status && ['disputa', 'resolucion'].includes(claim_status)) {
-            statusFilter += ' AND s.claim_status = ?';
+            filtro += ' AND bo.claim_status = ?';
             params.push(claim_status);
         }
 
+        // `conflicto` sale de un LEFT JOIN agregado, no de una consulta por
+        // pedido. Antes esta ruta abria UNA CONEXION NUEVA por cada pedido
+        // pendiente de la pagina y corria checkFifoStock (a su vez una query
+        // por item): con 30 pedidos podia agotar el pool para pintar una lista.
         const [orders] = await pool.query(`
             SELECT
-                s.id, s.total, s.subtotal, s.discount, s.surcharge,
-                s.payment_method, s.web_status, s.web_process_type, s.created_at,
-                s.shipping_status, s.tracking_number, s.claim_status, s.claim_type,
-                s.shipping_method,
+                s.id, s.total, s.subtotal, s.discount, s.surcharge, s.payment_method,
+                s.created_at,
+                bo.estado AS web_status, bo.process_type AS web_process_type,
+                bo.pago_estado, bo.shipping_status, bo.tracking_number,
+                bo.claim_status, bo.claim_type, bo.shipping_method,
                 cl.id AS cliente_id, cl.nombre, cl.apellido, cl.email, cl.client_code,
-                COUNT(si.id) AS total_items
-            FROM sales s
-            LEFT JOIN clientes cl ON cl.id = s.cliente_id
-            LEFT JOIN sale_items si ON si.sale_id = s.id
-            WHERE s.empresa_id = ?
-              AND s.cash_session_id IS NULL
-              AND s.cliente_id IS NOT NULL
-              ${statusFilter}
-            GROUP BY s.id, cl.id
+                agg.total_items,
+                (bo.estado = 'pendiente' AND COALESCE(agg.faltantes, 0) > 0) AS conflicto
+            ${ORDER_FROM}
+            LEFT JOIN (
+                SELECT si.sale_id,
+                       COUNT(*) AS total_items,
+                       SUM(si.quantity > p.stock) AS faltantes
+                  FROM sale_items si
+                  JOIN products p ON p.id = si.product_id
+                 GROUP BY si.sale_id
+            ) agg ON agg.sale_id = s.id
+            WHERE s.empresa_id = ? ${filtro}
             ORDER BY
-              CASE s.web_status
+              CASE bo.estado
                 WHEN 'pendiente'  THEN 0
                 WHEN 'confirmado' THEN 1
                 WHEN 'envio'      THEN 2
@@ -443,32 +274,22 @@ router.get('/', authenticateToken, validateEmpresaActive, async (req, res) => {
         `, [...params, parseInt(limit), offset]);
 
         const [[{ total }]] = await pool.query(`
-            SELECT COUNT(*) AS total
-            FROM sales s
-            WHERE s.empresa_id = ?
-              AND s.cash_session_id IS NULL
-              AND s.cliente_id IS NOT NULL
-              ${statusFilter}
+            SELECT COUNT(*) AS total ${ORDER_FROM} WHERE s.empresa_id = ? ${filtro}
         `, params);
 
-        const ordersWithConflict = await Promise.all(orders.map(async (order) => {
-            if (order.web_status !== 'pendiente') return { ...order, conflicto: false };
-            const conn = await pool.getConnection();
-            const { okFifo } = await checkFifoStock(order.id, conn);
-            conn.release();
-            return { ...order, conflicto: !okFifo };
-        }));
-
-        res.json({ orders: ordersWithConflict, total, page: parseInt(page), limit: parseInt(limit) });
+        res.json({
+            orders: orders.map(o => ({ ...o, conflicto: Boolean(o.conflicto) })),
+            total, page: parseInt(page), limit: parseInt(limit),
+        });
     } catch (err) {
         console.error('Error fetching web orders:', err);
         res.status(500).json({ error: 'Error al obtener pedidos' });
     }
 });
 
-// ──────────────────────────────────────────────────────────────────────────────
-// GET /api/web-orders/:id
-// ──────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+//  GET /api/web-orders/:id
+// ─────────────────────────────────────────────────────────────────────────────
 router.get('/:id', authenticateToken, validateEmpresaActive, async (req, res) => {
     try {
         const empresa_id = req.user.empresa_id;
@@ -476,226 +297,267 @@ router.get('/:id', authenticateToken, validateEmpresaActive, async (req, res) =>
 
         const [[order]] = await pool.query(`
             SELECT
-                s.id, s.total, s.subtotal, s.discount, s.surcharge,
-                s.payment_method, s.web_status, s.web_process_type, s.created_at,
-                s.shipping_status, s.tracking_number, s.claim_status, s.claim_type, s.claim_notes,
-                s.shipped_at, s.delivered_at,
-                s.shipping_method, s.envia_quote_data, s.envia_label_data, s.shipping_address_json,
-                cl.id AS cliente_id, cl.nombre, cl.apellido, cl.email, cl.client_code, cl.telefono,
-                ua.nombre_recibe, ua.calle, ua.numero, ua.colonia,
-                ua.municipio, ua.estado AS estado_entrega, ua.cp,
-                bo.payment_intent_id
-            FROM sales s
-            LEFT JOIN clientes cl ON cl.id = s.cliente_id
-            LEFT JOIN user_addresses ua ON ua.cliente_id = cl.id AND ua.is_default = 1
-            LEFT JOIN bisonte_orders bo ON bo.sale_id = s.id
+                s.id, s.total, s.subtotal, s.discount, s.surcharge, s.payment_method,
+                s.created_at,
+                bo.estado AS web_status, bo.process_type AS web_process_type,
+                bo.pago_estado, bo.payment_intent_id, bo.refund_id,
+                bo.shipping_status, bo.tracking_number,
+                bo.claim_status, bo.claim_type, bo.claim_notes,
+                bo.shipped_at, bo.delivered_at, bo.confirmed_at, bo.cancelled_at,
+                bo.shipping_method, bo.envia_quote_data, bo.envia_label_data,
+                bo.shipping_address_json,
+                cl.id AS cliente_id, cl.nombre, cl.apellido, cl.email,
+                cl.client_code, cl.telefono
+            ${ORDER_FROM}
             WHERE s.id = ? AND s.empresa_id = ?
-              AND s.cash_session_id IS NULL AND s.cliente_id IS NOT NULL
         `, [id, empresa_id]);
 
         if (!order) return res.status(404).json({ error: 'Pedido no encontrado' });
 
+        // La disponibilidad viene de la columna generada. Antes eran N subqueries
+        // sumando la cola de pedidos anteriores, una por item.
         const [items] = await pool.query(`
-            SELECT si.id, si.quantity, si.price, p.id AS product_id,
-                   p.name, p.image_url, p.barcode, p.stock
-            FROM sale_items si
-            JOIN products p ON p.id = si.product_id
-            WHERE si.sale_id = ?
+            SELECT si.id, si.quantity, si.price,
+                   p.id AS product_id, p.name, p.image_url, p.barcode,
+                   p.stock, p.stock_reservado, p.stock_disponible AS disponible,
+                   (p.stock >= si.quantity) AS alcanza
+              FROM sale_items si
+              JOIN products p ON p.id = si.product_id
+             WHERE si.sale_id = ?
         `, [id]);
 
-        let itemsConReserva = items;
-        if (order.web_status === 'pendiente') {
-            itemsConReserva = await Promise.all(items.map(async (item) => {
-                const [[{ reservado }]] = await pool.query(`
-                    SELECT COALESCE(SUM(si2.quantity), 0) AS reservado
-                    FROM sales s2
-                    JOIN sale_items si2 ON si2.sale_id = s2.id
-                    WHERE s2.web_status = 'pendiente'
-                      AND s2.id < ?
-                      AND si2.product_id = ?
-                `, [id, item.product_id]);
-
-                return {
-                    ...item,
-                    reservado_anteriores: reservado,
-                    disponible: item.stock - reservado,
-                    alcanza: (item.stock - reservado) >= item.quantity,
-                };
-            }));
-        }
-
-        res.json({ ...order, items: itemsConReserva });
+        res.json({
+            ...order,
+            items: items.map(i => ({ ...i, alcanza: Boolean(i.alcanza) })),
+        });
     } catch (err) {
         console.error('Error fetching order detail:', err);
         res.status(500).json({ error: 'Error al obtener el pedido' });
     }
 });
 
-// ──────────────────────────────────────────────────────────────────────────────
-// POST /api/web-orders/:id/auto-process
-// ──────────────────────────────────────────────────────────────────────────────
-router.post('/:id/auto-process', async (req, res) => {
-    const apiKey = req.headers['x-api-key'];
-    if (!apiKey || apiKey !== BISONTE_CAPTURE_KEY) {
-        return res.status(401).json({ error: 'API key inválida' });
-    }
+// ─────────────────────────────────────────────────────────────────────────────
+//  POST /api/web-orders/envia-webhook
+//  Callback externo de Envia.com. Sin auth: responde 200 de inmediato para que
+//  no reintente, y procesa despues.
+// ─────────────────────────────────────────────────────────────────────────────
+router.get('/envia-webhook', (req, res) => res.json({ ok: true }));
 
-    const { id } = req.params;
-    const conn = await pool.getConnection();
+const ENVIA_STATUS_MAP = [
+    [['delivered', 'entregado', 'delivery', 'entrega'], 'entregado'],
+    [['in_transit', 'shipped', 'enviado', 'picked_up', 'en_camino', 'transit'], 'envio'],
+    [['devol', 'return'], 'reclamo'],
+    [['incident', 'incidente', 'exception', 'con_incidente'], 'reclamo'],
+    [['cancelled', 'canceled', 'cancelado'], 'cancelado'],
+];
+
+const TRANSICIONES_VALIDAS = {
+    envio:     ['confirmado'],
+    entregado: ['envio'],
+    reclamo:   ['envio', 'entregado'],
+    cancelado: ['pendiente', 'confirmado', 'envio'],
+};
+
+router.post('/envia-webhook', async (req, res) => {
+    const body = req.body;
+    console.log('[EnviaWebhook] Recibido:', JSON.stringify(body));
+    res.json({ received: true });
 
     try {
-        await conn.beginTransaction();
+        const trackingNumber =
+            body.trackingNumber || body.tracking_number || body.guia ||
+            body.data?.trackingNumber || body.data?.tracking_number || body.data?.guia;
+        const statusRaw = (
+            body.status || body.shipmentStatus || body.state ||
+            body.data?.status || body.data?.shipmentStatus || body.data?.state || ''
+        ).toLowerCase();
 
-        const [[order]] = await conn.query(`
-            SELECT id, web_status, empresa_id FROM sales
-            WHERE id = ? AND cash_session_id IS NULL AND cliente_id IS NOT NULL
-            FOR UPDATE
-        `, [id]);
+        if (!trackingNumber) return console.log('[EnviaWebhook] Sin tracking — ignorado.');
 
-        if (!order) {
-            await conn.rollback();
-            return res.status(404).json({ error: 'Pedido no encontrado' });
-        }
-        if (order.web_status !== 'pendiente') {
-            await conn.rollback();
-            return res.json({ skipped: true, web_status: order.web_status });
+        const nuevo = ENVIA_STATUS_MAP.find(([keys]) => keys.some(k => statusRaw.includes(k)))?.[1];
+        if (!nuevo) {
+            return console.log(`[EnviaWebhook] ${trackingNumber} status="${statusRaw}" sin mapeo.`);
         }
 
-        const { okFifo, faltantesFifo, advertenciasStock } = await checkFifoStock(parseInt(id), conn);
+        // La transicion valida se expresa en el WHERE: si el pedido ya avanzo o
+        // el salto no aplica, affectedRows es 0 y no hubo lectura previa que
+        // pudiera quedar obsoleta.
+        const permitidos = TRANSICIONES_VALIDAS[nuevo];
+        const extra = nuevo === 'entregado' ? ', bo.delivered_at = NOW()'
+            : nuevo === 'reclamo' ? `, bo.claim_type = 'paqueteria', bo.claim_status = 'disputa'`
+                : '';
 
-        if (!okFifo) {
-            await callBisonteCapture(parseInt(id), 'cancel').catch(() => {});
-            await conn.query(`UPDATE sales SET web_status = 'cancelado', web_process_type = 'auto' WHERE id = ?`, [id]);
-            await conn.commit();
-            const orderData = await getOrderForEmail(id, conn);
-            if (orderData?.email) sendOrderEmail('cancelado', orderData.email, { ...orderData, motivo: faltantesFifo.join(' | ') });
-            return res.json({ success: false, cancelado: true, motivo: faltantesFifo.join(' | ') });
+        const [r] = await pool.query(`
+            UPDATE bisonte_orders bo
+               SET bo.estado = ?${extra}
+             WHERE bo.tracking_number = ?
+               AND bo.estado IN (${permitidos.map(() => '?').join(',')})
+        `, [nuevo, trackingNumber, ...permitidos]);
+
+        if (!r.affectedRows) {
+            return console.log(`[EnviaWebhook] ${trackingNumber}: transición a ${nuevo} no aplicable.`);
         }
 
-        if (advertenciasStock.length > 0) {
-            await conn.rollback();
-            return res.json({ success: false, pendiente: true, advertencias: advertenciasStock });
-        }
+        const [[sale]] = await pool.query(
+            `SELECT sale_id FROM bisonte_orders WHERE tracking_number = ? LIMIT 1`, [trackingNumber]);
+        console.log(`[EnviaWebhook] Pedido #${sale.sale_id} → ${nuevo}. Tracking: ${trackingNumber}`);
 
-        const bisonteRes = await callBisonteCapture(parseInt(id), 'capture');
-
-        if (!bisonteRes.success) {
-            const nuevoEstado = bisonteRes.error?.includes('captured') ? 'confirmado' : 'cancelado';
-            await conn.query(`UPDATE sales SET web_status = ?, web_process_type = 'auto' WHERE id = ?`, [nuevoEstado, id]);
-            await conn.commit();
-            return res.json({ success: false, error: bisonteRes.error, web_status: nuevoEstado });
-        }
-
-        await conn.query(`UPDATE sales SET web_status = 'confirmado', web_process_type = 'auto' WHERE id = ?`, [id]);
-        await deductStock(parseInt(id), conn);
-        const autoCancelados = await cascadeCancelLaterOrders(parseInt(id), conn);
-        await conn.commit();
-
-        const orderData = await getOrderForEmail(id, conn);
-        if (orderData?.email) sendOrderEmail('confirmado', orderData.email, orderData);
-
-        res.json({ success: true, confirmado: true, autoCancelados });
-    } catch (err) {
-        await conn.rollback();
-        console.error('[AutoProcess] Error:', err);
-        res.status(500).json({ error: err.message });
-    } finally {
+        const conn = await pool.getConnection();
+        const orderData = await getOrderForEmail(sale.sale_id, conn);
         conn.release();
+
+        const plantilla = { entregado: 'entregado', reclamo: 'reclamo_paqueteria',
+            cancelado: 'cancelado', envio: 'envio_despachado' }[nuevo];
+        if (orderData?.email && plantilla) sendOrderEmail(plantilla, orderData.email, orderData);
+    } catch (err) {
+        console.error('[EnviaWebhook] Error:', err.message);
     }
 });
 
-// ──────────────────────────────────────────────────────────────────────────────
-// PUT /api/web-orders/:id/confirm
-// ──────────────────────────────────────────────────────────────────────────────
-router.put('/:id/confirm', authenticateToken, validateEmpresaActive, async (req, res) => {
-    const empresa_id = req.user.empresa_id;
-    const { id } = req.params;
-    const conn = await pool.getConnection();
+// ─────────────────────────────────────────────────────────────────────────────
+//  CONFIRMACION DE PEDIDO
+//
+//  Antes esta logica estaba duplicada en /confirm (staff) y /auto-process
+//  (llamada de la tienda con API key), con las dos copias divergiendo poco a
+//  poco. Ahora es una funcion y las dos rutas solo cambian quien autentica y
+//  que process_type se registra.
+//
+//  El bug que se corrige aqui era serio: cuando habia que generar guia de
+//  Envia.com, la ruta hacia `await conn.rollback()` A MEDIA TRANSACCION para
+//  soltar el lock durante la llamada externa, y luego `beginTransaction()` de
+//  nuevo dando por hecho que el estado seguia igual. Entre esos dos puntos otra
+//  peticion podia confirmar el mismo pedido: la verificacion de estado ya habia
+//  pasado y el lock ya no existia. Doble cobro.
+//
+//  Ahora la llamada externa ocurre ANTES de abrir la transaccion, y todo lo que
+//  toca la base va en una sola sin soltar el lock.
+// ─────────────────────────────────────────────────────────────────────────────
+async function confirmarPedido(saleId, empresaId, processType) {
+    // 1. Lectura previa sin lock, solo para saber si hace falta la guia.
+    const [[pre]] = await pool.query(`
+        SELECT bo.estado, bo.shipping_method, bo.envia_label_data,
+               bo.envia_quote_data, bo.shipping_address_json
+        ${ORDER_FROM}
+        WHERE s.id = ?${empresaId ? ' AND s.empresa_id = ?' : ''}
+    `, empresaId ? [saleId, empresaId] : [saleId]);
 
+    if (!pre) return { http: 404, body: { error: 'Pedido no encontrado' } };
+    if (pre.estado !== 'pendiente') {
+        return { http: 400, body: { skipped: true, web_status: pre.estado,
+            error: `El pedido ya está ${pre.estado}` } };
+    }
+
+    // 2. Llamada externa FUERA de la transaccion. Si falla se registra pero no
+    //    bloquea: la guia se puede regenerar despues desde /generate-label.
+    let labelError = null;
+    if (pre.shipping_method === 'envia' && !pre.envia_label_data) {
+        try {
+            const parse = v => typeof v === 'string' ? JSON.parse(v) : (v || {});
+            await generateEnviaLabel(saleId, parse(pre.envia_quote_data), parse(pre.shipping_address_json));
+        } catch (err) {
+            console.error(`[Envia] Error generando guía para pedido #${saleId}:`, err.message);
+            labelError = err.message;
+        }
+    }
+
+    // 3. Una transaccion, un lock, sin soltarlo.
+    const conn = await pool.getConnection();
     try {
         await conn.beginTransaction();
 
         const [[order]] = await conn.query(`
-            SELECT id, web_status, shipping_method, envia_quote_data, envia_label_data, shipping_address_json
-            FROM sales
-            WHERE id = ? AND empresa_id = ?
-              AND cash_session_id IS NULL AND cliente_id IS NOT NULL
-            FOR UPDATE
-        `, [id, empresa_id]);
+            SELECT bo.id, bo.estado
+              FROM bisonte_orders bo
+              JOIN sales s ON s.id = bo.sale_id
+             WHERE s.id = ?
+             FOR UPDATE
+        `, [saleId]);
 
-        if (!order) { await conn.rollback(); return res.status(404).json({ error: 'Pedido no encontrado' }); }
-        if (order.web_status !== 'pendiente') { await conn.rollback(); return res.status(400).json({ error: `El pedido ya está ${order.web_status}` }); }
-
-        const { okFifo, faltantesFifo, advertenciasStock } = await checkFifoStock(parseInt(id), conn);
-
-        if (!okFifo) {
-            await callBisonteCapture(parseInt(id), 'cancel').catch(() => {});
-            await conn.query(`UPDATE sales SET web_status = 'cancelado', web_process_type = 'auto' WHERE id = ?`, [id]);
-            await conn.commit();
-            const orderData = await getOrderForEmail(id, conn);
-            if (orderData?.email) sendOrderEmail('cancelado', orderData.email, { ...orderData, motivo: faltantesFifo.join(' | ') });
-            return res.json({ success: false, cancelado: true, motivo: `Cancelado automáticamente: ${faltantesFifo.join(' | ')}` });
-        }
-
-        if (advertenciasStock.length > 0) {
+        // Se revalida DENTRO del lock: entre el paso 1 y aqui pudo cambiar.
+        if (!order || order.estado !== 'pendiente') {
             await conn.rollback();
-            return res.status(409).json({ success: false, stockInsuficiente: true, advertencias: advertenciasStock, mensaje: 'Stock insuficiente. Cancela manualmente y contacta al cliente.' });
+            return { http: 409, body: { error: `El pedido ya está ${order?.estado ?? 'ausente'}` } };
         }
 
-        // Stock OK — generate Envia.com label BEFORE capturing payment
-        let labelError = null;
-        if (order.shipping_method === 'envia' && !order.envia_label_data) {
-            await conn.rollback(); // release row lock during external API call
-            try {
-                const quote = typeof order.envia_quote_data === 'string'
-                    ? JSON.parse(order.envia_quote_data)
-                    : (order.envia_quote_data || {});
-                const address = typeof order.shipping_address_json === 'string'
-                    ? JSON.parse(order.shipping_address_json)
-                    : (order.shipping_address_json || {});
-                await generateEnviaLabel(parseInt(id), quote, address);
-            } catch (err) {
-                console.error(`[Envia] Error generando guía para pedido #${id}:`, err.message);
-                labelError = err.message; // log but don't block confirmation
-            }
-            // Re-acquire connection for the rest of the transaction
-            await conn.beginTransaction();
+        // El stock fisico tiene que alcanzar. La reserva se hizo en el checkout,
+        // asi que esto solo falla si hubo merma o ajuste manual del inventario.
+        const [faltantes] = await conn.query(`
+            SELECT p.name, p.stock, si.quantity
+              FROM sale_items si
+              JOIN products p ON p.id = si.product_id
+             WHERE si.sale_id = ? AND p.stock < si.quantity
+        `, [saleId]);
+
+        if (faltantes.length) {
+            await conn.rollback();
+            return { http: 409, body: {
+                success: false, stockInsuficiente: true,
+                advertencias: faltantes.map(f => `"${f.name}" (stock: ${f.stock}, pedido: ${f.quantity})`),
+                mensaje: 'Stock insuficiente. Cancela manualmente y contacta al cliente.',
+            } };
         }
 
-        const bisonteRes = await callBisonteCapture(parseInt(id), 'capture');
+        await commitReservation(saleId, conn);
+        await conn.query(`
+            UPDATE bisonte_orders
+               SET estado = 'confirmado', process_type = ?, confirmed_at = NOW()
+             WHERE sale_id = ?
+        `, [processType, saleId]);
 
-        if (!bisonteRes.success) {
-            const nuevoEstado = bisonteRes.error?.includes('captured') ? 'confirmado' : 'cancelado';
-            await conn.query(`UPDATE sales SET web_status = ?, web_process_type = 'manual' WHERE id = ?`, [nuevoEstado, id]);
-            await conn.commit();
-            return res.status(409).json({ error: bisonteRes.error });
-        }
-
-        await conn.query(`UPDATE sales SET web_status = 'confirmado', web_process_type = 'manual' WHERE id = ?`, [id]);
-        await deductStock(parseInt(id), conn);
-        const autoCancelados = await cascadeCancelLaterOrders(parseInt(id), conn);
+        // El cobro se encola DENTRO de la transaccion: o se guardan las dos
+        // cosas o ninguna. Si el proceso muere justo aqui, la fila queda
+        // pendiente y el worker la reintenta.
+        await enqueue(conn, 'capture', saleId);
         await conn.commit();
-
-        const orderData = await getOrderForEmail(id, conn);
-        if (orderData?.email) sendOrderEmail('confirmado', orderData.email, orderData);
-
-        res.json({ success: true, confirmado: true, autoCancelados, stockErrors: bisonteRes.stockErrors ?? [], labelError });
     } catch (err) {
         await conn.rollback();
+        throw err;
+    } finally {
+        conn.release();
+    }
+
+    const conn2 = await pool.getConnection();
+    const orderData = await getOrderForEmail(saleId, conn2);
+    conn2.release();
+    if (orderData?.email) sendOrderEmail('confirmado', orderData.email, orderData);
+
+    return { http: 200, body: { success: true, confirmado: true, labelError } };
+}
+
+// PUT /api/web-orders/:id/confirm — staff del POS
+router.put('/:id/confirm', authenticateToken, validateEmpresaActive, async (req, res) => {
+    try {
+        const r = await confirmarPedido(parseInt(req.params.id), req.user.empresa_id, 'manual');
+        res.status(r.http).json(r.body);
+    } catch (err) {
         console.error('Error confirming web order:', err);
         res.status(500).json({ error: 'Error al confirmar el pedido: ' + err.message });
-    } finally {
-        conn.release();
     }
 });
 
-// ──────────────────────────────────────────────────────────────────────────────
-// PUT /api/web-orders/:id/ship
-// Body: { shipping_status: 'en_espera'|'despachado', tracking_number?: string }
-// ──────────────────────────────────────────────────────────────────────────────
+// POST /api/web-orders/:id/auto-process — llamada de la tienda con API key
+router.post('/:id/auto-process', async (req, res) => {
+    const apiKey = req.headers['x-api-key'];
+    if (!apiKey || apiKey !== process.env.BISONTE_CAPTURE_KEY) {
+        return res.status(401).json({ error: 'API key inválida' });
+    }
+    try {
+        const r = await confirmarPedido(parseInt(req.params.id), null, 'auto');
+        // El llamador automatico no distingue 4xx de exito parcial: siempre 200
+        // con el detalle en el cuerpo, como hacia la version anterior.
+        res.json(r.http === 200 ? r.body : { success: false, ...r.body });
+    } catch (err) {
+        console.error('[AutoProcess] Error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  PUT /api/web-orders/:id/ship
+// ─────────────────────────────────────────────────────────────────────────────
 router.put('/:id/ship', authenticateToken, validateEmpresaActive, async (req, res) => {
     const empresa_id = req.user.empresa_id;
-    const { id } = req.params;
+    const saleId = parseInt(req.params.id);
     const { shipping_status, tracking_number } = req.body;
 
     if (!['en_espera', 'despachado'].includes(shipping_status)) {
@@ -703,27 +565,25 @@ router.put('/:id/ship', authenticateToken, validateEmpresaActive, async (req, re
     }
 
     try {
-        const [[order]] = await pool.query(`
-            SELECT id, web_status FROM sales
-            WHERE id = ? AND empresa_id = ? AND cash_session_id IS NULL AND cliente_id IS NOT NULL
-        `, [id, empresa_id]);
+        // La guardia de estado va en el propio UPDATE: si otra peticion movio el
+        // pedido, affectedRows es 0 y no hay ventana entre leer y escribir.
+        const [r] = await pool.query(`
+            UPDATE bisonte_orders bo
+              JOIN sales s ON s.id = bo.sale_id
+               SET bo.estado          = 'envio',
+                   bo.shipping_status = ?,
+                   bo.tracking_number = COALESCE(?, bo.tracking_number),
+                   bo.shipped_at      = COALESCE(bo.shipped_at, NOW())
+             WHERE s.id = ? AND s.empresa_id = ?
+               AND bo.estado IN ('confirmado', 'envio')
+        `, [shipping_status, tracking_number || null, saleId, empresa_id]);
 
-        if (!order) return res.status(404).json({ error: 'Pedido no encontrado' });
-        if (!['confirmado', 'envio'].includes(order.web_status)) {
+        if (!r.affectedRows) {
             return res.status(400).json({ error: 'Solo se pueden enviar pedidos confirmados' });
         }
 
-        await pool.query(`
-            UPDATE sales
-            SET web_status = 'envio',
-                shipping_status = ?,
-                tracking_number = ?,
-                shipped_at = CASE WHEN shipped_at IS NULL THEN NOW() ELSE shipped_at END
-            WHERE id = ?
-        `, [shipping_status, tracking_number || null, id]);
-
         const conn = await pool.getConnection();
-        const orderData = await getOrderForEmail(id, conn);
+        const orderData = await getOrderForEmail(saleId, conn);
         conn.release();
 
         const templateKey = shipping_status === 'despachado' ? 'envio_despachado' : 'envio_espera';
@@ -736,33 +596,28 @@ router.put('/:id/ship', authenticateToken, validateEmpresaActive, async (req, re
     }
 });
 
-// ──────────────────────────────────────────────────────────────────────────────
-// PUT /api/web-orders/:id/deliver
-// ──────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+//  PUT /api/web-orders/:id/deliver
+// ─────────────────────────────────────────────────────────────────────────────
 router.put('/:id/deliver', authenticateToken, validateEmpresaActive, async (req, res) => {
     const empresa_id = req.user.empresa_id;
-    const { id } = req.params;
+    const saleId = parseInt(req.params.id);
 
     try {
-        const [[order]] = await pool.query(`
-            SELECT id, web_status FROM sales
-            WHERE id = ? AND empresa_id = ? AND cash_session_id IS NULL AND cliente_id IS NOT NULL
-        `, [id, empresa_id]);
+        const [r] = await pool.query(`
+            UPDATE bisonte_orders bo
+              JOIN sales s ON s.id = bo.sale_id
+               SET bo.estado = 'entregado', bo.delivered_at = NOW()
+             WHERE s.id = ? AND s.empresa_id = ? AND bo.estado = 'envio'
+        `, [saleId, empresa_id]);
 
-        if (!order) return res.status(404).json({ error: 'Pedido no encontrado' });
-        if (order.web_status !== 'envio') {
+        if (!r.affectedRows) {
             return res.status(400).json({ error: 'Solo se pueden entregar pedidos en envío' });
         }
 
-        await pool.query(`
-            UPDATE sales SET web_status = 'entregado', delivered_at = NOW()
-            WHERE id = ?
-        `, [id]);
-
         const conn = await pool.getConnection();
-        const orderData = await getOrderForEmail(id, conn);
+        const orderData = await getOrderForEmail(saleId, conn);
         conn.release();
-
         if (orderData?.email) sendOrderEmail('entregado', orderData.email, orderData);
 
         res.json({ success: true, web_status: 'entregado' });
@@ -772,14 +627,13 @@ router.put('/:id/deliver', authenticateToken, validateEmpresaActive, async (req,
     }
 });
 
-// ──────────────────────────────────────────────────────────────────────────────
-// PUT /api/web-orders/:id/claim
-// Body: { claim_status: 'disputa'|'resolucion', claim_notes?: string }
-// Stock: NEVER moved (neither on disputa nor resolucion)
-// ──────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+//  PUT /api/web-orders/:id/claim
+//  El stock NUNCA se mueve aqui, ni al abrir disputa ni al resolverla.
+// ─────────────────────────────────────────────────────────────────────────────
 router.put('/:id/claim', authenticateToken, validateEmpresaActive, async (req, res) => {
     const empresa_id = req.user.empresa_id;
-    const { id } = req.params;
+    const saleId = parseInt(req.params.id);
     const { claim_status, claim_type, claim_notes } = req.body;
 
     if (!['disputa', 'resolucion'].includes(claim_status)) {
@@ -790,24 +644,21 @@ router.put('/:id/claim', authenticateToken, validateEmpresaActive, async (req, r
     }
 
     try {
-        const [[order]] = await pool.query(`
-            SELECT id, web_status FROM sales
-            WHERE id = ? AND empresa_id = ? AND cash_session_id IS NULL AND cliente_id IS NOT NULL
-        `, [id, empresa_id]);
+        const [r] = await pool.query(`
+            UPDATE bisonte_orders bo
+              JOIN sales s ON s.id = bo.sale_id
+               SET bo.estado = 'reclamo', bo.claim_status = ?,
+                   bo.claim_type = ?, bo.claim_notes = ?
+             WHERE s.id = ? AND s.empresa_id = ?
+               AND bo.estado NOT IN ('cancelado', 'pendiente')
+        `, [claim_status, claim_type || 'cliente', claim_notes || null, saleId, empresa_id]);
 
-        if (!order) return res.status(404).json({ error: 'Pedido no encontrado' });
-        if (['cancelado', 'pendiente'].includes(order.web_status)) {
+        if (!r.affectedRows) {
             return res.status(400).json({ error: 'No se puede abrir reclamo en este estado' });
         }
 
-        await pool.query(`
-            UPDATE sales
-            SET web_status = 'reclamo', claim_status = ?, claim_type = ?, claim_notes = ?
-            WHERE id = ?
-        `, [claim_status, claim_type || 'cliente', claim_notes || null, id]);
-
         const conn = await pool.getConnection();
-        const orderData = await getOrderForEmail(id, conn);
+        const orderData = await getOrderForEmail(saleId, conn);
         conn.release();
 
         const resolvedClaimType = claim_type || 'cliente';
@@ -823,162 +674,98 @@ router.put('/:id/claim', authenticateToken, validateEmpresaActive, async (req, r
     }
 });
 
-// ──────────────────────────────────────────────────────────────────────────────
-// PUT /api/web-orders/:id/cancel
-// ──────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+//  PUT /api/web-orders/:id/cancel
+// ─────────────────────────────────────────────────────────────────────────────
 router.put('/:id/cancel', authenticateToken, validateEmpresaActive, async (req, res) => {
     const empresa_id = req.user.empresa_id;
-    const { id } = req.params;
+    const saleId = parseInt(req.params.id);
     const { motivo } = req.body || {};
 
+    const conn = await pool.getConnection();
     try {
-        const [[order]] = await pool.query(`
-            SELECT id, web_status, stock_deducted FROM sales
-            WHERE id = ? AND empresa_id = ? AND cash_session_id IS NULL AND cliente_id IS NOT NULL
-        `, [id, empresa_id]);
+        await conn.beginTransaction();
 
-        if (!order) return res.status(404).json({ error: 'Pedido no encontrado' });
+        const [[order]] = await conn.query(`
+            SELECT bo.estado, bo.pago_estado, bo.stock_deducted
+              FROM bisonte_orders bo
+              JOIN sales s ON s.id = bo.sale_id
+             WHERE s.id = ? AND s.empresa_id = ?
+             FOR UPDATE
+        `, [saleId, empresa_id]);
 
-        const needsRefund = ['confirmado', 'envio', 'entregado', 'reclamo'].includes(order.web_status);
-
-        if (needsRefund) {
-            // Payment was already captured — issue Stripe refund via Bisonte Shop
-            const refundRes = await callBisonteRefund(parseInt(id), motivo || 'requested_by_customer');
-
-            if (!refundRes.success && !refundRes.alreadyRefunded) {
-                return res.status(502).json({
-                    error: refundRes.error || 'Error al procesar el reembolso en Stripe',
-                    code: 'REFUND_FAILED',
-                });
-            }
-
-            // Restore stock if it was deducted by TorlanPos
-            if (order.stock_deducted) {
-                await pool.query(`
-                    UPDATE products p
-                    JOIN sale_items si ON si.product_id = p.id
-                    SET p.stock = p.stock + si.quantity
-                    WHERE si.sale_id = ?
-                `, [id]);
-                await pool.query(`UPDATE sales SET stock_deducted = 0 WHERE id = ?`, [id]);
-            }
-
-            await pool.query(
-                `UPDATE sales SET web_status = 'cancelado', web_process_type = 'manual' WHERE id = ?`, [id]
-            );
-
-            const conn = await pool.getConnection();
-            const orderData = await getOrderForEmail(id, conn);
-            conn.release();
-            if (orderData?.email) sendOrderEmail('cancelado', orderData.email, { ...orderData, motivo });
-
-            return res.json({
-                success: true,
-                refunded: true,
-                refund_id: refundRes.refund_id,
-                alreadyRefunded: refundRes.alreadyRefunded || false,
-            });
+        if (!order) { await conn.rollback(); return res.status(404).json({ error: 'Pedido no encontrado' }); }
+        if (order.estado === 'cancelado') {
+            await conn.rollback();
+            return res.status(409).json({ error: 'El pedido ya está cancelado' });
         }
 
-        // Pending order — just void the payment authorization
-        const bisonteRes = await callBisonteCapture(parseInt(id), 'cancel');
+        // Ya cobrado -> reembolso. Aun autorizado -> basta con liberar.
+        const yaCobrado = order.pago_estado === 'capturado';
 
-        // If Bisonte says it was already captured (race condition), switch to refund flow
-        if (!bisonteRes.success && bisonteRes.error?.includes('captured')) {
-            const refundRes = await callBisonteRefund(parseInt(id), motivo || 'requested_by_customer');
-            if (!refundRes.success && !refundRes.alreadyRefunded) {
-                return res.status(502).json({ error: refundRes.error || 'Error al reembolsar en Stripe', code: 'REFUND_FAILED' });
-            }
-            await pool.query(`UPDATE sales SET web_status = 'cancelado', web_process_type = 'manual' WHERE id = ?`, [id]);
-            const conn2 = await pool.getConnection();
-            const orderData2 = await getOrderForEmail(id, conn2);
-            conn2.release();
-            if (orderData2?.email) sendOrderEmail('cancelado', orderData2.email, { ...orderData2, motivo });
-            return res.json({ success: true, refunded: true, refund_id: refundRes.refund_id });
+        if (order.stock_deducted) {
+            await restoreStock(saleId, conn);
+        } else {
+            await releaseReservation(saleId, conn);
         }
 
-        if (!bisonteRes.success
-            && !bisonteRes.error?.includes('cancelled')
-            && !bisonteRes.error?.includes('No se encontró')) {
-            return res.status(500).json({ error: bisonteRes.error || 'Error al cancelar en Bisonte Shop' });
+        await conn.query(`
+            UPDATE bisonte_orders
+               SET estado = 'cancelado', process_type = 'manual',
+                   claim_notes = COALESCE(?, claim_notes), cancelled_at = NOW()
+             WHERE sale_id = ?
+        `, [motivo || null, saleId]);
+
+        // Antes el reembolso se pedia por HTTP ANTES de tocar la base, y si
+        // Stripe fallaba la ruta devolvia 502 dejando el pedido a medias.
+        // Ahora la intencion viaja con el resto de la transaccion.
+        await enqueue(conn, yaCobrado ? 'refund' : 'cancel', saleId,
+            { motivo: motivo || 'requested_by_customer' });
+
+        await conn.commit();
+
+        const orderData = await getOrderForEmail(saleId, conn);
+        if (orderData?.email) {
+            sendOrderEmail('cancelado', orderData.email, { ...orderData, motivo });
         }
 
-        await pool.query(
-            `UPDATE sales SET web_status = 'cancelado', web_process_type = 'manual' WHERE id = ?`, [id]
-        );
-
-        const conn = await pool.getConnection();
-        const orderData = await getOrderForEmail(id, conn);
-        conn.release();
-        if (orderData?.email) sendOrderEmail('cancelado', orderData.email, { ...orderData, motivo });
-
-        res.json({ success: true, refunded: false });
+        res.json({ success: true, web_status: 'cancelado', reembolso: yaCobrado });
     } catch (err) {
-        console.error('Error cancelling web order:', err);
-        res.status(500).json({ error: 'Error al cancelar el pedido: ' + err.message });
+        await conn.rollback();
+        console.error('Error cancelling order:', err);
+        res.status(500).json({ error: err.message });
+    } finally {
+        conn.release();
     }
 });
 
-// ──────────────────────────────────────────────────────────────────────────────
-// POST /api/web-orders/:id/generate-label
-// Fallback: manually generate Envia.com label (if auto-gen at confirm failed)
-// Works for pendiente (label only), confirmado/envio (label + advance to envio)
-// ──────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+//  POST /api/web-orders/:id/generate-label
+// ─────────────────────────────────────────────────────────────────────────────
 router.post('/:id/generate-label', authenticateToken, validateEmpresaActive, async (req, res) => {
     const empresa_id = req.user.empresa_id;
-    const { id } = req.params;
+    const saleId = parseInt(req.params.id);
 
     try {
         const [[order]] = await pool.query(`
-            SELECT id, web_status, shipping_method, envia_quote_data, envia_label_data, shipping_address_json
-            FROM sales WHERE id = ? AND empresa_id = ?
-              AND cash_session_id IS NULL AND cliente_id IS NOT NULL
-        `, [id, empresa_id]);
+            SELECT bo.envia_quote_data, bo.shipping_address_json, bo.envia_label_data
+            ${ORDER_FROM}
+            WHERE s.id = ? AND s.empresa_id = ?
+        `, [saleId, empresa_id]);
 
         if (!order) return res.status(404).json({ error: 'Pedido no encontrado' });
-        if (order.shipping_method !== 'envia') return res.status(400).json({ error: 'Este pedido usa Envío Bisonte, no Envia.com' });
-        if (!['pendiente', 'confirmado', 'envio'].includes(order.web_status)) {
-            return res.status(400).json({ error: 'No se puede generar etiqueta para este pedido' });
-        }
-
-        // Already has label — return idempotently
         if (order.envia_label_data) {
-            const label = typeof order.envia_label_data === 'string'
-                ? JSON.parse(order.envia_label_data)
-                : order.envia_label_data;
-            return res.json({ success: true, alreadyGenerated: true, label });
+            return res.status(409).json({ error: 'El pedido ya tiene guía generada' });
         }
 
-        const quote = typeof order.envia_quote_data === 'string'
-            ? JSON.parse(order.envia_quote_data) : (order.envia_quote_data || {});
-        const address = typeof order.shipping_address_json === 'string'
-            ? JSON.parse(order.shipping_address_json) : (order.shipping_address_json || {});
+        const parse = v => typeof v === 'string' ? JSON.parse(v) : (v || {});
+        const { trackingNumber } = await generateEnviaLabel(
+            saleId, parse(order.envia_quote_data), parse(order.shipping_address_json));
 
-        const { trackingNumber, labelData } = await generateEnviaLabel(parseInt(id), quote, address);
-
-        // pendiente: label stored only (stock not confirmed yet, no status change)
-        // confirmado/envio: advance to envio
-        if (order.web_status !== 'pendiente') {
-            await pool.query(
-                `UPDATE sales SET web_status = 'envio',
-                 shipping_status = 'en_espera', shipped_at = COALESCE(shipped_at, NOW())
-                 WHERE id = ?`,
-                [id]
-            );
-        }
-
-        const conn = await pool.getConnection();
-        const orderData = await getOrderForEmail(id, conn);
-        conn.release();
-        if (orderData?.email) {
-            sendOrderEmail('envio_espera', orderData.email, { ...orderData, tracking_number: trackingNumber });
-        }
-
-        res.json({ success: true, label: labelData, trackingNumber });
-
+        res.json({ success: true, tracking_number: trackingNumber });
     } catch (err) {
-        console.error('[GenerateLabel] Error:', err.message);
-        res.status(500).json({ error: err.message });
+        console.error('Error generating label:', err);
+        res.status(502).json({ error: err.message });
     }
 });
 
