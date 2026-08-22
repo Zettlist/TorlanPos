@@ -18,15 +18,105 @@
   box-sizing: border-box;
 }
 
-html {
+/* ═════════════════════════════════════════════════════════════════════════════
+   Transicion de tema (claro <-> oscuro)
+
+   La clase .theme-anim la pone ThemeToggle en <html> solo durante el cambio y
+   la quita a los ~450ms. Asi el fundido de colores ocurre unicamente al
+   alternar el tema y no interfiere con las transiciones normales (hover, etc.).
+   Se anima el color resuelto de rgb(var(--x)); las variables no transicionan,
+   pero la propiedad si. Respeta prefers-reduced-motion.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root.theme-anim,
+:root.theme-anim *,
+:root.theme-anim *::before,
+:root.theme-anim *::after {
+  transition: background-color 0.4s ease, border-color 0.4s ease,
+              color 0.4s ease, fill 0.4s ease, stroke 0.4s ease,
+              box-shadow 0.4s ease !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root.theme-anim,
+  :root.theme-anim *,
+  :root.theme-anim *::before,
+  :root.theme-anim *::after {
+    transition: none !important;
+  }
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   Tema · claro / oscuro
+
+   Los tokens de color (base, surface, ink, accent…) se resuelven contra estas
+   variables. Cada una es un triplete de canales RGB — sin funcion rgb() — para
+   que Tailwind pueda envolverlas en rgb(var(--x) / <alpha-value>) y conservar
+   los modificadores de opacidad. El boton de tema (ThemeToggle) pone
+   data-theme="dark" en <html>; sin el atributo rige el tema claro.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
   color-scheme: light;
+
+  --base: 244 245 247;
+  --surface: 255 255 255;
+  --raised: 237 239 242;
+  --line: 216 221 227;
+  --line-strong: 185 192 200;
+
+  --ink: 14 18 22;
+  --muted: 92 102 114;
+
+  --accent: 11 79 209;
+  --accent-hover: 9 66 174;
+  --accent-soft: 232 239 252;
+  --accent-ink: 255 255 255;
+
+  --ok: 21 128 61;
+  --ok-soft: 231 245 236;
+  --warn: 180 83 9;
+  --warn-soft: 253 242 227;
+  --bad: 185 28 28;
+  --bad-soft: 252 235 234;
+
+  /* Vocabulario impreso: constante en ambos temas. */
+  --paper: 245 243 238;
+  --paper-ink: 18 16 14;
+  --paper-rule: 22 19 16;
+  --paper-spot: 179 33 26;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --base: 14 18 22;
+  --surface: 23 27 33;
+  --raised: 32 38 46;
+  --line: 42 49 58;
+  --line-strong: 58 66 77;
+
+  --ink: 232 235 239;
+  --muted: 155 165 177;
+
+  /* Azul mas claro: el acento oscuro no contrasta sobre fondo oscuro. */
+  --accent: 59 130 246;
+  --accent-hover: 96 165 250;
+  --accent-soft: 23 37 63;
+  --accent-ink: 255 255 255;
+
+  /* Estados en su version clara para leer sobre superficie oscura. */
+  --ok: 34 197 94;
+  --ok-soft: 19 40 27;
+  --warn: 245 158 11;
+  --warn-soft: 43 33 15;
+  --bad: 248 113 113;
+  --bad-soft: 43 22 22;
 }
 
 body {
   font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  background: theme('colors.base');
+  background: rgb(var(--base));
   min-height: 100vh;
-  color: theme('colors.ink');
+  color: rgb(var(--ink));
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -215,7 +305,7 @@ table,
 
   /* Trama de semitono: el corte de seccion del manga impreso. */
   .halftone {
-    background-image: radial-gradient(theme('colors.paper.ink') 22%, transparent 23%);
+    background-image: radial-gradient(rgb(var(--paper-ink)) 22%, transparent 23%);
     background-size: 5px 5px;
     opacity: 0.2;
     height: 6px;
@@ -224,7 +314,7 @@ table,
 
 /* ── Foco visible en todo lo que reciba teclado ───────────────────────────── */
 :focus-visible {
-  outline: 2px solid theme('colors.accent.DEFAULT');
+  outline: 2px solid rgb(var(--accent));
   outline-offset: 2px;
 }
 
@@ -235,17 +325,17 @@ table,
 }
 
 ::-webkit-scrollbar-track {
-  background: theme('colors.base');
+  background: rgb(var(--base));
 }
 
 ::-webkit-scrollbar-thumb {
-  background: theme('colors.line-strong');
-  border: 4px solid theme('colors.base');
+  background: rgb(var(--line-strong));
+  border: 4px solid rgb(var(--base));
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: theme('colors.muted');
+  background: rgb(var(--muted));
 }
 
 /* ── Controles nativos ────────────────────────────────────────────────────────
@@ -256,7 +346,7 @@ table,
 input[type="date"],
 input[type="month"],
 input[type="time"] {
-  color-scheme: light;
+  color-scheme: inherit;
 }
 
 input[type="date"]::-webkit-calendar-picker-indicator,
@@ -271,9 +361,9 @@ input[type="month"]::-webkit-calendar-picker-indicator:hover {
 }
 
 select {
-  background-color: theme('colors.surface');
-  color: theme('colors.ink');
-  border: 1px solid theme('colors.line');
+  background-color: rgb(var(--surface));
+  color: rgb(var(--ink));
+  border: 1px solid rgb(var(--line));
   padding: 0.75rem 1rem;
   border-radius: 6px;
   min-height: 52px;
@@ -288,8 +378,75 @@ select {
 
 select:focus {
   outline: none;
-  border-color: theme('colors.accent.DEFAULT');
-  box-shadow: 0 0 0 2px rgb(11 79 209 / 0.25);
+  border-color: rgb(var(--accent));
+  box-shadow: 0 0 0 2px rgb(var(--accent) / 0.25);
+}
+
+/* ── Cotizaciones: transiciones de seleccion y tarjetas ───────────────────
+   Los totales se recalculan con los productos marcados, asi que marcar/
+   desmarcar tiene que verse: la fila se sombrea en vez de saltar de opacidad,
+   y da un realce corto justo despues del clic para ubicarla en tablas largas.
+   ────────────────────────────────────────────────────────────────────────── */
+.row-anim {
+  transition: opacity 260ms ease, background-color 320ms ease, filter 260ms ease;
+}
+
+.row-on {
+  opacity: 1;
+  background-color: rgb(var(--accent) / 0.05);
+}
+
+.row-off {
+  opacity: 0.45;
+  background-color: transparent;
+  filter: grayscale(0.55);
+}
+
+/* Va despues de .row-on/.row-off para ganar por orden de fuente. */
+.row-hit {
+  background-color: rgb(var(--accent) / 0.18);
+}
+
+/* Tarjetas de proveedor y renglones de concepto: entran creciendo y salen
+   desvaneciendose antes de borrarse del estado. */
+@keyframes cardIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.card-in {
+  animation: cardIn 220ms ease-out;
+}
+
+@keyframes cardOut {
+  to {
+    opacity: 0;
+    transform: scale(0.92) translateY(-6px);
+  }
+}
+
+.card-out {
+  animation: cardOut 240ms ease-in forwards;
+  pointer-events: none;
+}
+
+@keyframes lineOut {
+  to {
+    opacity: 0;
+    transform: translateX(14px);
+  }
+}
+
+.line-out {
+  animation: lineOut 220ms ease-in forwards;
+  pointer-events: none;
 }
 
 /* ── Impresion: el comprobante sale en papel, no en pantalla ─────────────── */

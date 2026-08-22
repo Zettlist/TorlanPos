@@ -31,6 +31,8 @@ import couponsRoutes from './routes/coupons.js';
 import webOrdersRoutes from './routes/webOrders.js';
 import storeCreditsRoutes from './routes/storeCredits.js';
 import eventosRoutes from './routes/eventos.js';
+import erpRoutes from './routes/erp.js';
+import cotizacionesRoutes from './routes/cotizaciones.js';
 
 
 
@@ -43,10 +45,17 @@ const PORT = process.env.PORT || 3000; // Use env PORT for cloud deployment, fal
 // Configure CORS
 // In production, allow the deployed frontend. In development, allow localhost.
 const allowedOrigins = [
-    'https://pos-torlan.web.app',
-    'https://pos-torlan.firebaseapp.com',
+    // Dominio real de produccion (proyecto torlan-pro) y su sitio de Firebase.
+    'https://torlan.pro',
+    'https://www.torlan.pro',
+    'https://torlan-pro.web.app',
+    'https://torlan-pro.firebaseapp.com',
+    // Dominio alterno que se esta conectando (DNS en transito).
     'https://torlanpos.com',
     'https://www.torlanpos.com',
+    // Restos del proyecto viejo, inofensivos.
+    'https://pos-torlan.web.app',
+    'https://pos-torlan.firebaseapp.com',
     'http://localhost:5173',
     'http://localhost:3000',
     // Vite toma otro puerto cuando el 5173 esta ocupado (dos ramas a la vez),
@@ -160,6 +169,8 @@ app.use('/api/coupons', couponsRoutes);
 app.use('/api/store-credits', storeCreditsRoutes);
 app.use('/api/web-orders', webOrdersRoutes);
 app.use('/api/eventos', eventosRoutes);
+app.use('/api/erp', erpRoutes);
+app.use('/api/cotizaciones', cotizacionesRoutes);
 console.log('✅ Routes loaded successfully');
 
 

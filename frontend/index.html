@@ -12,6 +12,20 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- Aplica el tema antes de que React pinte, para que no haya un flash del
+         tema claro al cargar en oscuro. Si no hay preferencia guardada, sigue
+         la del sistema. -->
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem('pos-theme');
+          var dark = saved
+            ? saved === 'dark'
+            : window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (dark) document.documentElement.setAttribute('data-theme', 'dark');
+        } catch (e) {}
+      })();
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

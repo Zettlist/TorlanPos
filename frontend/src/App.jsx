@@ -16,10 +16,12 @@ import Suppliers from './pages/Suppliers';
 import CouponsManager from './pages/admin/CouponsManager';
 import StoreCreditsManager from './pages/admin/StoreCreditsManager';
 import WebOrders from './pages/WebOrders';
-import EventoMundial from './pages/EventoMundial';
 
 import Preventas from './pages/Preventas';
 import Anticipos from './pages/Anticipos';
+import Erp from './pages/erp/Erp';
+import Cotizaciones from './pages/admin/Cotizaciones';
+import CambiarPassword from './pages/CambiarPassword';
 import ComprobantePublico from './pages/ComprobantePublico';
 import Layout from './components/Layout';
 
@@ -58,6 +60,7 @@ function GlobalAdminRoutes() {
                 <Route path="/empresas" element={<EmpresaManager />} />
                 <Route path="/admin/users" element={<UserManager />} />
                 <Route path="/admin/features" element={<FeatureManager />} />
+                <Route path="/cambiar-password" element={<CambiarPassword />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
         </Layout>
@@ -109,12 +112,6 @@ function EmpresaRoutes() {
                 <Route path="/preventas" element={<Preventas />} />
                 <Route path="/anticipos" element={<Anticipos />} />
                 <Route path="/web-orders" element={<WebOrders />} />
-                <Route path="/evento-mundial" element={
-                    <RequireManager>
-                        <EventoMundial />
-                    </RequireManager>
-                } />
-
 
                 <Route path="/admin/users" element={<UserManager />} />
                 <Route path="/admin/coupons" element={
@@ -127,7 +124,18 @@ function EmpresaRoutes() {
                         <StoreCreditsManager />
                     </RequireManager>
                 } />
+                <Route path="/erp" element={
+                    <RequireManager>
+                        <Erp />
+                    </RequireManager>
+                } />
+                <Route path="/admin/cotizaciones" element={
+                    <RequireManager>
+                        <Cotizaciones />
+                    </RequireManager>
+                } />
                 <Route path="/onboarding" element={<ManagerOnboarding />} />
+                <Route path="/cambiar-password" element={<CambiarPassword />} />
 
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

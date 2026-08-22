@@ -26,38 +26,43 @@ export default {
     ],
     theme: {
         extend: {
+            // Los valores viven como canales RGB en variables CSS (ver index.css:
+            // :root para el tema claro, [data-theme="dark"] para el oscuro). El
+            // patron rgb(var(--x) / <alpha-value>) conserva los modificadores de
+            // opacidad de Tailwind (bg-accent/25, bg-ink/40) al cambiar de tema.
             colors: {
                 // Fondos y lineas
-                base:    '#F4F5F7',   // fondo de pagina
-                surface: '#FFFFFF',   // tarjetas, paneles, filas
-                raised:  '#EDEFF2',   // hover de fila, celdas destacadas
-                line:    '#D8DDE3',   // bordes y separadores
-                'line-strong': '#B9C0C8',
+                base:    'rgb(var(--base) / <alpha-value>)',      // fondo de pagina
+                surface: 'rgb(var(--surface) / <alpha-value>)',   // tarjetas, paneles, filas
+                raised:  'rgb(var(--raised) / <alpha-value>)',    // hover de fila, celdas destacadas
+                line:    'rgb(var(--line) / <alpha-value>)',      // bordes y separadores
+                'line-strong': 'rgb(var(--line-strong) / <alpha-value>)',
 
                 // Texto: solo dos niveles. Si hace falta un tercero, revisar la jerarquia.
-                ink:   '#0E1216',     // 16.8:1 sobre surface
-                muted: '#5C6672',     //  6.1:1 sobre surface
+                ink:   'rgb(var(--ink) / <alpha-value>)',
+                muted: 'rgb(var(--muted) / <alpha-value>)',
 
                 // Accion. Un solo azul, saturado, reservado al boton primario
                 // y al foco. No decorar con el.
                 accent: {
-                    DEFAULT: '#0B4FD1',
-                    hover:   '#0942AE',
-                    soft:    '#E8EFFC',   // fondo de estado seleccionado
-                    ink:     '#FFFFFF',   // texto sobre accent
+                    DEFAULT: 'rgb(var(--accent) / <alpha-value>)',
+                    hover:   'rgb(var(--accent-hover) / <alpha-value>)',
+                    soft:    'rgb(var(--accent-soft) / <alpha-value>)',   // fondo de estado seleccionado
+                    ink:     'rgb(var(--accent-ink) / <alpha-value>)',    // texto sobre accent
                 },
 
                 // Estado. Semantico, independiente del acento.
-                ok:   { DEFAULT: '#15803D', soft: '#E7F5EC' },
-                warn: { DEFAULT: '#B45309', soft: '#FDF2E3' },
-                bad:  { DEFAULT: '#B91C1C', soft: '#FCEBEA' },
+                ok:   { DEFAULT: 'rgb(var(--ok) / <alpha-value>)',   soft: 'rgb(var(--ok-soft) / <alpha-value>)' },
+                warn: { DEFAULT: 'rgb(var(--warn) / <alpha-value>)', soft: 'rgb(var(--warn-soft) / <alpha-value>)' },
+                bad:  { DEFAULT: 'rgb(var(--bad) / <alpha-value>)',  soft: 'rgb(var(--bad-soft) / <alpha-value>)' },
 
                 // Vocabulario impreso ("Bisonte"): login, reportes, comprobante.
+                // No cambia con el tema: la impresion es siempre sobre papel claro.
                 paper: {
-                    DEFAULT: '#F5F3EE',
-                    ink:     '#12100E',
-                    rule:    '#161310',
-                    spot:    '#B3211A',
+                    DEFAULT: 'rgb(var(--paper) / <alpha-value>)',
+                    ink:     'rgb(var(--paper-ink) / <alpha-value>)',
+                    rule:    'rgb(var(--paper-rule) / <alpha-value>)',
+                    spot:    'rgb(var(--paper-spot) / <alpha-value>)',
                 },
             },
 

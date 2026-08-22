@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import ThemeToggle from './ThemeToggle';
 
 function NavItem({ to, icon, label, end = false, onClick, badge }) {
     return (
@@ -40,22 +41,58 @@ function NavItem({ to, icon, label, end = false, onClick, badge }) {
     );
 }
 
-function SectionLabel({ children }) {
+// Seccion colapsable ("pestana"): el encabezado siempre se ve; los items se
+// despliegan al entrar el raton en la seccion. El estado lo controla el padre:
+// una seccion abierta NO se cierra al cruzar hacia otra; todas se cierran solo
+// cuando el raton sale de la zona de navegacion (onMouseLeave del <nav>). Asi
+// el usuario alcanza los items sin que la lista colapse a media seleccion.
+function NavSection({ id, label, open, onOpen, onToggle, children }) {
     return (
-        <p className="px-3 text-micro font-semibold text-muted uppercase mb-1 mt-3">
-            {children}
-        </p>
+        <div className="rounded-control">
+            <button
+                type="button"
+                onMouseEnter={() => onOpen(id)}
+                onClick={() => onToggle(id)}
+                aria-expanded={open}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-control select-none
+                           text-micro font-semibold uppercase whitespace-nowrap cursor-pointer transition-colors
+                           ${open ? 'text-ink bg-raised' : 'text-muted hover:text-ink hover:bg-raised'}`}
+            >
+                <span>{label}</span>
+                <svg
+                    aria-hidden="true"
+                    className={`w-3.5 h-3.5 flex-shrink-0 transition-transform duration-300 ${open ? 'rotate-180' : ''}`}
+                    fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+            </button>
+            <div className={`grid transition-all duration-300 ease-out overflow-hidden
+                            ${open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+                <div className="min-h-0 overflow-hidden">
+                    <div className="space-y-0.5 pt-1 pb-1">
+                        {children}
+                    </div>
+                </div>
+            </div>
+        </div>
     );
-}
-
-function Divider() {
-    return <div className="h-px bg-line my-3" />;
 }
 
 export default function Layout({ children }) {
     const { user, logout, hasFeature, isGlobalAdmin, isEmpresaAdmin, getEmpresa } = useAuth();
     const navigate = useNavigate();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    // Secciones abiertas. Se abren al entrar el raton y permanecen; solo se
+    // cierran todas cuando el raton sale del <nav> (o al pulsar el encabezado).
+    const [openSections, setOpenSections] = useState(() => new Set());
+    const openSection = (id) => setOpenSections((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
+    const toggleSection = (id) => setOpenSections((prev) => {
+        const next = new Set(prev);
+        next.has(id) ? next.delete(id) : next.add(id);
+        return next;
+    });
+    const closeAllSections = () => setOpenSections((prev) => (prev.size ? new Set() : prev));
 
     const close = () => setMobileMenuOpen(false);
 
@@ -89,10 +126,11 @@ export default function Layout({ children }) {
         coupon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" /></svg>,
         storeCredit: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>,
         webOrders: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>,
-        mundial: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.6 9h16.8M3.6 15h16.8M12 3a13.5 13.5 0 010 18M12 3a13.5 13.5 0 000 18" /></svg>,
         empresas: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>,
         features: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>,
         logout: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>,
+        erp: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>,
+        cotizaciones: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>,
     };
 
     return (
@@ -146,61 +184,50 @@ export default function Layout({ children }) {
                         </div>
                     </div>
 
-                    {/* Nav */}
-                    <nav className="flex-1 overflow-y-auto custom-scrollbar px-3 py-3 space-y-0.5 min-h-0">
+                    {/* Nav — cada apartado es una pestana colapsable (abre al pasar el raton) */}
+                    <nav
+                        className="flex-1 overflow-y-auto custom-scrollbar px-3 py-3 space-y-1 min-h-0"
+                        onMouseLeave={closeAllSections}
+                    >
                         {isGlobalAdmin() ? (
-                            <>
-                                <SectionLabel>Gestión Global</SectionLabel>
+                            <NavSection id="global" label="Gestión Global" open={openSections.has('global')} onOpen={openSection} onToggle={toggleSection}>
                                 <NavItem to="/" end icon={icons.empresas} label="Empresas" onClick={close} />
                                 <NavItem to="/admin/users" icon={icons.users} label="Todos los Usuarios" onClick={close} />
                                 <NavItem to="/admin/features" icon={icons.features} label="Funciones del Sistema" onClick={close} />
-                            </>
+                            </NavSection>
                         ) : (
                             <>
-                                {/* Principal */}
-                                <SectionLabel>Principal</SectionLabel>
-                                <NavItem to="/" end icon={icons.home} label="Dashboard" onClick={close} />
-                                <NavItem to="/sales" icon={icons.cash} label="Cobrar" onClick={close} />
-                                {isEmpresaAdmin() && (
-                                    <NavItem to="/products" icon={icons.products} label="Productos" onClick={close} />
-                                )}
-                                <NavItem to="/cash" icon={icons.register} label="Cajas" onClick={close} />
-                                {isEmpresaAdmin() && (
-                                    <>
-                                        <NavItem to="/reports" icon={icons.reports} label="Ventas" onClick={close} />
-                                        <NavItem to="/suppliers" icon={icons.suppliers} label="Proveedores" onClick={close} />
-                                    </>
-                                )}
+                                <NavSection id="produccion" label="Producción" open={openSections.has('produccion')} onOpen={openSection} onToggle={toggleSection}>
+                                    {isEmpresaAdmin() && (
+                                        <NavItem to="/products" icon={icons.products} label="Productos" onClick={close} />
+                                    )}
+                                    <NavItem to="/web-orders" icon={icons.webOrders} label="Pedidos Página Web" onClick={close} />
+                                    {isEmpresaAdmin() && (
+                                        <>
+                                            <NavItem to="/admin/coupons" icon={icons.coupon} label="Cupones" onClick={close} />
+                                            <NavItem to="/admin/store-credits" icon={icons.storeCredit} label="Créditos de Tienda" onClick={close} />
+                                        </>
+                                    )}
+                                </NavSection>
 
-                                {/* Módulos */}
-                                {(hasFeature('sales_statistics') || hasFeature('competitor_prices') || true) && (
-                                    <>
-                                        <Divider />
-                                        <SectionLabel>Módulos</SectionLabel>
-                                        {hasFeature('sales_statistics') && (
-                                            <NavItem to="/stats" icon={icons.stats} label="Estadísticas" onClick={close} />
-                                        )}
-                                        {hasFeature('competitor_prices') && (
-                                            <NavItem to="/competencia" icon={icons.scales} label="Competencia" onClick={close} />
-                                        )}
-                                        <NavItem to="/anticipos" icon={icons.anticipos} label="Anticipos" onClick={close} />
-                                        <NavItem to="/preventas" icon={icons.preventas} label="Preventas" onClick={close} />
-                                        <NavItem to="/web-orders" icon={icons.webOrders} label="Pedidos Página Web" onClick={close} />
-                                        {isEmpresaAdmin() && (
-                                            <NavItem to="/evento-mundial" icon={icons.mundial} label="Evento Mundial 2026" onClick={close} />
-                                        )}
-                                    </>
-                                )}
+                                <NavSection id="caja" label="Manejo de Caja" open={openSections.has('caja')} onOpen={openSection} onToggle={toggleSection}>
+                                    <NavItem to="/" end icon={icons.home} label="Dashboard" onClick={close} />
+                                    <NavItem to="/sales" icon={icons.cash} label="Cobrar" onClick={close} />
+                                    <NavItem to="/cash" icon={icons.register} label="Cajas" onClick={close} />
+                                    {isEmpresaAdmin() && (
+                                        <>
+                                            <NavItem to="/reports" icon={icons.reports} label="Ventas" onClick={close} />
+                                            <NavItem to="/suppliers" icon={icons.suppliers} label="Proveedores" onClick={close} />
+                                        </>
+                                    )}
+                                </NavSection>
 
-                                {/* Administración */}
                                 {isEmpresaAdmin() && (
-                                    <>
-                                        <Divider />
-                                        <SectionLabel>Administración</SectionLabel>
+                                    <NavSection id="administracion" label="Administración" open={openSections.has('administracion')} onOpen={openSection} onToggle={toggleSection}>
                                         <NavItem to="/admin/users" icon={icons.users} label="Gestionar Usuarios" onClick={close} />
-                                        <NavItem to="/admin/coupons" icon={icons.coupon} label="Cupones" onClick={close} />
-                                        <NavItem to="/admin/store-credits" icon={icons.storeCredit} label="Créditos de Tienda" onClick={close} />
-                                    </>
+                                        <NavItem to="/admin/cotizaciones" icon={icons.cotizaciones} label="Cotizaciones" onClick={close} />
+                                        <NavItem to="/erp" icon={icons.erp} label="ERP" onClick={close} />
+                                    </NavSection>
                                 )}
                             </>
                         )}
@@ -217,6 +244,17 @@ export default function Layout({ children }) {
                                 <p className="text-xs text-muted leading-tight">{roleBadge.label}</p>
                             </div>
                         </div>
+                        <ThemeToggle />
+                        <button
+                            onClick={() => navigate('/cambiar-password')}
+                            className="w-full flex items-center gap-3 px-3 py-2 rounded-control text-sm text-muted
+ hover:text-accent hover:bg-accent/10 transition-colors font-medium cursor-pointer"
+                        >
+                            <span className="w-5 h-5 flex items-center justify-center flex-shrink-0">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
+                            </span>
+                            Cambiar contraseña
+                        </button>
                         <button
                             onClick={handleLogout}
                             className="w-full flex items-center gap-3 px-3 py-2 rounded-control text-sm text-muted

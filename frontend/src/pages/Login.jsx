@@ -34,22 +34,30 @@ export default function Login() {
     };
 
     return (
-        <div className="min-h-screen paper-surface flex items-center justify-center p-4">
+        // Fondo igual al del video (#E8E8E8, el gris uniforme de sus margenes)
+        // para que la animacion se integre sin bordes visibles.
+        <div
+            className="min-h-screen paper-surface flex items-center justify-center p-4"
+            style={{ backgroundColor: '#E8E8E8' }}
+        >
             <div className="w-full max-w-md">
 
                 <header className="mb-8">
-                    <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-paper-ink flex items-center justify-center flex-shrink-0">
-                            <svg className="w-7 h-7 text-paper" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                            </svg>
-                        </div>
-                        <div>
-                            <h1 className="paper-title text-3xl leading-none">Torlan POS</h1>
-                            <p className="text-sm text-paper-ink/70 mt-1">Sistema de punto de venta</p>
-                        </div>
+                    {/* La animacion ES la marca — sin icono, texto ni marco. Se
+                        muestra a lo ancho (centrada) y el contenedor recorta la
+                        parte de abajo del video: aspecto 960/560 deja ver el 78%
+                        superior y clipa el resto. El fondo del video (#E8E8E8) es
+                        el mismo que el del login, asi que no se ve borde. */}
+                    <div className="w-full overflow-hidden" style={{ aspectRatio: '960 / 560' }}>
+                        <video
+                            className="block w-full"
+                            src="/scene.mp4"
+                            autoPlay
+                            muted
+                            playsInline
+                            aria-label="Torlan POS"
+                        />
                     </div>
-                    <div className="halftone mt-5" aria-hidden="true" />
                 </header>
 
                 <div className="paper-panel p-7">
