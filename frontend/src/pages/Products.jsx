@@ -140,6 +140,10 @@ export default function Products() {
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
+    // Llenar el alta de un producto toma varios minutos (ISBN, sinopsis, formato,
+    // extras). Cerrar por accidente y perderlo todo era el reclamo mas repetido,
+    // asi que cualquier salida con datos capturados pasa por confirmacion.
+    const [confirmarSalida, setConfirmarSalida] = useState(false);
     const [editingProduct, setEditingProduct] = useState(null);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
     const [forceDeleteConfirm, setForceDeleteConfirm] = useState(null);
@@ -587,7 +591,46 @@ export default function Products() {
         }
     };
 
+    // Escape cierra el formulario, pero pasando por la misma confirmacion. Si el
+    // dialogo ya esta abierto, Escape lo cancela en vez de encadenar cierres.
+    useEffect(() => {
+        if (!showForm) return;
+        const alPresionar = (e) => {
+            if (e.key !== 'Escape') return;
+            if (confirmarSalida) { setConfirmarSalida(false); return; }
+            intentarCerrarForm();
+        };
+        window.addEventListener('keydown', alPresionar);
+        return () => window.removeEventListener('keydown', alPresionar);
+    });
+
+    // Compara el formulario contra el vacio para saber si hay captura que perder.
+    // En edicion siempre se considera que hay datos: el producto ya trae valores y
+    // no tenemos el original a mano para diferenciar campo por campo.
+    const hayCambiosSinGuardar = () => {
+        if (editingProduct) return true;
+        if (imageFile || selectedExtras.length > 0 || serieAplicada) return true;
+        return Object.entries(FORM_VACIO).some(([campo, vacio]) => {
+            const actual = formData[campo];
+            if (campo === 'dimensions') {
+                return Object.values(actual || {}).some(v => v !== '' && v != null);
+            }
+            if (Array.isArray(vacio)) return (actual || []).length > 0;
+            return actual !== vacio;
+        });
+    };
+
+    // Unico camino de salida del formulario: pregunta si hay algo escrito.
+    const intentarCerrarForm = () => {
+        if (hayCambiosSinGuardar()) {
+            setConfirmarSalida(true);
+            return;
+        }
+        closeForm();
+    };
+
     const closeForm = () => {
+        setConfirmarSalida(false);
         setShowForm(false);
         setEditingProduct(null);
         setFormData(FORM_VACIO);
@@ -1075,15 +1118,21 @@ export default function Products() {
 
             {/* Form Modal */}
             {showForm && (
-                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-                    <div className="bg-surface border border-line rounded-panel shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto animate-slide-up custom-scrollbar">
+                <div
+                    className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
+                    onClick={(e) => { if (e.target === e.currentTarget) intentarCerrarForm(); }}
+                >
+                    <div
+                        className="bg-surface border border-line rounded-panel shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto animate-slide-up custom-scrollbar"
+                        onClick={(e) => e.stopPropagation()}
+                    >
 
                         {/* Header */}
                         <div className="sticky top-0 z-10 bg-surface border-b border-line px-6 py-4 flex items-center justify-between">
                             <h2 className="text-lg font-semibold text-ink">
                                 {editingProduct ? 'Editar Producto' : 'Nuevo Producto'}
                             </h2>
-                            <button type="button" onClick={closeForm} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-raised transition-colors">
+                            <button type="button" onClick={intentarCerrarForm} className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-raised transition-colors">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
@@ -1589,13 +1638,44 @@ export default function Products() {
 
                             {/* ── Botones ── */}
                             <div className="flex gap-3 pt-2 border-t border-line">
-                                <button type="button" onClick={closeForm} className="flex-1 btn-secondary">Cancelar</button>
+                                <button type="button" onClick={intentarCerrarForm} className="flex-1 btn-secondary">Cancelar</button>
                                 <button type="submit" className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2" disabled={isbnStatus.isDuplicate || isbnStatus.checking || isSubmitting}>
                                     {isSubmitting && <div className="w-4 h-4 border-2 border-line border-t-white rounded-full animate-spin" />}
                                     {editingProduct ? 'Guardar Cambios' : 'Crear Producto'}
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Confirmacion de salida: evita perder la captura por un clic afuera */}
+            {confirmarSalida && (
+                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[95] p-4 animate-fade-in">
+                    <div className="bg-surface border border-line rounded-panel shadow-2xl w-full max-w-sm p-6">
+                        <h3 className="text-lg font-semibold text-ink mb-2">¿Descartar los cambios?</h3>
+                        <p className="text-sm text-muted mb-6">
+                            {editingProduct
+                                ? 'Las modificaciones que hiciste a este producto no se guardarán.'
+                                : 'Lo que llevas capturado de este producto se perderá.'}
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setConfirmarSalida(false)}
+                                className="flex-1 btn-secondary"
+                                autoFocus
+                            >
+                                Seguir editando
+                            </button>
+                            <button
+                                type="button"
+                                onClick={closeForm}
+                                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                            >
+                                Descartar
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

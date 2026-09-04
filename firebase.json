@@ -1,6 +1,6 @@
 {
     "hosting": {
-        "site": "torlan-pro",
+        "site": "torlan-web",
         "public": "frontend/dist",
         "ignore": [
             "firebase.json",

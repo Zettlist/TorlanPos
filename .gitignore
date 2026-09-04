@@ -54,3 +54,11 @@ coverage/
 *.backup
 *.old
 CREDENCIALES-cloudsql.txt
+
+# Claude Code local settings y wrapper de herramientas de nube
+.claude/settings.local.json
+.claude/gc.cmd
+
+# Variables de entorno para Cloud Run (contiene secretos)
+backend/.env-cloudrun.yaml
+backend/.env-cloudrun-web.yaml
